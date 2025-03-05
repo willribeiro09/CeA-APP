@@ -1,11 +1,12 @@
 -- Criação da tabela sync_data para armazenar dados sincronizados
-CREATE TABLE IF NOT EXISTS sync_data (
+DROP TABLE IF EXISTS sync_data;
+CREATE TABLE sync_data (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   expenses JSONB DEFAULT '{}'::JSONB,
   projects JSONB DEFAULT '[]'::JSONB,
   stock JSONB DEFAULT '[]'::JSONB,
   employees JSONB DEFAULT '{}'::JSONB,
-  lastSync TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  lastSync TEXT DEFAULT to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
