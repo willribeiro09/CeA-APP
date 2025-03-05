@@ -37,12 +37,15 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
 
 // Função para salvar dados no Supabase
 export const saveData = async (data: StorageItems): Promise<boolean> => {
+  console.log('Tentando salvar dados no Supabase:', data);
+  
   if (!isSupabaseConfigured()) {
     console.log('Supabase não configurado, usando apenas armazenamento local');
     return false;
   }
 
   try {
+    console.log('Enviando dados para o Supabase...');
     const { error } = await supabase
       .from('sync_data')
       .upsert({

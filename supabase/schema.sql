@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS sync_data (
   projects JSONB DEFAULT '[]'::JSONB,
   stock JSONB DEFAULT '[]'::JSONB,
   employees JSONB DEFAULT '{}'::JSONB,
-  lastSync BIGINT DEFAULT extract(epoch from now()) * 1000,
+  lastSync TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
