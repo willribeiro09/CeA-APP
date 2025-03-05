@@ -29,6 +29,21 @@ EXECUTE FUNCTION update_timestamp();
 -- Política de segurança para permitir acesso anônimo
 ALTER TABLE sync_data ENABLE ROW LEVEL SECURITY;
 
+-- Remover a política existente se necessário
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM pg_policy
+        WHERE polname = 'Allow anonymous access'
+        AND polrelid = 'sync_data'::regclass
+    ) THEN
+        DROP POLICY "Allow anonymous access" ON sync_data;
+    END IF;
+END
+$$;
+
+-- Criar a política
 CREATE POLICY "Allow anonymous access" ON sync_data
   FOR ALL
   TO anon
