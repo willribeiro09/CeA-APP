@@ -168,6 +168,7 @@ export default function App() {
   const handleAddItem = (data: Partial<Item>) => {
     console.log("Função handleAddItem chamada com dados:", JSON.stringify(data));
     console.log("Lista selecionada:", selectedList);
+    console.log("Data da semana selecionada:", format(selectedWeekStart, 'yyyy-MM-dd'));
 
     // Gerar um ID único para o novo item
     const id = crypto.randomUUID();
@@ -275,21 +276,24 @@ export default function App() {
       const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
       employee.weekStartDate = weekStartDate;
 
+      console.log("Adicionando funcionário com data da semana:", weekStartDate);
+
       // Atualizar o estado
       setEmployees(prevEmployees => {
         console.log("Estado atual de employees:", JSON.stringify(prevEmployees));
         
         const newEmployees = { ...prevEmployees };
-        const weekKey = weekStartDate;
-        const currentList = prevEmployees[weekKey] || [];
-
-        if (!newEmployees[weekKey]) {
-          console.log(`Semana ${weekKey} não encontrada, inicializando...`);
-          newEmployees[weekKey] = [];
+        
+        // Garantir que a chave da semana existe
+        if (!newEmployees[weekStartDate]) {
+          console.log(`Semana ${weekStartDate} não encontrada, inicializando...`);
+          newEmployees[weekStartDate] = [];
         }
 
-        newEmployees[weekKey] = [...currentList, employee];
-        console.log(`Funcionário adicionado à semana ${weekKey}:`, JSON.stringify(employee));
+        // Adicionar o novo funcionário
+        newEmployees[weekStartDate] = [...(newEmployees[weekStartDate] || []), employee];
+        
+        console.log(`Funcionário adicionado à semana ${weekStartDate}:`, JSON.stringify(employee));
         console.log("Novo estado de employees:", JSON.stringify(newEmployees));
 
         // Salvar as alterações

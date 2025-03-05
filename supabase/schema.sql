@@ -9,15 +9,25 @@ CREATE TABLE sync_data (
   stock JSONB DEFAULT '[]'::JSONB,
   employees JSONB DEFAULT '{}'::JSONB,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  CONSTRAINT valid_expenses CHECK (jsonb_typeof(expenses) = 'object'),
+  CONSTRAINT valid_projects CHECK (jsonb_typeof(projects) = 'array'),
+  CONSTRAINT valid_stock CHECK (jsonb_typeof(stock) = 'array'),
+  CONSTRAINT valid_employees CHECK (jsonb_typeof(employees) = 'object')
 );
 
 -- Limpar todos os dados existentes
 DELETE FROM sync_data;
 
--- Inserir um registro inicial com ID fixo
+-- Inserir um registro inicial com ID fixo e estrutura de dados vazia
 INSERT INTO sync_data (id, expenses, projects, stock, employees)
-VALUES ('00000000-0000-0000-0000-000000000000', '{}'::JSONB, '[]'::JSONB, '[]'::JSONB, '{}'::JSONB);
+VALUES (
+  '00000000-0000-0000-0000-000000000000', 
+  '{}'::JSONB, 
+  '[]'::JSONB, 
+  '[]'::JSONB, 
+  '{}'::JSONB
+);
 
 -- Função para atualizar o timestamp
 CREATE OR REPLACE FUNCTION update_timestamp()

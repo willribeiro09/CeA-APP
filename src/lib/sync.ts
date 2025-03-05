@@ -179,6 +179,18 @@ export const syncService = {
 
     console.log('Configurando atualizações em tempo real...');
 
+    // Primeiro, vamos nos inscrever em um canal de broadcast para atualizações imediatas
+    const broadcastChannel = new BroadcastChannel('sync_updates');
+    
+    broadcastChannel.onmessage = (event) => {
+      console.log('Recebida atualização via BroadcastChannel:', event.data);
+      if (event.data && event.data.type === 'sync_update') {
+        const formattedData = event.data.data as StorageItems;
+        console.log('Dados recebidos via broadcast:', JSON.stringify(formattedData));
+        callback(formattedData);
+      }
+    };
+
     // Inscrever-se em todos os eventos da tabela sync_data
     const subscription = supabase
       .channel('sync_data_changes')
@@ -188,13 +200,13 @@ export const syncService = {
         table: 'sync_data',
         filter: `id=eq.00000000-0000-0000-0000-000000000000` // Filtrar apenas pelo ID fixo
       }, async (payload) => {
-        console.log('Recebida atualização em tempo real:', payload);
+        console.log('Recebida atualização em tempo real do Supabase:', payload);
         
         try {
           // Extrair dados diretamente do payload para resposta mais rápida
           if (payload.new) {
             const newData = payload.new as any;
-            console.log('Dados recebidos do evento:', JSON.stringify(newData));
+            console.log('Dados recebidos do evento Supabase:', JSON.stringify(newData));
             
             // Converter para o formato StorageItems
             const formattedData: StorageItems = {
@@ -206,11 +218,18 @@ export const syncService = {
             };
             
             // Chamar o callback imediatamente com os dados do evento
-            console.log('Chamando callback com dados do evento');
+            console.log('Chamando callback com dados do evento Supabase');
             callback(formattedData);
             
             // Atualizar armazenamento local
             saveToStorage(formattedData);
+            
+            // Transmitir para outras abas/janelas via BroadcastChannel
+            broadcastChannel.postMessage({
+              type: 'sync_update',
+              data: formattedData,
+              timestamp: Date.now()
+            });
           } else {
             // Fallback: carregar dados do servidor se o payload não contiver os dados completos
             console.log('Payload não contém dados completos, carregando do servidor...');
@@ -221,6 +240,13 @@ export const syncService = {
               
               // Atualizar armazenamento local
               saveToStorage(updatedData);
+              
+              // Transmitir para outras abas/janelas via BroadcastChannel
+              broadcastChannel.postMessage({
+                type: 'sync_update',
+                data: updatedData,
+                timestamp: Date.now()
+              });
             }
           }
         } catch (error) {
@@ -243,10 +269,11 @@ export const syncService = {
     return () => {
       console.log('Cancelando inscrição de atualizações em tempo real');
       subscription.unsubscribe();
+      broadcastChannel.close();
     };
   },
 
-  // Sincroniza dados
+  // Função para sincronizar dados
   sync: async (data: StorageItems): Promise<boolean> => {
     if (!isSupabaseConfigured()) {
       console.log('Supabase não configurado, salvando apenas localmente');
@@ -263,6 +290,20 @@ export const syncService = {
       console.log('Dados sincronizados com sucesso, atualizando armazenamento local');
       // Atualizar armazenamento local
       saveToStorage(data);
+      
+      // Transmitir para outras abas/janelas via BroadcastChannel
+      try {
+        const broadcastChannel = new BroadcastChannel('sync_updates');
+        broadcastChannel.postMessage({
+          type: 'sync_update',
+          data,
+          timestamp: Date.now()
+        });
+        setTimeout(() => broadcastChannel.close(), 1000); // Fechar após 1 segundo
+      } catch (error) {
+        console.error('Erro ao transmitir via BroadcastChannel:', error);
+      }
+      
       return true;
     } else {
       console.error('Falha ao sincronizar dados');
