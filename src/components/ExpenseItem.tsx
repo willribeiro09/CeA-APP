@@ -8,8 +8,11 @@ interface ExpenseItemProps {
 }
 
 export function ExpenseItem({ expense, onTogglePaid }: ExpenseItemProps) {
-  const isNearDue = !expense.paid && 
-    Math.abs(new Date().getTime() - expense.dueDate.getTime()) <= 3 * 24 * 60 * 60 * 1000;
+  // Convertendo a string de data para objeto Date
+  const dueDate = expense.date ? new Date(expense.date) : new Date();
+  
+  const isNearDue = !expense.paid &&
+    Math.abs(new Date().getTime() - dueDate.getTime()) <= 3 * 24 * 60 * 60 * 1000;
 
   return (
     <div className={`flex items-center p-4 rounded-lg ${
@@ -18,21 +21,21 @@ export function ExpenseItem({ expense, onTogglePaid }: ExpenseItemProps) {
       <button
         onClick={() => onTogglePaid(expense.id)}
         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300
-          ${expense.paid 
-            ? 'border-[#5ABB37] bg-[#5ABB37]' 
+          ${expense.paid
+            ? 'border-[#5ABB37] bg-[#5ABB37]'
             : 'border-gray-300'
           }`}
       >
         {expense.paid && <Check className="w-4 h-4 text-white" />}
       </button>
-      
+
       <div className="flex-1 ml-4">
-        <h3 className="font-medium text-gray-900">{expense.name}</h3>
+        <h3 className="font-medium text-gray-900">{expense.description}</h3>
         <p className="text-gray-600 text-sm">
-          Due on {format(expense.dueDate, 'MMMM d')}
+          Due on {format(dueDate, 'MMMM d')}
         </p>
       </div>
-      
+
       <div className="text-right">
         <span className="font-medium text-[#5ABB37]">
           ${expense.amount.toFixed(2)}

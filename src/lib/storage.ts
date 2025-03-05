@@ -1,18 +1,14 @@
-import { Expense, Project, StockItem, Employee } from '../types';
-
-interface StorageItems {
-  expenses: Record<string, Expense[]>;
-  projects: Project[];
-  stock: StockItem[];
-  employees: Record<string, Employee[]>;
-}
+import { Expense, Project, StockItem, Employee, StorageItems } from '../types';
 
 const STORAGE_KEY = 'cea-gutters-data';
 
 export const storage = {
   save: (items: StorageItems) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        ...items,
+        lastSync: Date.now()
+      }));
       return true;
     } catch (error) {
       console.error('Erro ao salvar dados:', error);
@@ -39,5 +35,23 @@ export const storage = {
       console.error('Erro ao limpar dados:', error);
       return false;
     }
+  },
+
+  getData: (): StorageItems => {
+    const data = storage.load();
+    if (!data) {
+      return {
+        expenses: {},
+        projects: [],
+        stock: [],
+        employees: {},
+        lastSync: Date.now()
+      };
+    }
+    return data;
+  },
+
+  saveData: (items: StorageItems) => {
+    return storage.save(items);
   }
 }; 

@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { useState } from 'react';
-import { Item, ValidationError } from '../types';
+import { Item, ValidationError, Expense, Project, StockItem, Employee } from '../types';
 import { validation } from '../lib/validation';
 
 interface AddItemDialogProps {
@@ -17,48 +17,65 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Formulário enviado");
     const formData = new FormData(e.target as HTMLFormElement);
     const data = Object.fromEntries(formData);
+    console.log("Dados do formulário:", data);
     
     let itemData: Partial<Item>;
+    let validationError: string | null = null;
     
     if (category === 'Expenses') {
       itemData = {
-        ...data,
+        description: data.description as string,
         amount: parseFloat(data.amount as string),
-        dueDate: new Date(data.dueDate as string),
-        paid: false,
-        category: 'Expenses'
+        date: new Date(data.dueDate as string).toISOString(),
+        category: 'Expenses',
+        paid: false
       };
+      console.log("Dados de despesa formatados:", itemData);
+      validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
       itemData = {
-        ...data,
-        startDate: new Date(data.startDate as string),
+        name: data.name as string,
+        description: data.description as string,
+        client: data.client as string,
+        startDate: new Date(data.startDate as string).toISOString(),
         status: 'pending',
         category: 'Projects'
       };
+      console.log("Dados de projeto formatados:", itemData);
+      validationError = validation.project(itemData as Partial<Project>);
     } else if (category === 'Stock') {
       itemData = {
-        ...data,
+        name: data.name as string,
         quantity: parseInt(data.quantity as string),
+        unit: data.unit as string,
         category: 'Stock'
       };
+      console.log("Dados de estoque formatados:", itemData);
+      validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else {
       itemData = {
-        ...data,
-        daysWorked: parseInt(data.daysWorked as string),
-        weekStartDate: new Date(data.weekStartDate as string),
-        category: 'Employees',
-        dailyRate: 250
+        name: data.name as string,
+        employeeName: selectedWeekStart ? selectedWeekStart.toISOString().split('T')[0] : '',
+        role: data.role as string,
+        startDate: new Date().toISOString(),
+        weekStartDate: selectedWeekStart?.toISOString() || new Date().toISOString(),
+        daysWorked: 0,
+        category: 'Employees'
       };
+      console.log("Dados de funcionário formatados:", itemData);
+      validationError = validation.employee(itemData as Partial<Employee>);
     }
 
-    const validationResult = validation.validateItem(itemData);
-    if (!validationResult.isValid) {
-      setErrors(validationResult.errors);
+    if (validationError) {
+      console.error("Erro de validação:", validationError);
+      setErrors([{ field: 'form', message: validationError }]);
       return;
     }
 
+    console.log("Dados válidos, chamando onSubmit com:", itemData);
     setErrors([]);
     onSubmit(itemData);
     onOpenChange(false);
@@ -75,10 +92,10 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md">
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-lg font-semibold">
-              Add {category === 'Expenses' ? 'Expense' : 
-                   category === 'Projects' ? 'Project' : 
-                   category === 'Stock' ? 'Stock Item' :
-                   'Work Record'}
+              {category === 'Expenses' ? 'Nova Despesa' : 
+               category === 'Projects' ? 'Novo Projeto' : 
+               category === 'Stock' ? 'Novo Item de Estoque' :
+               'Novo Registro de Trabalho'}
             </Dialog.Title>
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
@@ -86,28 +103,29 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-4">
+            {errors.find(error => error.field === 'form') && (
+              <p className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                {errors.find(error => error.field === 'form')?.message}
+              </p>
+            )}
+            
             {category === 'Expenses' && (
               <>
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Expense Name
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                    Descrição
                   </label>
                   <input
                     type="text"
-                    id="name"
-                    name="name"
+                    id="description"
+                    name="description"
                     required
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50 ${
-                      getFieldError('name') ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
-                  {getFieldError('name') && (
-                    <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
-                  )}
                 </div>
                 <div>
                   <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-                    Amount
+                    Valor
                   </label>
                   <input
                     type="number"
@@ -115,30 +133,20 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     name="amount"
                     step="0.01"
                     required
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50 ${
-                      getFieldError('amount') ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
-                  {getFieldError('amount') && (
-                    <p className="mt-1 text-sm text-red-600">{getFieldError('amount')}</p>
-                  )}
                 </div>
                 <div>
                   <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700">
-                    Due Date
+                    Data de Vencimento
                   </label>
                   <input
                     type="date"
                     id="dueDate"
                     name="dueDate"
                     required
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50 ${
-                      getFieldError('dueDate') ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
-                  {getFieldError('dueDate') && (
-                    <p className="mt-1 text-sm text-red-600">{getFieldError('dueDate')}</p>
-                  )}
                 </div>
               </>
             )}
@@ -147,53 +155,50 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
               <>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Project Name
+                    Nome do Projeto
                   </label>
                   <input
                     type="text"
                     id="name"
                     name="name"
                     required
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50 ${
-                      getFieldError('name') ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
-                  {getFieldError('name') && (
-                    <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
-                  )}
                 </div>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Description
+                    Descrição
                   </label>
                   <textarea
                     id="description"
                     name="description"
                     required
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50 ${
-                      getFieldError('description') ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
-                  {getFieldError('description') && (
-                    <p className="mt-1 text-sm text-red-600">{getFieldError('description')}</p>
-                  )}
+                </div>
+                <div>
+                  <label htmlFor="client" className="block text-sm font-medium text-gray-700">
+                    Cliente
+                  </label>
+                  <input
+                    type="text"
+                    id="client"
+                    name="client"
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
                 </div>
                 <div>
                   <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
-                    Start Date
+                    Data de Início
                   </label>
                   <input
                     type="date"
                     id="startDate"
                     name="startDate"
                     required
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50 ${
-                      getFieldError('startDate') ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
-                  {getFieldError('startDate') && (
-                    <p className="mt-1 text-sm text-red-600">{getFieldError('startDate')}</p>
-                  )}
                 </div>
               </>
             )}
@@ -202,37 +207,39 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
               <>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Item Name
+                    Nome do Item
                   </label>
                   <input
                     type="text"
                     id="name"
                     name="name"
                     required
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50 ${
-                      getFieldError('name') ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
-                  {getFieldError('name') && (
-                    <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
-                  )}
                 </div>
                 <div>
                   <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                    Quantity
+                    Quantidade
                   </label>
                   <input
                     type="number"
                     id="quantity"
                     name="quantity"
                     required
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50 ${
-                      getFieldError('quantity') ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
-                  {getFieldError('quantity') && (
-                    <p className="mt-1 text-sm text-red-600">{getFieldError('quantity')}</p>
-                  )}
+                </div>
+                <div>
+                  <label htmlFor="unit" className="block text-sm font-medium text-gray-700">
+                    Unidade
+                  </label>
+                  <input
+                    type="text"
+                    id="unit"
+                    name="unit"
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
                 </div>
               </>
             )}
@@ -241,45 +248,46 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
               <>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Employee Name
+                    Nome do Funcionário
                   </label>
                   <input
                     type="text"
                     id="name"
                     name="name"
                     required
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50 ${
-                      getFieldError('name') ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
-                  {getFieldError('name') && (
-                    <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
-                  )}
+                </div>
+                <div>
+                  <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                    Função
+                  </label>
+                  <input
+                    type="text"
+                    id="role"
+                    name="role"
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
                 </div>
                 <input 
                   type="hidden"
                   id="weekStartDate"
                   name="weekStartDate"
-                  value={selectedWeekStart?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0]}
-                />
-                <input
-                  type="hidden"
-                  id="employeeName"
-                  name="employeeName"
-                  value=""
+                  value={selectedWeekStart?.toISOString() || new Date().toISOString()}
                 />
               </>
             )}
             
             <div className="flex justify-end gap-3 mt-6">
               <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
-                Cancel
+                Cancelar
               </Dialog.Close>
               <button
                 type="submit"
                 className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
               >
-                Add
+                Adicionar
               </button>
             </div>
           </form>
