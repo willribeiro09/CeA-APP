@@ -13,6 +13,7 @@ import { validation } from './lib/validation';
 import { syncService, loadInitialData, saveData } from './lib/sync';
 import { isSupabaseConfigured } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
+import { getData } from './lib/storage';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -43,36 +44,45 @@ export default function App() {
     const initializeData = async () => {
       if (isSupabaseConfigured()) {
         const supabaseData = await loadInitialData();
-        
+
         if (supabaseData) {
-          setExpenses(supabaseData.expenses);
-          setProjects(supabaseData.projects);
-          setStockItems(supabaseData.stock);
-          setEmployees(supabaseData.employees);
+          setExpenses(supabaseData.expenses || {});
+          setProjects(supabaseData.projects || []);
+          setStockItems(supabaseData.stock || []);
+          setEmployees(supabaseData.employees || {});
         }
 
         // Configurar sincronização em tempo real
-        const cleanup = syncService.setupRealtimeSync();
-        
-        // Ouvir eventos de atualização
-        const handleSyncUpdate = (event: CustomEvent<any>) => {
-          const data = event.detail;
-          setExpenses(data.expenses);
-          setProjects(data.projects);
-          setStockItems(data.stock);
-          setEmployees(data.employees);
-        };
-
-        window.addEventListener('sync-update', handleSyncUpdate as EventListener);
+        const cleanup = syncService.setupRealtimeUpdates((data) => {
+          if (data) {
+            setExpenses(data.expenses || {});
+            setProjects(data.projects || []);
+            setStockItems(data.stock || []);
+            setEmployees(data.employees || {});
+          }
+        });
 
         return () => {
-          cleanup();
-          window.removeEventListener('sync-update', handleSyncUpdate as EventListener);
+          if (typeof cleanup === 'function') {
+            cleanup();
+          }
         };
+      } else {
+        // Carregar dados do armazenamento local
+        const localData = storage.load();
+        if (localData) {
+          setExpenses(localData.expenses || {});
+          setProjects(localData.projects || []);
+          setStockItems(localData.stock || []);
+          setEmployees(localData.employees || {});
+        }
       }
     };
 
     initializeData();
+
+    // Inicializar o serviço de sincronização
+    syncService.init();
   }, []);
 
   // Função para salvar alterações

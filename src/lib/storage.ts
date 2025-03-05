@@ -1,4 +1,4 @@
-import { Expense, Project, StockItem, Employee, StorageItems } from '../types';
+import { StorageItems } from '../types';
 
 const STORAGE_KEY = 'cea-gutters-data';
 
@@ -36,7 +36,8 @@ export const storage = {
       return false;
     }
   },
-
+  
+  // Função para obter dados do armazenamento local
   getData: (): StorageItems => {
     const data = storage.load();
     if (!data) {
@@ -51,7 +52,18 @@ export const storage = {
     return data;
   },
 
-  saveData: (items: StorageItems) => {
+  // Função para salvar dados no armazenamento local
+  saveData: (items: StorageItems): boolean => {
     return storage.save(items);
   }
+};
+
+// Função para obter dados do armazenamento local
+export const getData = (): StorageItems => {
+  return storage.getData();
+};
+
+// Função para salvar dados no armazenamento local
+export const saveData = (items: StorageItems): boolean => {
+  return storage.saveData(items);
 }; 

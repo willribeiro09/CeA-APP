@@ -1,11 +1,15 @@
-import { supabase } from './supabase';
-import { Expense, Project, StockItem, Employee, StorageItems } from '../types';
-import { storage } from './storage';
+import { supabase, isSupabaseConfigured } from './supabase';
+import { StorageItems } from '../types';
+import { getData, saveData } from './storage';
 
-// Função para carregar dados do Supabase
+// Função para carregar dados iniciais do Supabase
 export const loadInitialData = async (): Promise<StorageItems | null> => {
+  if (!isSupabaseConfigured()) {
+    console.log('Supabase não configurado, usando apenas armazenamento local');
+    return null;
+  }
+
   try {
-    console.log("Tentando carregar dados do Supabase...");
     const { data, error } = await supabase
       .from('sync_data')
       .select('*')
@@ -14,45 +18,31 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
       .single();
 
     if (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('Erro ao carregar dados do Supabase:', error);
       return null;
     }
 
     if (!data) {
-      console.log("Nenhum dado encontrado, criando registro inicial");
-      // Se não houver dados, criar registro inicial
-      const initialData: StorageItems = {
-        expenses: {},
-        projects: [],
-        stock: [],
-        employees: {},
-        lastSync: Date.now()
-      };
-
-      const { error: insertError } = await supabase
-        .from('sync_data')
-        .insert(initialData);
-
-      if (insertError) {
-        console.error('Erro ao criar dados iniciais:', insertError);
-        return null;
-      }
-
-      return initialData;
+      console.log('Nenhum dado encontrado no Supabase');
+      return null;
     }
 
-    console.log("Dados carregados com sucesso:", data);
-    return data;
+    console.log('Dados carregados do Supabase:', data);
+    return data as StorageItems;
   } catch (error) {
-    console.error('Erro ao carregar dados iniciais:', error);
+    console.error('Erro ao carregar dados do Supabase:', error);
     return null;
   }
 };
 
 // Função para salvar dados no Supabase
 export const saveData = async (data: StorageItems): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    console.log('Supabase não configurado, usando apenas armazenamento local');
+    return false;
+  }
+
   try {
-    console.log("Tentando salvar dados no Supabase:", data);
     const { error } = await supabase
       .from('sync_data')
       .upsert({
@@ -60,91 +50,83 @@ export const saveData = async (data: StorageItems): Promise<boolean> => {
         projects: data.projects,
         stock: data.stock,
         employees: data.employees,
-        lastSync: data.lastSync,
-        updated_at: new Date().toISOString()
+        lastSync: new Date().toISOString()
       });
 
     if (error) {
-      console.error('Erro ao salvar dados:', error);
+      console.error('Erro ao salvar dados no Supabase:', error);
       return false;
     }
 
-    console.log("Dados salvos com sucesso");
+    console.log('Dados salvos no Supabase com sucesso');
     return true;
   } catch (error) {
-    console.error('Erro ao salvar dados:', error);
+    console.error('Erro ao salvar dados no Supabase:', error);
     return false;
   }
 };
 
 // Serviço de sincronização
 export const syncService = {
-  // Inicializar sincronização
+  // Inicializa a sincronização
   init: async () => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
     try {
-      const localData = storage.load();
+      // Carrega dados iniciais
       const remoteData = await loadInitialData();
-
-      if (!localData && remoteData) {
-        // Se não há dados locais mas há dados remotos, usar dados remotos
-        storage.save(remoteData);
-        return remoteData;
-      } else if (localData && (!remoteData || localData.lastSync > remoteData.lastSync)) {
-        // Se há dados locais mais recentes, enviar para o servidor
-        const success = await saveData(localData);
-        if (success) {
-          return localData;
-        }
+      if (remoteData) {
+        // Se tiver dados remotos, atualiza o armazenamento local
+        saveData(remoteData);
+      } else {
+        // Se não tiver dados remotos, envia os dados locais para o Supabase
+        const localData = getData();
+        await saveData(localData);
       }
-
-      return remoteData;
     } catch (error) {
-      console.error('Erro na inicialização da sincronização:', error);
-      return null;
+      console.error('Erro ao inicializar sincronização:', error);
     }
   },
 
-  // Sincronizar dados
-  sync: async (data: StorageItems) => {
-    try {
-      // Salvar localmente primeiro
-      storage.save(data);
-
-      // Depois tentar salvar no servidor
-      const success = await saveData(data);
-
-      return success;
-    } catch (error) {
-      console.error('Erro na sincronização:', error);
-      return false;
+  // Configura atualizações em tempo real
+  setupRealtimeUpdates: (callback: (data: StorageItems) => void) => {
+    if (!isSupabaseConfigured()) {
+      return () => {}; // Retorna uma função vazia se o Supabase não estiver configurado
     }
-  },
 
-  // Configurar sincronização em tempo real
-  setupRealtimeSync: () => {
-    const channel = supabase
-      .channel('sync_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'sync_data'
-        },
-        async (payload) => {
-          // Quando houver mudanças, atualizar dados locais
-          const remoteData = await loadInitialData();
-          if (remoteData) {
-            storage.save(remoteData);
-            // Disparar evento para atualizar a UI
-            window.dispatchEvent(new CustomEvent('sync-update', { detail: remoteData }));
-          }
+    const subscription = supabase
+      .channel('sync_data_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'sync_data' 
+      }, (payload) => {
+        console.log('Mudança detectada no Supabase:', payload);
+        if (payload.new) {
+          callback(payload.new as StorageItems);
         }
-      )
+      })
       .subscribe();
 
+    // Retorna uma função para cancelar a inscrição
     return () => {
-      channel.unsubscribe();
+      subscription.unsubscribe();
     };
+  },
+
+  // Sincroniza dados
+  sync: async () => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
+    try {
+      const localData = getData();
+      await saveData(localData);
+    } catch (error) {
+      console.error('Erro ao sincronizar dados:', error);
+    }
   }
 }; 
