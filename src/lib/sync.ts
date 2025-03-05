@@ -87,15 +87,20 @@ export const saveData = async (data: StorageItems): Promise<boolean> => {
       console.log(`Funcionário Paulo sendo salvo: ${pauloFound}`);
     }
     
+    // Criar um objeto com os dados a serem salvos
+    const dataToSave = {
+      expenses: data.expenses || {},
+      projects: data.projects || [],
+      stock: data.stock || [],
+      employees: data.employees || {},
+      // Não incluir lastSync, pois será definido pelo servidor
+    };
+    
+    console.log('Dados formatados para salvar no Supabase:', JSON.stringify(dataToSave));
+    
     const { error } = await supabase
       .from('sync_data')
-      .upsert({
-        expenses: data.expenses || {},
-        projects: data.projects || [],
-        stock: data.stock || [],
-        employees: data.employees || {},
-        lastSync: new Date().toISOString()
-      });
+      .upsert(dataToSave);
 
     if (error) {
       console.error('Erro ao salvar dados no Supabase:', error);
@@ -159,9 +164,19 @@ export const syncService = {
       }, (payload) => {
         console.log('Mudança detectada no Supabase:', payload);
         if (payload.new) {
-          const newData = payload.new as StorageItems;
+          const newData = payload.new as any;
           console.log('Novos dados recebidos:', JSON.stringify(newData));
-          callback(newData);
+          
+          // Converter os dados para o formato esperado
+          const formattedData: StorageItems = {
+            expenses: newData.expenses || {},
+            projects: newData.projects || [],
+            stock: newData.stock || [],
+            employees: newData.employees || {},
+            lastSync: newData.updated_at || new Date().toISOString()
+          };
+          
+          callback(formattedData);
         }
       })
       .subscribe();

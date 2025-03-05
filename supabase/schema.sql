@@ -8,7 +8,6 @@ CREATE TABLE sync_data (
   projects JSONB DEFAULT '[]'::JSONB,
   stock JSONB DEFAULT '[]'::JSONB,
   employees JSONB DEFAULT '{}'::JSONB,
-  lastSync TEXT DEFAULT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
