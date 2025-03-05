@@ -19,15 +19,6 @@ export function Navigation({ activeCategory, onCategoryChange }: NavigationProps
           <span className="text-white text-sm">Expenses</span>
         </button>
         <button
-          onClick={() => onCategoryChange('Employees')}
-          className={`flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center ${
-            activeCategory === 'Employees' ? 'bg-white/10' : ''
-          }`}
-        >
-          <Users className="w-5 h-5 text-white" />
-          <span className="text-white text-sm">Employees</span>
-        </button>
-        <button
           onClick={() => onCategoryChange('Projects')}
           className={`flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center ${
             activeCategory === 'Projects' ? 'bg-white/10' : ''
@@ -44,6 +35,15 @@ export function Navigation({ activeCategory, onCategoryChange }: NavigationProps
         >
           <Package2 className="w-5 h-5 text-white" />
           <span className="text-white text-sm">Stock</span>
+        </button>
+        <button
+          onClick={() => onCategoryChange('Employees')}
+          className={`flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center ${
+            activeCategory === 'Employees' ? 'bg-white/10' : ''
+          }`}
+        >
+          <Users className="w-5 h-5 text-white" />
+          <span className="text-white text-sm">Employees</span>
         </button>
       </div>
     </nav>

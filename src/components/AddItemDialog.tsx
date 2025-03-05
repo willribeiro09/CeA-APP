@@ -46,11 +46,10 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
     } else {
       itemData = {
         ...data,
-        daysWorked: 0,
+        daysWorked: parseInt(data.daysWorked as string),
         weekStartDate: new Date(data.weekStartDate as string),
         category: 'Employees',
-        dailyRate: 250,
-        employeeName: data.name as string
+        dailyRate: 250
       };
     }
 

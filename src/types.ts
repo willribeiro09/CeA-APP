@@ -4,32 +4,42 @@ export interface BaseItem {
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
 }
 
-export interface Expense extends BaseItem {
-  category: 'Expenses';
-  amount: number;
-  dueDate: Date;
-  paid: boolean;
-  date: Date;
-}
-
-export interface Project extends BaseItem {
-  category: 'Projects';
+export interface Expense {
+  id: string;
   description: string;
-  startDate: Date;
-  status: 'pending' | 'in_progress' | 'completed';
+  amount: number;
+  date: string;
+  category: string;
+  notes?: string;
 }
 
-export interface StockItem extends BaseItem {
-  category: 'Stock';
+export interface Project {
+  id: string;
+  name: string;
+  client: string;
+  startDate: string;
+  endDate?: string;
+  status: 'Em Andamento' | 'Concluído' | 'Cancelado';
+  notes?: string;
+}
+
+export interface StockItem {
+  id: string;
+  name: string;
   quantity: number;
+  unit: string;
+  minimumQuantity?: number;
+  notes?: string;
 }
 
-export interface Employee extends BaseItem {
-  category: 'Employees';
-  employeeName: string;
-  daysWorked: number;
-  weekStartDate: Date;
-  dailyRate: number;
+export interface Employee {
+  id: string;
+  name: string;
+  role: string;
+  startDate: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
 }
 
 export type Item = Expense | Project | StockItem | Employee;
@@ -50,4 +60,4 @@ export interface NavItem {
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
 }
 
-export type EmployeeName = string;
+export type EmployeeName = 'Matheus' | 'João' | 'Pedro' | 'Lucas';

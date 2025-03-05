@@ -1,106 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { checkSupabaseConnection, CONNECTION_STATUS_EVENT, ConnectionStatus as ConnectionStatusType } from '../lib/sync';
-import { Wifi, WifiOff } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
-export const ConnectionStatus: React.FC = () => {
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [showStatus, setShowStatus] = useState<boolean>(true);
-  const [statusMessage, setStatusMessage] = useState<string>('');
+export function ConnectionStatus() {
+  const [isOnline, setIsOnline] = useState(true);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
 
   useEffect(() => {
-    // Verifica a conexão inicial
-    checkSupabaseConnection().then(connected => {
-      setIsConnected(connected);
-      setStatusMessage(connected ? 'Conectado ao servidor' : 'Desconectado do servidor');
-    });
-
-    // Configura os listeners para eventos online/offline
-    const handleOnline = () => {
-      setIsOnline(true);
-      setStatusMessage('Verificando conexão...');
-      checkSupabaseConnection().then(connected => {
-        setIsConnected(connected);
-        setStatusMessage(connected ? 'Conectado ao servidor' : 'Desconectado do servidor');
+    const channel = supabase.channel('system');
+    
+    channel
+      .subscribe((status) => {
+        setIsOnline(status === 'SUBSCRIBED');
       });
-    };
 
-    const handleOffline = () => {
-      setIsOnline(false);
-      setIsConnected(false);
-      setStatusMessage('Sem conexão com a internet');
-      setShowStatus(true); // Sempre mostra quando está offline
-    };
-
-    // Configura o listener para eventos de status de conexão do Supabase
-    const handleConnectionStatus = (event: Event) => {
-      const customEvent = event as CustomEvent<ConnectionStatusType>;
-      const status = customEvent.detail;
-      
-      setIsConnected(status === 'connected');
-      setShowStatus(true);
-      
-      switch (status) {
-        case 'connected':
-          setStatusMessage('Conectado ao servidor');
-          break;
-        case 'connecting':
-          setStatusMessage('Conectando ao servidor...');
-          break;
-        case 'disconnected':
-          setStatusMessage('Desconectado do servidor');
-          break;
-      }
-      
-      // Esconde o status após 5 segundos apenas se estiver conectado
-      if (status === 'connected') {
-        setTimeout(() => setShowStatus(false), 5000);
+    const checkConnection = async () => {
+      try {
+        const { data } = await supabase.from('sync_data').select('lastSync').single();
+        if (data?.lastSync) {
+          setLastSync(new Date(data.lastSync));
+        }
+      } catch (error) {
+        console.error('Erro ao verificar conexão:', error);
+        setIsOnline(false);
       }
     };
 
-    // Adiciona os listeners
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener(CONNECTION_STATUS_EVENT, handleConnectionStatus);
+    checkConnection();
+    const interval = setInterval(checkConnection, 30000); // Verifica a cada 30 segundos
 
-    // Configura um intervalo para verificar a conexão periodicamente
-    const interval = setInterval(() => {
-      if (navigator.onLine) {
-        checkSupabaseConnection().then(connected => {
-          setIsConnected(connected);
-          // Atualiza a mensagem apenas se o status mudar
-          if (connected !== isConnected) {
-            setStatusMessage(connected ? 'Conectado ao servidor' : 'Desconectado do servidor');
-            setShowStatus(true);
-            if (connected) {
-              setTimeout(() => setShowStatus(false), 5000);
-            }
-          }
-        });
-      }
-    }, 30000); // Verifica a cada 30 segundos
-
-    // Remove os listeners ao desmontar o componente
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener(CONNECTION_STATUS_EVENT, handleConnectionStatus);
+      channel.unsubscribe();
       clearInterval(interval);
     };
-  }, [isConnected]);
+  }, []);
 
   return (
-    <div 
-      className={`fixed bottom-4 right-4 p-3 rounded-lg shadow-lg transition-opacity duration-500 flex items-center gap-2 ${
-        showStatus ? 'opacity-90' : 'opacity-0'
-      } ${isConnected ? 'bg-green-600' : 'bg-red-600'}`}
-    >
-      {isConnected ? (
-        <Wifi className="text-white" size={20} />
-      ) : (
-        <WifiOff className="text-white" size={20} />
-      )}
-      <span className="text-white text-sm font-medium">{statusMessage}</span>
+    <div className="fixed top-0 right-0 m-4 flex items-center space-x-2">
+      <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+      <span className="text-sm text-gray-600">
+        {isOnline ? 'Online' : 'Offline'}
+        {lastSync && (
+          <span className="ml-2 text-xs">
+            Última sincronização: {lastSync.toLocaleTimeString()}
+          </span>
+        )}
+      </span>
     </div>
   );
-}; 
+} 

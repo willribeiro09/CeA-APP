@@ -25,6 +25,7 @@ const initialExpenses: Record<ListName, Expense[]> = {
 const initialEmployees: Record<string, Employee[]> = {};
 
 export default function App() {
+  console.log('Iniciando renderização do App');
   const [expenses, setExpenses] = useState<Record<ListName, Expense[]>>(initialExpenses);
   const [projects, setProjects] = useState<Project[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
@@ -39,9 +40,12 @@ export default function App() {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(new Date());
 
   useEffect(() => {
+    console.log('useEffect principal iniciado');
     const loadData = async () => {
+      console.log('Carregando dados...');
       try {
         if (isSupabaseConfigured()) {
+          console.log('Supabase configurado, carregando dados do Supabase...');
           const supabaseData = await loadInitialData();
           
           if (supabaseData) {
@@ -68,19 +72,26 @@ export default function App() {
     let cleanupSync: (() => void) | undefined;
     
     if (isSupabaseConfigured()) {
-      const initSync: InitSyncFunction = syncService();
-      cleanupSync = initSync(
-        (newExpenses: Record<string, Expense[]>) => setExpenses(newExpenses),
-        (newProjects: Project[]) => setProjects(newProjects),
-        (newStock: StockItem[]) => setStockItems(newStock),
-        (newEmployees: Record<string, Employee[]>) => setEmployees(newEmployees)
-      );
-      
-      console.log('Sincronização em tempo real iniciada.');
+      console.log('Iniciando sincronização em tempo real...');
+      try {
+        const initSync: InitSyncFunction = syncService();
+        cleanupSync = initSync(
+          (newExpenses: Record<string, Expense[]>) => setExpenses(newExpenses),
+          (newProjects: Project[]) => setProjects(newProjects),
+          (newStock: StockItem[]) => setStockItems(newStock),
+          (newEmployees: Record<string, Employee[]>) => setEmployees(newEmployees)
+        );
+        
+        console.log('Sincronização em tempo real iniciada com sucesso.');
+      } catch (error) {
+        console.error('Erro ao iniciar sincronização em tempo real:', error);
+      }
     }
 
     return () => {
+      console.log('Limpando efeito...');
       if (cleanupSync) {
+        console.log('Limpando sincronização em tempo real...');
         cleanupSync();
       }
     };
@@ -335,178 +346,180 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header activeCategory={activeCategory} />
-      <Navigation
-        activeCategory={activeCategory}
-        onCategoryChange={setActiveCategory}
-      />
-      
-      {(activeCategory === 'Expenses') && (
-        <div className="fixed top-[170px] left-0 right-0 px-4 z-10 bg-gray-50">
-          <div className="relative max-w-[800px] mx-auto pb-4">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
-            >
-              <span className="text-gray-700 font-medium">
-                {selectedList}
-              </span>
-              <ChevronDown
-                className={`w-5 h-5 text-gray-500 transition-transform ${
-                  isDropdownOpen ? 'transform rotate-180' : ''
-                }`}
-              />
-            </button>
-            
-            {isDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                <button
-                  onClick={() => handleListSelect('Carlos')}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+    <>
+      <div className="min-h-screen bg-gray-50">
+        <Header activeCategory={activeCategory} />
+        <Navigation
+          activeCategory={activeCategory}
+          onCategoryChange={setActiveCategory}
+        />
+        
+        {(activeCategory === 'Expenses') && (
+          <div className="fixed top-[170px] left-0 right-0 px-4 z-10 bg-gray-50">
+            <div className="relative max-w-[800px] mx-auto pb-4">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
+              >
+                <span className="text-gray-700 font-medium">
+                  {selectedList}
+                </span>
+                <ChevronDown
+                  className={`w-5 h-5 text-gray-500 transition-transform ${
+                    isDropdownOpen ? 'transform rotate-180' : ''
                   }`}
-                >
-                  Carlos
-                </button>
-                <button
-                  onClick={() => handleListSelect('Diego')}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                  }`}
-                >
-                  Diego
-                </button>
-                <button
-                  onClick={() => handleListSelect('C&A')}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                  }`}
-                >
-                  C&A
-                </button>
+                />
+              </button>
+              
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                  <button
+                    onClick={() => handleListSelect('Carlos')}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                      selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                    }`}
+                  >
+                    Carlos
+                  </button>
+                  <button
+                    onClick={() => handleListSelect('Diego')}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                      selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                    }`}
+                  >
+                    Diego
+                  </button>
+                  <button
+                    onClick={() => handleListSelect('C&A')}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                      selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                    }`}
+                  >
+                    C&A
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {(activeCategory === 'Employees') && (
+          <div className="fixed top-[170px] left-0 right-0 px-4 z-10 bg-gray-50">
+            <div className="relative max-w-[800px] mx-auto pb-4">
+              <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
+                <span className="text-gray-700 font-medium">
+                  Week Starting:
+                </span>
+                <input
+                  type="date"
+                  value={selectedWeekStart.toISOString().split('T')[0]}
+                  onChange={(e) => setSelectedWeekStart(new Date(e.target.value))}
+                  className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                />
               </div>
+            </div>
+          </div>
+        )}
+
+        <main className={`px-4 pb-20 ${
+          activeCategory === 'Projects' || activeCategory === 'Stock'
+            ? 'mt-[170px]'
+            : 'mt-[234px]'
+        }`}>
+          <div className="space-y-2 max-w-[800px] mx-auto">
+            {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
+              <ExpenseItem
+                key={expense.id}
+                expense={expense}
+                onTogglePaid={handleTogglePaid}
+              />
+            ))}
+            {activeCategory === 'Projects' && projects.map(project => (
+              <div key={project.id} className="bg-white p-4 rounded-lg shadow-sm">
+                <h3 className="font-medium">{project.name}</h3>
+                <p className="text-gray-600 text-sm mt-1">{project.description}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-sm text-gray-500">
+                    Start: {new Date(project.startDate).toLocaleDateString('en-US')}
+                  </span>
+                  <span className={`text-sm px-2 py-0.5 rounded ${
+                    project.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {project.status === 'completed' ? 'Completed' :
+                     project.status === 'in_progress' ? 'In Progress' :
+                     'Pending'}
+                  </span>
+                </div>
+              </div>
+            ))}
+            {activeCategory === 'Stock' && stockItems.map(item => (
+              <div key={item.id} className="bg-white p-4 rounded-lg shadow-sm">
+                <h3 className="font-medium">{item.name}</h3>
+                <p className="text-gray-600 text-sm mt-1">
+                  Quantity: {item.quantity}
+                </p>
+              </div>
+            ))}
+            {activeCategory === 'Employees' && Object.entries(employees).map(([employeeName, employeeList]) => 
+              employeeList
+                .filter(employee => {
+                  const employeeWeekStart = new Date(employee.weekStartDate);
+                  const selectedWeekStartDate = new Date(selectedWeekStart);
+                  return employeeWeekStart.getFullYear() === selectedWeekStartDate.getFullYear() &&
+                         employeeWeekStart.getMonth() === selectedWeekStartDate.getMonth() &&
+                         employeeWeekStart.getDate() === selectedWeekStartDate.getDate();
+                })
+                .map(employee => (
+                  <div key={employee.id} className="bg-white p-2.5 rounded-lg shadow-sm">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <h3 className="text-xl font-bold text-gray-800">{employee.employeeName}</h3>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleAddDay(employee.id, employeeName)}
+                          className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center"
+                        >
+                          +1 Day
+                        </button>
+                        <button
+                          onClick={() => handleResetEmployee(employee.id, employeeName)}
+                          className="px-2.5 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700 text-sm">Days Worked:</span>
+                        <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700 text-sm">Amount to Receive:</span>
+                        <span className="text-xl font-bold text-[#5ABB37]">
+                          $ {(employee.daysWorked * 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
             )}
           </div>
-        </div>
-      )}
+        </main>
 
-      {(activeCategory === 'Employees') && (
-        <div className="fixed top-[170px] left-0 right-0 px-4 z-10 bg-gray-50">
-          <div className="relative max-w-[800px] mx-auto pb-4">
-            <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-              <span className="text-gray-700 font-medium">
-                Week Starting:
-              </span>
-              <input
-                type="date"
-                value={selectedWeekStart.toISOString().split('T')[0]}
-                onChange={(e) => setSelectedWeekStart(new Date(e.target.value))}
-                className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+        <AddButton onClick={() => setIsAddDialogOpen(true)} />
+        
+        <AddItemDialog
+          isOpen={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+          category={activeCategory}
+          onSubmit={handleAddItem}
+          selectedWeekStart={selectedWeekStart}
+        />
 
-      <main className={`px-4 pb-20 ${
-        activeCategory === 'Projects' || activeCategory === 'Stock'
-          ? 'mt-[170px]'
-          : 'mt-[234px]'
-      }`}>
-        <div className="space-y-2 max-w-[800px] mx-auto">
-          {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-            <ExpenseItem
-              key={expense.id}
-              expense={expense}
-              onTogglePaid={handleTogglePaid}
-            />
-          ))}
-          {activeCategory === 'Projects' && projects.map(project => (
-            <div key={project.id} className="bg-white p-4 rounded-lg shadow-sm">
-              <h3 className="font-medium">{project.name}</h3>
-              <p className="text-gray-600 text-sm mt-1">{project.description}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-sm text-gray-500">
-                  Start: {new Date(project.startDate).toLocaleDateString('en-US')}
-                </span>
-                <span className={`text-sm px-2 py-0.5 rounded ${
-                  project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                  project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {project.status === 'completed' ? 'Completed' :
-                   project.status === 'in_progress' ? 'In Progress' :
-                   'Pending'}
-                </span>
-              </div>
-            </div>
-          ))}
-          {activeCategory === 'Stock' && stockItems.map(item => (
-            <div key={item.id} className="bg-white p-4 rounded-lg shadow-sm">
-              <h3 className="font-medium">{item.name}</h3>
-              <p className="text-gray-600 text-sm mt-1">
-                Quantity: {item.quantity}
-              </p>
-            </div>
-          ))}
-          {activeCategory === 'Employees' && Object.entries(employees).map(([employeeName, employeeList]) => 
-            employeeList
-              .filter(employee => {
-                const employeeWeekStart = new Date(employee.weekStartDate);
-                const selectedWeekStartDate = new Date(selectedWeekStart);
-                return employeeWeekStart.getFullYear() === selectedWeekStartDate.getFullYear() &&
-                       employeeWeekStart.getMonth() === selectedWeekStartDate.getMonth() &&
-                       employeeWeekStart.getDate() === selectedWeekStartDate.getDate();
-              })
-              .map(employee => (
-                <div key={employee.id} className="bg-white p-2.5 rounded-lg shadow-sm">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <h3 className="text-xl font-bold text-gray-800">{employee.employeeName}</h3>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleAddDay(employee.id, employeeName)}
-                        className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center"
-                      >
-                        +1 Day
-                      </button>
-                      <button
-                        onClick={() => handleResetEmployee(employee.id, employeeName)}
-                        className="px-2.5 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-700 text-sm">Days Worked:</span>
-                      <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-700 text-sm">Amount to Receive:</span>
-                      <span className="text-xl font-bold text-[#5ABB37]">
-                        $ {(employee.daysWorked * 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))
-          )}
-        </div>
-      </main>
-
-      <AddButton onClick={() => setIsAddDialogOpen(true)} />
-      
-      <AddItemDialog
-        isOpen={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        category={activeCategory}
-        onSubmit={handleAddItem}
-        selectedWeekStart={selectedWeekStart}
-      />
-
-      {isSupabaseConfigured() && <ConnectionStatus />}
-    </div>
+        {isSupabaseConfigured() && <ConnectionStatus />}
+      </div>
+    </>
   );
 }
