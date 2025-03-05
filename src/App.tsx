@@ -89,42 +89,53 @@ export default function App() {
   const saveChanges = async (newData: StorageItems) => {
     try {
       const success = await syncService.sync(newData);
-
-      if (!success) {
+      
+      if (success === false) {
         console.error('Erro ao salvar alterações');
         // Adicionar feedback visual de erro
       }
     } catch (error) {
-      console.error('Erro ao salvar:', error);
+      console.error('Erro ao salvar alterações:', error);
       // Adicionar feedback visual de erro
     }
   };
 
   const handleTogglePaid = (id: string) => {
-    setExpenses(prevExpenses => {
-      const newExpenses = {
-        ...prevExpenses,
-        [selectedList]: prevExpenses[selectedList].map(expense =>
-          expense.id === id ? { ...expense, paid: !expense.paid } : expense
-        )
-      };
-      
-      const storageData: StorageItems = {
-        expenses: newExpenses,
-        projects,
-        stock: stockItems,
-        employees,
-        lastSync: Date.now()
-      };
-      
-      if (isSupabaseConfigured()) {
-        saveData(storageData);
-      } else {
-        storage.saveData(storageData);
-      }
-      
-      return newExpenses;
-    });
+    if (activeCategory === 'Expenses') {
+      setExpenses(prevExpenses => {
+        const newExpenses = { ...prevExpenses };
+        
+        // Encontrar a despesa em todas as listas
+        Object.keys(newExpenses).forEach(listName => {
+          const list = newExpenses[listName as ListName];
+          const index = list.findIndex(expense => expense.id === id);
+          
+          if (index !== -1) {
+            // Criar uma cópia da despesa e inverter o status de pago
+            const updatedExpense = { ...list[index], paid: !list[index].paid };
+            // Atualizar a lista com a despesa atualizada
+            newExpenses[listName as ListName] = [
+              ...list.slice(0, index),
+              updatedExpense,
+              ...list.slice(index + 1)
+            ];
+          }
+        });
+        
+        const storageData: StorageItems = {
+          expenses: newExpenses,
+          projects,
+          stock: stockItems,
+          employees,
+          lastSync: Date.now()
+        };
+        
+        // Usar saveChanges para salvar os dados
+        saveChanges(storageData);
+        
+        return newExpenses;
+      });
+    }
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -175,13 +186,8 @@ export default function App() {
           lastSync: timestamp
         };
         
-        if (isSupabaseConfigured()) {
-          console.log("Salvando no Supabase");
-          saveData(storageData);
-        } else {
-          console.log("Salvando no localStorage");
-          storage.saveData(storageData);
-        }
+        // Usar saveChanges para salvar os dados
+        saveChanges(storageData);
         
         return newExpenses;
       });
@@ -202,13 +208,8 @@ export default function App() {
           lastSync: timestamp
         };
         
-        if (isSupabaseConfigured()) {
-          console.log("Salvando no Supabase");
-          saveData(storageData);
-        } else {
-          console.log("Salvando no localStorage");
-          storage.saveData(storageData);
-        }
+        // Usar saveChanges para salvar os dados
+        saveChanges(storageData);
         
         return newProjects;
       });
@@ -229,13 +230,8 @@ export default function App() {
           lastSync: timestamp
         };
         
-        if (isSupabaseConfigured()) {
-          console.log("Salvando no Supabase");
-          saveData(storageData);
-        } else {
-          console.log("Salvando no localStorage");
-          storage.saveData(storageData);
-        }
+        // Usar saveChanges para salvar os dados
+        saveChanges(storageData);
         
         return newStockItems;
       });
@@ -269,13 +265,8 @@ export default function App() {
           lastSync: timestamp
         };
         
-        if (isSupabaseConfigured()) {
-          console.log("Salvando no Supabase");
-          saveData(storageData);
-        } else {
-          console.log("Salvando no localStorage");
-          storage.saveData(storageData);
-        }
+        // Usar saveChanges para salvar os dados
+        saveChanges(storageData);
         
         return newEmployees;
       });
@@ -295,16 +286,22 @@ export default function App() {
     storageData.employees = employees;
     storageData.lastSync = Date.now();
     
-    if (isSupabaseConfigured()) {
-      saveData(storageData);
-    } else {
-      storage.saveData(storageData);
-    }
+    // Usar saveChanges para salvar os dados
+    saveChanges(storageData);
   };
 
   const handleEmployeeSelect = (value: EmployeeName) => {
     setSelectedEmployee(value);
-    setIsDropdownOpen(false);
+    
+    const storageData = storage.getData();
+    storageData.expenses = expenses;
+    storageData.projects = projects;
+    storageData.stock = stockItems;
+    storageData.employees = employees;
+    storageData.lastSync = Date.now();
+    
+    // Usar saveChanges para salvar os dados
+    saveChanges(storageData);
   };
 
   const handleAddDay = (employeeId: string, employeeName: string) => {

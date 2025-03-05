@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { StorageItems } from '../types';
-import { getData, saveData } from './storage';
+import { getData, saveData as saveToStorage } from './storage';
 
 // Função para carregar dados iniciais do Supabase
 export const loadInitialData = async (): Promise<StorageItems | null> => {
@@ -79,7 +79,7 @@ export const syncService = {
       const remoteData = await loadInitialData();
       if (remoteData) {
         // Se tiver dados remotos, atualiza o armazenamento local
-        saveData(remoteData);
+        saveToStorage(remoteData);
       } else {
         // Se não tiver dados remotos, envia os dados locais para o Supabase
         const localData = getData();
@@ -117,16 +117,25 @@ export const syncService = {
   },
 
   // Sincroniza dados
-  sync: async () => {
+  sync: async (data: StorageItems): Promise<boolean> => {
     if (!isSupabaseConfigured()) {
-      return;
+      // Salvar apenas localmente
+      saveToStorage(data);
+      return true;
     }
 
     try {
-      const localData = getData();
-      await saveData(localData);
+      // Salvar no Supabase e localmente
+      const success = await saveData(data);
+      if (success) {
+        saveToStorage(data);
+      }
+      return success;
     } catch (error) {
       console.error('Erro ao sincronizar dados:', error);
+      // Salvar localmente mesmo se falhar no Supabase
+      saveToStorage(data);
+      return false;
     }
   }
 }; 
