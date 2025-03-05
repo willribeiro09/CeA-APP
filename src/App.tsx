@@ -14,6 +14,7 @@ import { syncService, loadInitialData, saveData } from './lib/sync';
 import { isSupabaseConfigured } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
+import { format } from 'date-fns';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -39,6 +40,8 @@ export default function App() {
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeName>('Matheus');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(new Date());
+  const [isSaving, setIsSaving] = useState(false);
+  const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
 
   useEffect(() => {
     const initializeData = async () => {
@@ -87,16 +90,35 @@ export default function App() {
 
   // Função para salvar alterações
   const saveChanges = async (newData: StorageItems) => {
+    console.log('Salvando alterações...', JSON.stringify(newData));
+    setIsSaving(true);
     try {
-      const success = await syncService.sync(newData);
-      
-      if (success === false) {
-        console.error('Erro ao salvar alterações');
-        // Adicionar feedback visual de erro
+      // Garantir que estamos salvando no Supabase
+      if (isSupabaseConfigured()) {
+        console.log('Supabase configurado, salvando dados remotamente...');
+        const success = await syncService.sync(newData);
+        if (success) {
+          console.log('Dados salvos com sucesso no Supabase');
+          setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
+        } else {
+          console.error('Falha ao salvar dados no Supabase');
+          setShowFeedback({ show: true, message: 'Erro ao salvar dados!', type: 'error' });
+        }
+      } else {
+        console.log('Supabase não configurado, salvando apenas localmente');
+        // Salvar localmente
+        saveData(newData);
+        setShowFeedback({ show: true, message: 'Dados salvos localmente!', type: 'success' });
       }
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
-      // Adicionar feedback visual de erro
+      setShowFeedback({ show: true, message: 'Erro ao salvar dados!', type: 'error' });
+    } finally {
+      setIsSaving(false);
+      // Esconder o feedback após 3 segundos
+      setTimeout(() => {
+        setShowFeedback({ show: false, message: '', type: 'success' });
+      }, 3000);
     }
   };
 
@@ -144,134 +166,128 @@ export default function App() {
   };
 
   const handleAddItem = (data: Partial<Item>) => {
-    console.log("Função handleAddItem chamada com dados:", data);
-    let validationError = null;
+    console.log("Função handleAddItem chamada com dados:", JSON.stringify(data));
+    
+    // Gerar um ID único para o novo item
+    const id = crypto.randomUUID();
     
     if (activeCategory === 'Expenses') {
-      validationError = validation.expense(data as Partial<Expense>);
-    } else if (activeCategory === 'Projects') {
-      validationError = validation.project(data as Partial<Project>);
-    } else if (activeCategory === 'Stock') {
-      validationError = validation.stockItem(data as Partial<StockItem>);
-    } else if (activeCategory === 'Employees') {
-      validationError = validation.employee(data as Partial<Employee>);
-    }
-    
-    if (validationError) {
-      console.error("Erro de validação:", validationError);
-      return;
-    }
-
-    console.log("Dados recebidos para adicionar:", data, "Categoria:", activeCategory);
-    const timestamp = Date.now();
-
-    if (activeCategory === 'Expenses') {
+      const expense = data as Expense;
+      expense.id = id;
+      expense.paid = expense.paid || false;
+      
+      // Obter a data formatada para usar como chave
+      const date = expense.date ? new Date(expense.date) : new Date();
+      const formattedDate = format(date, 'yyyy-MM-dd');
+      
+      // Atualizar o estado
       setExpenses(prevExpenses => {
-        console.log("Estado anterior de despesas:", prevExpenses);
-        const currentList = prevExpenses[selectedList] || [];
-        const newExpense = { ...data, id: crypto.randomUUID() } as Expense;
-        console.log("Nova despesa a ser adicionada:", newExpense);
+        // Criar uma cópia do objeto com tipagem correta
+        const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
         
-        const newExpenses = {
-          ...prevExpenses,
-          [selectedList]: [...currentList, newExpense]
-        };
+        // Verificar se a chave existe e inicializar se necessário
+        if (!newExpenses[formattedDate]) {
+          newExpenses[formattedDate] = [];
+        }
         
-        console.log("Novas despesas:", newExpenses);
+        // Adicionar a nova despesa
+        newExpenses[formattedDate] = [...newExpenses[formattedDate], expense];
+        
+        // Salvar as alterações
         const storageData: StorageItems = {
           expenses: newExpenses,
           projects,
           stock: stockItems,
           employees,
-          lastSync: timestamp
+          lastSync: Date.now()
         };
         
-        // Usar saveChanges para salvar os dados
+        // Salvar no Supabase e localmente
         saveChanges(storageData);
         
         return newExpenses;
       });
     } else if (activeCategory === 'Projects') {
+      const project = data as Project;
+      project.id = id;
+      
+      // Atualizar o estado
       setProjects(prevProjects => {
-        console.log("Estado anterior de projetos:", prevProjects);
-        const newProject = { ...data, id: crypto.randomUUID() } as Project;
-        console.log("Novo projeto a ser adicionado:", newProject);
+        const newProjects = [...prevProjects, project];
         
-        const newProjects = [...prevProjects, newProject];
-        
-        console.log("Novos projetos:", newProjects);
+        // Salvar as alterações
         const storageData: StorageItems = {
           expenses,
           projects: newProjects,
           stock: stockItems,
           employees,
-          lastSync: timestamp
+          lastSync: Date.now()
         };
         
-        // Usar saveChanges para salvar os dados
+        // Salvar no Supabase e localmente
         saveChanges(storageData);
         
         return newProjects;
       });
     } else if (activeCategory === 'Stock') {
+      const stockItem = data as StockItem;
+      stockItem.id = id;
+      
+      // Atualizar o estado
       setStockItems(prevStockItems => {
-        console.log("Estado anterior de estoque:", prevStockItems);
-        const newStockItem = { ...data, id: crypto.randomUUID() } as StockItem;
-        console.log("Novo item de estoque a ser adicionado:", newStockItem);
+        const newStockItems = [...prevStockItems, stockItem];
         
-        const newStockItems = [...prevStockItems, newStockItem];
-        
-        console.log("Novos itens de estoque:", newStockItems);
+        // Salvar as alterações
         const storageData: StorageItems = {
           expenses,
           projects,
           stock: newStockItems,
           employees,
-          lastSync: timestamp
+          lastSync: Date.now()
         };
         
-        // Usar saveChanges para salvar os dados
+        // Salvar no Supabase e localmente
         saveChanges(storageData);
         
         return newStockItems;
       });
     } else if (activeCategory === 'Employees') {
+      const employee = data as Employee;
+      employee.id = id;
+      
+      // Formatar a data da semana
+      const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
+      employee.weekStartDate = weekStartDate;
+      
+      // Atualizar o estado
       setEmployees(prevEmployees => {
-        console.log("Estado anterior de funcionários:", prevEmployees);
-        // Garantir que employeeName seja definido
-        const employeeData = {
-          ...data,
-          id: crypto.randomUUID(),
-          employeeName: selectedEmployee,
-          weekStartDate: selectedWeekStart.toISOString(),
-          daysWorked: 0
-        } as Employee;
-        
-        console.log("Dados do funcionário:", employeeData);
-        
-        const weekKey = selectedWeekStart.toISOString().split('T')[0];
+        const newEmployees = { ...prevEmployees };
+        const weekKey = weekStartDate;
         const currentList = prevEmployees[weekKey] || [];
-        const newEmployees = {
-          ...prevEmployees,
-          [weekKey]: [...currentList, employeeData]
-        };
         
-        console.log("Novos funcionários:", newEmployees);
+        if (!newEmployees[weekKey]) {
+          newEmployees[weekKey] = [];
+        }
+        
+        newEmployees[weekKey] = [...currentList, employee];
+        
+        // Salvar as alterações
         const storageData: StorageItems = {
           expenses,
           projects,
           stock: stockItems,
           employees: newEmployees,
-          lastSync: timestamp
+          lastSync: Date.now()
         };
         
-        // Usar saveChanges para salvar os dados
+        // Salvar no Supabase e localmente
         saveChanges(storageData);
         
         return newEmployees;
       });
     }
-    console.log("Fechando diálogo de adição");
+    
+    // Fechar o diálogo após adicionar o item
     setIsAddDialogOpen(false);
   };
 

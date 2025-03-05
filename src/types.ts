@@ -54,7 +54,7 @@ export interface StorageItems {
   projects: Project[];
   stock: StockItem[];
   employees: Record<string, Employee[]>;
-  lastSync: number;
+  lastSync: number | string;
 }
 
 export type SyncData = StorageItems;
