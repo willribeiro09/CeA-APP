@@ -58,7 +58,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
     } else {
       itemData = {
         name: data.name as string,
-        employeeName: selectedWeekStart ? selectedWeekStart.toISOString().split('T')[0] : '',
+        employeeName: data.name as string,
         role: data.role as string,
         startDate: new Date().toISOString(),
         weekStartDate: selectedWeekStart?.toISOString() || new Date().toISOString(),

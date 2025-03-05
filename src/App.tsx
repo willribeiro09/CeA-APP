@@ -536,54 +536,76 @@ export default function App() {
             ))}
             {activeCategory === 'Stock' && stockItems.map(item => (
               <div key={item.id} className="bg-white p-4 rounded-lg shadow-sm">
-                <h3 className="font-medium">{item.name}</h3>
-                <p className="text-gray-600 text-sm mt-1">
-                  Quantity: {item.quantity}
-                </p>
+                <div className="flex justify-between items-center">
+                  <h3 className="font-medium">{item.name}</h3>
+                  <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                    {item.quantity} {item.unit}
+                  </span>
+                </div>
               </div>
             ))}
-            {activeCategory === 'Employees' && Object.entries(employees).map(([employeeName, employeeList]) => 
-              employeeList
-                .filter(employee => {
-                  const employeeWeekStart = new Date(employee.weekStartDate);
-                  const selectedWeekStartDate = new Date(selectedWeekStart);
-                  return employeeWeekStart.getFullYear() === selectedWeekStartDate.getFullYear() &&
-                         employeeWeekStart.getMonth() === selectedWeekStartDate.getMonth() &&
-                         employeeWeekStart.getDate() === selectedWeekStartDate.getDate();
-                })
-                .map(employee => (
-                  <div key={employee.id} className="bg-white p-2.5 rounded-lg shadow-sm">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <h3 className="text-xl font-bold text-gray-800">{employee.employeeName}</h3>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleAddDay(employee.id, employeeName)}
-                          className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center"
-                        >
-                          +1 Day
-                        </button>
-                        <button
-                          onClick={() => handleResetEmployee(employee.id, employeeName)}
-                          className="px-2.5 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors"
-                        >
-                          Reset
-                        </button>
+            {activeCategory === 'Employees' && (
+              <>
+                {/* Debug: Mostrar todas as chaves de funcionários */}
+                <div className="bg-gray-100 p-2 mb-4 rounded text-xs">
+                  <p>Debug - Chaves de funcionários: {Object.keys(employees).join(', ')}</p>
+                  <p>Data da semana selecionada: {format(selectedWeekStart, 'yyyy-MM-dd')}</p>
+                </div>
+                
+                {Object.entries(employees).map(([weekKey, employeeList]) => {
+                  console.log(`Renderizando funcionários da semana ${weekKey}, total: ${employeeList.length}`);
+                  
+                  // Filtrar funcionários pela semana selecionada
+                  const filteredEmployees = employeeList.filter(employee => {
+                    const employeeWeekStart = new Date(employee.weekStartDate);
+                    const selectedWeekStartDate = new Date(selectedWeekStart);
+                    
+                    const isSameWeek = 
+                      employeeWeekStart.getFullYear() === selectedWeekStartDate.getFullYear() &&
+                      employeeWeekStart.getMonth() === selectedWeekStartDate.getMonth() &&
+                      employeeWeekStart.getDate() === selectedWeekStartDate.getDate();
+                    
+                    console.log(`Funcionário ${employee.name}, semana ${employee.weekStartDate}, mesma semana: ${isSameWeek}`);
+                    return isSameWeek;
+                  });
+                  
+                  console.log(`Funcionários filtrados: ${filteredEmployees.length}`);
+                  
+                  return filteredEmployees.map(employee => (
+                    <div key={employee.id} className="bg-white p-2.5 rounded-lg shadow-sm">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleAddDay(employee.id, weekKey)}
+                            className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center"
+                          >
+                            +1 Day
+                          </button>
+                          <button
+                            onClick={() => handleResetEmployee(employee.id, weekKey)}
+                            className="px-2.5 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-700 text-sm">Days Worked:</span>
+                          <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-700 text-sm">Amount to Receive:</span>
+                          <span className="text-xl font-bold text-[#5ABB37]">
+                            $ {(employee.daysWorked * 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-0.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-700 text-sm">Days Worked:</span>
-                        <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-700 text-sm">Amount to Receive:</span>
-                        <span className="text-xl font-bold text-[#5ABB37]">
-                          $ {(employee.daysWorked * 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                  ));
+                })}
+              </>
             )}
           </div>
         </main>

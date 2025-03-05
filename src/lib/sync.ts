@@ -178,27 +178,66 @@ export const syncService = {
     }
 
     console.log('Configurando atualizações em tempo real...');
-    
+
+    // Inscrever-se em todos os eventos da tabela sync_data
     const subscription = supabase
       .channel('sync_data_changes')
       .on('postgres_changes', {
-        event: '*',
+        event: '*', // Escutar todos os eventos (insert, update, delete)
         schema: 'public',
-        table: 'sync_data'
+        table: 'sync_data',
+        filter: `id=eq.00000000-0000-0000-0000-000000000000` // Filtrar apenas pelo ID fixo
       }, async (payload) => {
         console.log('Recebida atualização em tempo real:', payload);
         
-        // Carregar dados atualizados
-        const updatedData = await loadInitialData();
-        if (updatedData) {
-          console.log('Dados atualizados carregados, chamando callback');
-          callback(updatedData);
+        try {
+          // Extrair dados diretamente do payload para resposta mais rápida
+          if (payload.new) {
+            const newData = payload.new as any;
+            console.log('Dados recebidos do evento:', JSON.stringify(newData));
+            
+            // Converter para o formato StorageItems
+            const formattedData: StorageItems = {
+              expenses: newData.expenses || {},
+              projects: newData.projects || [],
+              stock: newData.stock || [],
+              employees: newData.employees || {},
+              lastSync: newData.updated_at || new Date().toISOString()
+            };
+            
+            // Chamar o callback imediatamente com os dados do evento
+            console.log('Chamando callback com dados do evento');
+            callback(formattedData);
+            
+            // Atualizar armazenamento local
+            saveToStorage(formattedData);
+          } else {
+            // Fallback: carregar dados do servidor se o payload não contiver os dados completos
+            console.log('Payload não contém dados completos, carregando do servidor...');
+            const updatedData = await loadInitialData();
+            if (updatedData) {
+              console.log('Dados atualizados carregados do servidor, chamando callback');
+              callback(updatedData);
+              
+              // Atualizar armazenamento local
+              saveToStorage(updatedData);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao processar atualização em tempo real:', error);
           
-          // Atualizar armazenamento local
-          saveToStorage(updatedData);
+          // Tentar carregar dados do servidor em caso de erro
+          const updatedData = await loadInitialData();
+          if (updatedData) {
+            console.log('Dados atualizados carregados após erro, chamando callback');
+            callback(updatedData);
+            saveToStorage(updatedData);
+          }
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Status da inscrição em tempo real:', status);
+      });
 
     // Retornar função para cancelar a inscrição
     return () => {
