@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS sync_data;
 
 -- Criação da tabela sync_data para armazenar dados sincronizados
 CREATE TABLE sync_data (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY,
   expenses JSONB DEFAULT '{}'::JSONB,
   projects JSONB DEFAULT '[]'::JSONB,
   stock JSONB DEFAULT '[]'::JSONB,
@@ -11,6 +11,9 @@ CREATE TABLE sync_data (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+-- Limpar todos os dados existentes
+DELETE FROM sync_data;
 
 -- Inserir um registro inicial com ID fixo
 INSERT INTO sync_data (id, expenses, projects, stock, employees)

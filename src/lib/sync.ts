@@ -73,39 +73,34 @@ export const saveData = async (data: StorageItems): Promise<boolean> => {
 
   try {
     console.log('Enviando dados para o Supabase...');
-    
+
     // Verificar se há funcionários antes de salvar
     if (data.employees) {
       console.log('Funcionários sendo salvos:', JSON.stringify(data.employees));
-      
-      // Verificar se há funcionários específicos
-      const allEmployees = Object.values(data.employees).flat();
-      const matheusFound = allEmployees.some(emp => emp.name === 'Matheus' || emp.employeeName === 'Matheus');
-      const pauloFound = allEmployees.some(emp => emp.name === 'Paulo' || emp.employeeName === 'Paulo');
-      
-      console.log(`Funcionário Matheus sendo salvo: ${matheusFound}`);
-      console.log(`Funcionário Paulo sendo salvo: ${pauloFound}`);
     }
-    
+
+    // ID fixo para garantir que sempre atualizamos o mesmo registro
+    const FIXED_ID = '00000000-0000-0000-0000-000000000000';
+
     // Criar um objeto com os dados a serem salvos
     const dataToSave = {
-      id: '00000000-0000-0000-0000-000000000000', // ID FIXO para garantir que sempre atualize o mesmo registro
+      id: FIXED_ID,
       expenses: data.expenses || {},
       projects: data.projects || [],
       stock: data.stock || [],
       employees: data.employees || {}
     };
-    
+
     console.log('Dados formatados para salvar no Supabase:', JSON.stringify(dataToSave));
-    
-    // Primeiro, verificar se já existe um registro
+
+    // Primeiro, verificar se já existe um registro com o ID fixo
     const { data: existingData, error: checkError } = await supabase
       .from('sync_data')
       .select('id')
-      .eq('id', dataToSave.id)
-      .single();
+      .eq('id', FIXED_ID)
+      .maybeSingle();
 
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 é o código para "não encontrado"
+    if (checkError) {
       console.error('Erro ao verificar registro existente:', checkError);
       return false;
     }
@@ -118,7 +113,7 @@ export const saveData = async (data: StorageItems): Promise<boolean> => {
       const { error } = await supabase
         .from('sync_data')
         .update(dataToSave)
-        .eq('id', dataToSave.id);
+        .eq('id', FIXED_ID);
       
       saveError = error;
     } else {

@@ -167,6 +167,7 @@ export default function App() {
 
   const handleAddItem = (data: Partial<Item>) => {
     console.log("Função handleAddItem chamada com dados:", JSON.stringify(data));
+    console.log("Lista selecionada:", selectedList);
 
     // Gerar um ID único para o novo item
     const id = crypto.randomUUID();
@@ -175,10 +176,6 @@ export default function App() {
       const expense = data as Expense;
       expense.id = id;
       expense.paid = expense.paid || false;
-
-      // Obter a data formatada para usar como chave
-      const date = expense.date ? new Date(expense.date) : new Date();
-      const formattedDate = format(date, 'yyyy-MM-dd');
 
       // Atualizar o estado
       setExpenses(prevExpenses => {
@@ -194,7 +191,7 @@ export default function App() {
         }
         
         // Adicionar a nova despesa à lista selecionada
-        newExpenses[selectedList] = [...newExpenses[selectedList], expense];
+        newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
         console.log(`Despesa adicionada à lista ${selectedList}:`, JSON.stringify(expense));
         console.log("Novo estado de expenses:", JSON.stringify(newExpenses));
 
