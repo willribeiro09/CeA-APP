@@ -12,6 +12,10 @@ CREATE TABLE sync_data (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- Inserir um registro inicial com ID fixo
+INSERT INTO sync_data (id, expenses, projects, stock, employees)
+VALUES ('00000000-0000-0000-0000-000000000000', '{}'::JSONB, '[]'::JSONB, '[]'::JSONB, '{}'::JSONB);
+
 -- Função para atualizar o timestamp
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$

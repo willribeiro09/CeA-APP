@@ -37,7 +37,7 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
       projects: data.projects || [],
       stock: data.stock || [],
       employees: data.employees || {},
-      lastSync: data.lastSync || new Date().toISOString()
+      lastSync: data.updated_at || new Date().toISOString()
     };
     
     console.log('Dados formatados para uso:', JSON.stringify(result));
@@ -89,21 +89,50 @@ export const saveData = async (data: StorageItems): Promise<boolean> => {
     
     // Criar um objeto com os dados a serem salvos
     const dataToSave = {
+      id: '00000000-0000-0000-0000-000000000000', // ID FIXO para garantir que sempre atualize o mesmo registro
       expenses: data.expenses || {},
       projects: data.projects || [],
       stock: data.stock || [],
-      employees: data.employees || {},
-      // Não incluir lastSync, pois será definido pelo servidor
+      employees: data.employees || {}
     };
     
     console.log('Dados formatados para salvar no Supabase:', JSON.stringify(dataToSave));
     
-    const { error } = await supabase
+    // Primeiro, verificar se já existe um registro
+    const { data: existingData, error: checkError } = await supabase
       .from('sync_data')
-      .upsert(dataToSave);
+      .select('id')
+      .eq('id', dataToSave.id)
+      .single();
 
-    if (error) {
-      console.error('Erro ao salvar dados no Supabase:', error);
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 é o código para "não encontrado"
+      console.error('Erro ao verificar registro existente:', checkError);
+      return false;
+    }
+
+    let saveError;
+    
+    if (existingData) {
+      // Se existe, atualiza
+      console.log('Registro existente encontrado, atualizando...');
+      const { error } = await supabase
+        .from('sync_data')
+        .update(dataToSave)
+        .eq('id', dataToSave.id);
+      
+      saveError = error;
+    } else {
+      // Se não existe, insere
+      console.log('Registro não encontrado, inserindo novo...');
+      const { error } = await supabase
+        .from('sync_data')
+        .insert(dataToSave);
+      
+      saveError = error;
+    }
+
+    if (saveError) {
+      console.error('Erro ao salvar dados no Supabase:', saveError);
       return false;
     }
 
@@ -138,7 +167,7 @@ export const syncService = {
         console.log('Nenhum dado remoto encontrado, enviando dados locais para o Supabase');
         // Se não tiver dados remotos, envia os dados locais para o Supabase
         const localData = getData();
-        console.log('Dados locais:', JSON.stringify(localData));
+        // Salvar dados locais no Supabase
         await saveData(localData);
       }
     } catch (error) {
@@ -150,7 +179,7 @@ export const syncService = {
   setupRealtimeUpdates: (callback: (data: StorageItems) => void) => {
     if (!isSupabaseConfigured()) {
       console.log('Supabase não configurado, não é possível configurar atualizações em tempo real');
-      return () => {}; // Retorna uma função vazia se o Supabase não estiver configurado
+      return () => {};
     }
 
     console.log('Configurando atualizações em tempo real...');
@@ -161,63 +190,48 @@ export const syncService = {
         event: '*',
         schema: 'public',
         table: 'sync_data'
-      }, (payload) => {
-        console.log('Mudança detectada no Supabase:', payload);
-        if (payload.new) {
-          const newData = payload.new as any;
-          console.log('Novos dados recebidos:', JSON.stringify(newData));
+      }, async (payload) => {
+        console.log('Recebida atualização em tempo real:', payload);
+        
+        // Carregar dados atualizados
+        const updatedData = await loadInitialData();
+        if (updatedData) {
+          console.log('Dados atualizados carregados, chamando callback');
+          callback(updatedData);
           
-          // Converter os dados para o formato esperado
-          const formattedData: StorageItems = {
-            expenses: newData.expenses || {},
-            projects: newData.projects || [],
-            stock: newData.stock || [],
-            employees: newData.employees || {},
-            lastSync: newData.updated_at || new Date().toISOString()
-          };
-          
-          callback(formattedData);
+          // Atualizar armazenamento local
+          saveToStorage(updatedData);
         }
       })
       .subscribe();
 
-    console.log('Inscrição em atualizações em tempo real configurada');
-    
-    // Retorna uma função para cancelar a inscrição
+    // Retornar função para cancelar a inscrição
     return () => {
-      console.log('Cancelando inscrição em atualizações em tempo real');
+      console.log('Cancelando inscrição de atualizações em tempo real');
       subscription.unsubscribe();
     };
   },
 
   // Sincroniza dados
   sync: async (data: StorageItems): Promise<boolean> => {
-    console.log('Sincronizando dados...');
-    
     if (!isSupabaseConfigured()) {
       console.log('Supabase não configurado, salvando apenas localmente');
-      // Salvar apenas localmente
       saveToStorage(data);
       return true;
     }
 
-    try {
-      console.log('Salvando dados no Supabase e localmente');
-      // Salvar no Supabase e localmente
-      const success = await saveData(data);
-      if (success) {
-        console.log('Dados salvos no Supabase com sucesso, atualizando armazenamento local');
-        saveToStorage(data);
-        return true;
-      } else {
-        console.log('Falha ao salvar dados no Supabase, salvando apenas localmente');
-        saveToStorage(data);
-        return false;
-      }
-    } catch (error) {
-      console.error('Erro ao sincronizar dados:', error);
-      console.log('Salvando apenas localmente devido a erro');
+    console.log('Sincronizando dados...');
+    
+    // Salvar no Supabase
+    const success = await saveData(data);
+    
+    if (success) {
+      console.log('Dados sincronizados com sucesso, atualizando armazenamento local');
+      // Atualizar armazenamento local
       saveToStorage(data);
+      return true;
+    } else {
+      console.error('Falha ao sincronizar dados');
       return false;
     }
   }

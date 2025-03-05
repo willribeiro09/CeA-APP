@@ -167,32 +167,37 @@ export default function App() {
 
   const handleAddItem = (data: Partial<Item>) => {
     console.log("Função handleAddItem chamada com dados:", JSON.stringify(data));
-    
+
     // Gerar um ID único para o novo item
     const id = crypto.randomUUID();
-    
+
     if (activeCategory === 'Expenses') {
       const expense = data as Expense;
       expense.id = id;
       expense.paid = expense.paid || false;
-      
+
       // Obter a data formatada para usar como chave
       const date = expense.date ? new Date(expense.date) : new Date();
       const formattedDate = format(date, 'yyyy-MM-dd');
-      
+
       // Atualizar o estado
       setExpenses(prevExpenses => {
+        console.log("Estado atual de expenses:", JSON.stringify(prevExpenses));
+        
         // Criar uma cópia do objeto com tipagem correta
         const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
         
-        // Verificar se a chave existe e inicializar se necessário
-        if (!newExpenses[formattedDate]) {
-          newExpenses[formattedDate] = [];
+        // Verificar se a lista existe
+        if (!newExpenses[selectedList]) {
+          console.log(`Lista ${selectedList} não encontrada, inicializando...`);
+          newExpenses[selectedList] = [];
         }
         
-        // Adicionar a nova despesa
-        newExpenses[formattedDate] = [...newExpenses[formattedDate], expense];
-        
+        // Adicionar a nova despesa à lista selecionada
+        newExpenses[selectedList] = [...newExpenses[selectedList], expense];
+        console.log(`Despesa adicionada à lista ${selectedList}:`, JSON.stringify(expense));
+        console.log("Novo estado de expenses:", JSON.stringify(newExpenses));
+
         // Salvar as alterações
         const storageData: StorageItems = {
           expenses: newExpenses,
@@ -201,20 +206,26 @@ export default function App() {
           employees,
           lastSync: Date.now()
         };
+
+        console.log("Dados a serem salvos:", JSON.stringify(storageData));
         
         // Salvar no Supabase e localmente
         saveChanges(storageData);
-        
+
         return newExpenses;
       });
     } else if (activeCategory === 'Projects') {
       const project = data as Project;
       project.id = id;
-      
+
       // Atualizar o estado
       setProjects(prevProjects => {
-        const newProjects = [...prevProjects, project];
+        console.log("Estado atual de projects:", JSON.stringify(prevProjects));
         
+        const newProjects = [...prevProjects, project];
+        console.log("Projeto adicionado:", JSON.stringify(project));
+        console.log("Novo estado de projects:", JSON.stringify(newProjects));
+
         // Salvar as alterações
         const storageData: StorageItems = {
           expenses,
@@ -223,20 +234,26 @@ export default function App() {
           employees,
           lastSync: Date.now()
         };
+
+        console.log("Dados a serem salvos:", JSON.stringify(storageData));
         
         // Salvar no Supabase e localmente
         saveChanges(storageData);
-        
+
         return newProjects;
       });
     } else if (activeCategory === 'Stock') {
       const stockItem = data as StockItem;
       stockItem.id = id;
-      
+
       // Atualizar o estado
       setStockItems(prevStockItems => {
-        const newStockItems = [...prevStockItems, stockItem];
+        console.log("Estado atual de stockItems:", JSON.stringify(prevStockItems));
         
+        const newStockItems = [...prevStockItems, stockItem];
+        console.log("Item de estoque adicionado:", JSON.stringify(stockItem));
+        console.log("Novo estado de stockItems:", JSON.stringify(newStockItems));
+
         // Salvar as alterações
         const storageData: StorageItems = {
           expenses,
@@ -245,32 +262,39 @@ export default function App() {
           employees,
           lastSync: Date.now()
         };
+
+        console.log("Dados a serem salvos:", JSON.stringify(storageData));
         
         // Salvar no Supabase e localmente
         saveChanges(storageData);
-        
+
         return newStockItems;
       });
     } else if (activeCategory === 'Employees') {
       const employee = data as Employee;
       employee.id = id;
-      
+
       // Formatar a data da semana
       const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
       employee.weekStartDate = weekStartDate;
-      
+
       // Atualizar o estado
       setEmployees(prevEmployees => {
+        console.log("Estado atual de employees:", JSON.stringify(prevEmployees));
+        
         const newEmployees = { ...prevEmployees };
         const weekKey = weekStartDate;
         const currentList = prevEmployees[weekKey] || [];
-        
+
         if (!newEmployees[weekKey]) {
+          console.log(`Semana ${weekKey} não encontrada, inicializando...`);
           newEmployees[weekKey] = [];
         }
-        
+
         newEmployees[weekKey] = [...currentList, employee];
-        
+        console.log(`Funcionário adicionado à semana ${weekKey}:`, JSON.stringify(employee));
+        console.log("Novo estado de employees:", JSON.stringify(newEmployees));
+
         // Salvar as alterações
         const storageData: StorageItems = {
           expenses,
@@ -279,14 +303,16 @@ export default function App() {
           employees: newEmployees,
           lastSync: Date.now()
         };
+
+        console.log("Dados a serem salvos:", JSON.stringify(storageData));
         
         // Salvar no Supabase e localmente
         saveChanges(storageData);
-        
+
         return newEmployees;
       });
     }
-    
+
     // Fechar o diálogo após adicionar o item
     setIsAddDialogOpen(false);
   };
