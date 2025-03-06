@@ -8,7 +8,7 @@ import { Calendar } from './components/Calendar';
 import { AddItemDialog } from './components/AddItemDialog';
 import { EditItemDialog } from './components/EditItemDialog';
 import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems, SyncData } from './types';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
 import { syncService, loadInitialData, saveData } from './lib/sync';
@@ -17,6 +17,7 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
 import { format } from 'date-fns';
 import { SwipeableItem } from './components/SwipeableItem';
+import * as Dialog from '@radix-ui/react-dialog';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -46,6 +47,10 @@ export default function App() {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(new Date());
   const [isSaving, setIsSaving] = useState(false);
   const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
+  const [willBaseRate, setWillBaseRate] = useState(200);
+  const [willBonus, setWillBonus] = useState(0);
+  const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
+  const [showLayoffAlert, setShowLayoffAlert] = useState(false);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -666,6 +671,11 @@ export default function App() {
     });
   };
 
+  const resetWillValues = () => {
+    setWillBaseRate(200);
+    setWillBonus(0);
+  };
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
@@ -802,68 +812,179 @@ export default function App() {
             {activeCategory === 'Employees' && (
               <>
                 {(() => {
-                  // Formatar a data da semana selecionada para comparação
                   const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-                  console.log(`Buscando funcionários para a semana: ${formattedSelectedWeekStart}`);
-                  
-                  // Obter a lista de funcionários para a semana selecionada
                   const weekEmployees = employees[formattedSelectedWeekStart] || [];
-                  console.log(`Encontrados ${weekEmployees.length} funcionários para a semana ${formattedSelectedWeekStart}`);
-                  
-                  if (weekEmployees.length === 0) {
-                    return (
-                      <div className="bg-white p-4 rounded-lg shadow-sm text-center">
-                        <p className="text-gray-500">Nenhum funcionário registrado para esta semana.</p>
-                      </div>
-                    );
-                  }
-                  
-                  return weekEmployees.map(employee => (
+                  const employeeElements = [];
+
+                  // Will - funcionário fixo
+                  employeeElements.push(
                     <SwipeableItem 
-                      key={employee.id}
-                      onDelete={() => handleDeleteItem(employee.id, 'Employees')}
-                      onEdit={() => handleEditItem(employee)}
+                      key="will-fixed"
+                      onDelete={resetWillValues}
+                      onEdit={() => {
+                        setShowLayoffAlert(true);
+                      }}
+                      showEditButton={true}
+                      customEditButton={
+                        <button
+                          className="px-2.5 py-1 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-colors h-8"
+                        >
+                          Lay off
+                        </button>
+                      }
                     >
                       <div className="bg-white p-2.5 rounded-lg shadow-sm">
                         <div className="flex items-center justify-between mb-1.5">
-                          <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
+                          <h3 className="text-xl font-bold text-gray-800">Will</h3>
                           <div className="flex items-center gap-1.5">
                             <button
-                              onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
-                              className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
+                              onClick={() => setIsRateDialogOpen(true)}
+                              className="px-4 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
                             >
-                              +1 Day
+                              Increase
                             </button>
                             <button
-                              onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
-                              className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
+                              onClick={() => setWillBonus(prev => prev + 100)}
+                              className="px-2.5 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 transition-colors h-8"
                             >
-                              Reset
+                              BONUS
                             </button>
                           </div>
                         </div>
                         <div className="space-y-0.5">
                           <div className="flex items-center justify-between">
                             <span className="text-gray-700 text-sm">Dias Trabalhados:</span>
-                            <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
+                            <span className="text-xl font-bold text-gray-900">7</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-700 text-sm">Valor a Receber:</span>
                             <span className="text-xl font-bold text-[#5ABB37]">
-                              $ {((employee.daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              $ {(willBaseRate + willBonus).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-700 text-sm">Valor por Dia:</span>
-                            <span className="text-sm text-gray-600">
-                              $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
+                          {willBonus > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-700 text-sm">Bônus:</span>
+                              <span className="text-sm font-semibold text-blue-500">
+                                $ {willBonus.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </SwipeableItem>
-                  ));
+                  );
+
+                  // Outros funcionários
+                  weekEmployees.forEach(employee => {
+                    employeeElements.push(
+                      <SwipeableItem 
+                        key={employee.id}
+                        onDelete={() => handleDeleteItem(employee.id, 'Employees')}
+                        onEdit={() => handleEditItem(employee)}
+                      >
+                        <div className="bg-white p-2.5 rounded-lg shadow-sm">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
+                                className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
+                              >
+                                +1 Day
+                              </button>
+                              <button
+                                onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
+                                className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
+                              >
+                                Reset
+                              </button>
+                            </div>
+                          </div>
+                          <div className="space-y-0.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-700 text-sm">Dias Trabalhados:</span>
+                              <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-700 text-sm">Valor a Receber:</span>
+                              <span className="text-xl font-bold text-[#5ABB37]">
+                                $ {((employee.daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-700 text-sm">Valor por Dia:</span>
+                              <span className="text-sm text-gray-600">
+                                $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </SwipeableItem>
+                    );
+                  });
+
+                  return employeeElements;
                 })()}
+
+                <Dialog.Root open={isRateDialogOpen} onOpenChange={setIsRateDialogOpen}>
+                  <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
+                      <div className="flex justify-between items-center mb-4">
+                        <Dialog.Title className="text-lg font-semibold">
+                          Ajustar Valor Base
+                        </Dialog.Title>
+                        <Dialog.Close className="text-gray-400 hover:text-gray-600">
+                          <X className="w-5 h-5" />
+                        </Dialog.Close>
+                      </div>
+                      
+                      <form 
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const formData = new FormData(e.target as HTMLFormElement);
+                          const newBaseRate = parseFloat(formData.get('baseRate') as string);
+                          if (!isNaN(newBaseRate) && newBaseRate >= 200) {
+                            setWillBaseRate(newBaseRate);
+                            setIsRateDialogOpen(false);
+                          } else {
+                            alert('Por favor, insira um valor maior ou igual a $200');
+                          }
+                        }} 
+                        className="space-y-4"
+                      >
+                        <div>
+                          <label htmlFor="baseRate" className="block text-sm font-medium text-gray-700">
+                            Novo Valor Base (mínimo $200)
+                          </label>
+                          <input
+                            type="number"
+                            id="baseRate"
+                            name="baseRate"
+                            defaultValue={willBaseRate}
+                            min="200"
+                            step="1"
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                          />
+                        </div>
+                        
+                        <div className="flex justify-end gap-3 mt-6">
+                          <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
+                            Cancelar
+                          </Dialog.Close>
+                          <button
+                            type="submit"
+                            className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
+                          >
+                            Confirmar
+                          </button>
+                        </div>
+                      </form>
+                    </Dialog.Content>
+                  </Dialog.Portal>
+                </Dialog.Root>
               </>
             )}
         </div>
@@ -889,6 +1010,22 @@ export default function App() {
 
         {isSupabaseConfigured() && <ConnectionStatus />}
     </div>
+
+    <Dialog.Root open={showLayoffAlert} onOpenChange={setShowLayoffAlert}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-50">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
     </>
   );
 }
