@@ -1,17 +1,54 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Usar diretamente as credenciais do Supabase
-const supabaseUrl = 'https://mnucrulwdurskwofsgwp.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1udWNydWx3ZHVyc2t3b2ZzZ3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExNzg3ODksImV4cCI6MjA1Njc1NDc4OX0.39iA0f1vEH2K8ygEobuv6O_FR8Fm8H2UXHzPkAZmm60';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 console.log('Configuração do Supabase:');
-console.log('URL:', supabaseUrl);
-console.log('Chave:', supabaseAnonKey ? 'Definida (valor oculto por segurança)' : 'Não definida');
+console.log('URL:', SUPABASE_URL);
+console.log('Chave:', SUPABASE_ANON_KEY ? 'Definida (valor oculto por segurança)' : 'Não definida');
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
+      },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    })
+  : null;
 
 export const isSupabaseConfigured = () => {
-  const configured = Boolean(supabaseUrl && supabaseAnonKey);
-  console.log('Supabase está configurado:', configured);
-  return configured;
+  return !!supabase;
+};
+
+// Inicializar a tabela de sincronização
+export const initSyncTable = async () => {
+  if (!supabase) return false;
+  
+  try {
+    console.log('Verificando se a tabela sync_data existe...');
+    
+    // Tentar acessar a tabela para ver se ela existe
+    const { error: checkError } = await supabase
+      .from('sync_data')
+      .select('id')
+      .limit(1);
+    
+    if (checkError) {
+      console.log('Erro ao verificar tabela (provavelmente não existe):', checkError.message);
+      console.log('Isso é normal na primeira execução. Continuando...');
+    } else {
+      console.log('Tabela sync_data existe e está acessível');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Erro ao verificar tabela:', error);
+    return false;
+  }
 }; 

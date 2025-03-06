@@ -1,112 +1,103 @@
 import { StorageItems } from '../types';
 
-const STORAGE_KEY = 'expenses-gutters-data';
+const STORAGE_KEY = 'expenses-app-data';
+
+// Função para sincronizar entre abas/janelas
+const setupStorageSync = () => {
+  // Ouvir eventos de armazenamento de outras abas/janelas
+  window.addEventListener('storage', (event) => {
+    if (event.key === STORAGE_KEY && event.newValue) {
+      try {
+        const data = JSON.parse(event.newValue);
+        console.log('Dados atualizados em outra aba/janela:', data);
+        
+        // Disparar evento para atualizar a UI
+        window.dispatchEvent(new CustomEvent('localStorageUpdated', { 
+          detail: data 
+        }));
+      } catch (error) {
+        console.error('Erro ao processar dados de outra aba:', error);
+      }
+    }
+  });
+};
+
+// Inicializar sincronização entre abas
+setupStorageSync();
 
 export const storage = {
-  save: (items: StorageItems) => {
+  save: (data: StorageItems): void => {
     try {
-      console.log('Salvando dados no armazenamento local:', JSON.stringify(items));
-      
-      // Garantir que todos os campos existam
-      const dataToSave = {
-        expenses: items.expenses || {},
-        projects: items.projects || [],
-        stock: items.stock || [],
-        employees: items.employees || {},
-        lastSync: Date.now()
-      };
-      
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-      console.log('Dados salvos no armazenamento local com sucesso');
-      return true;
+      console.log('Salvando dados no armazenamento local:', data);
+      const serialized = JSON.stringify({
+        ...data,
+        lastSync: new Date().getTime()
+      });
+      localStorage.setItem(STORAGE_KEY, serialized);
     } catch (error) {
-      console.error('Erro ao salvar dados no armazenamento local:', error);
-      return false;
+      console.error('Erro ao salvar no armazenamento local:', error);
     }
   },
-
+  
   load: (): StorageItems | null => {
     try {
       console.log('Carregando dados do armazenamento local...');
-      const data = localStorage.getItem(STORAGE_KEY);
-      
-      if (!data) {
+      const serialized = localStorage.getItem(STORAGE_KEY);
+      if (!serialized) {
         console.log('Nenhum dado encontrado no armazenamento local');
         return null;
       }
       
-      const parsedData = JSON.parse(data);
-      console.log('Dados carregados do armazenamento local:', JSON.stringify(parsedData));
-      
-      // Verificar se os dados têm a estrutura esperada
-      const result: StorageItems = {
-        expenses: parsedData.expenses || {},
-        projects: parsedData.projects || [],
-        stock: parsedData.stock || [],
-        employees: parsedData.employees || {},
-        lastSync: parsedData.lastSync || Date.now()
-      };
-      
-      // Verificar especificamente os funcionários
-      if (result.employees) {
-        console.log('Funcionários encontrados no armazenamento local:', JSON.stringify(result.employees));
-        
-        // Verificar se há funcionários específicos
-        const allEmployees = Object.values(result.employees).flat();
-        const matheusFound = allEmployees.some(emp => emp.name === 'Matheus' || emp.employeeName === 'Matheus');
-        const pauloFound = allEmployees.some(emp => emp.name === 'Paulo' || emp.employeeName === 'Paulo');
-        
-        console.log(`Funcionário Matheus encontrado no armazenamento local: ${matheusFound}`);
-        console.log(`Funcionário Paulo encontrado no armazenamento local: ${pauloFound}`);
-      }
-      
-      return result;
+      const data = JSON.parse(serialized) as StorageItems;
+      console.log('Dados carregados do armazenamento local:', data);
+      return data;
     } catch (error) {
-      console.error('Erro ao carregar dados do armazenamento local:', error);
+      console.error('Erro ao carregar do armazenamento local:', error);
       return null;
     }
   },
-
-  clear: () => {
+  
+  clear: (): void => {
     try {
-      console.log('Limpando dados do armazenamento local...');
       localStorage.removeItem(STORAGE_KEY);
-      console.log('Dados do armazenamento local limpos com sucesso');
-      return true;
+      console.log('Armazenamento local limpo');
     } catch (error) {
-      console.error('Erro ao limpar dados do armazenamento local:', error);
-      return false;
+      console.error('Erro ao limpar armazenamento local:', error);
     }
   },
   
-  // Função para obter dados do armazenamento local
-  getData: (): StorageItems => {
-    const data = storage.load();
-    if (!data) {
-      console.log('Nenhum dado encontrado, retornando estrutura vazia');
-      return {
-        expenses: {},
-        projects: [],
-        stock: [],
-        employees: {},
-        lastSync: Date.now()
-      };
-    }
-    return data;
-  },
-
-  // Função para salvar dados no armazenamento local
-  saveData: (items: StorageItems): boolean => {
-    return storage.save(items);
+  setupSyncListener: (callback: (data: StorageItems) => void): (() => void) => {
+    const handleStorageUpdate = (event: CustomEvent<StorageItems>) => {
+      console.log('Evento de atualização do armazenamento local recebido:', event.detail);
+      callback(event.detail);
+    };
+    
+    window.addEventListener('localStorageUpdated', handleStorageUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('localStorageUpdated', handleStorageUpdate as EventListener);
+    };
   }
 };
 
-// Função para obter dados do armazenamento local
 export const getData = (): StorageItems => {
-  return storage.getData();
+  const data = storage.load();
+  if (data) {
+    return data;
+  }
+  
+  // Dados padrão se não houver nada salvo
+  return {
+    expenses: {},
+    projects: [],
+    stock: [],
+    employees: {},
+    lastSync: new Date().getTime()
+  };
 };
 
 // Função para salvar dados no armazenamento local
 export const saveData = (items: StorageItems): boolean => {
-  return storage.saveData(items);
+  storage.save(items);
+  return true;
 }; 

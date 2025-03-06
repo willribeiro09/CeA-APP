@@ -12,7 +12,7 @@ import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
 import { syncService, loadInitialData, saveData } from './lib/sync';
-import { isSupabaseConfigured } from './lib/supabase';
+import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
 import { format } from 'date-fns';
@@ -54,47 +54,41 @@ export default function App() {
 
   useEffect(() => {
     const initializeData = async () => {
-      if (isSupabaseConfigured()) {
-        const supabaseData = await loadInitialData();
+      console.log('Inicializando dados...');
+      
+      // Carregar dados iniciais
+      const localData = await loadInitialData();
 
-        if (supabaseData) {
-          setExpenses(supabaseData.expenses || {});
-          setProjects(supabaseData.projects || []);
-          setStockItems(supabaseData.stock || []);
-          setEmployees(supabaseData.employees || {});
-        }
-
-        // Configurar sincronização em tempo real
-        const cleanup = syncService.setupRealtimeUpdates((data) => {
-          if (data) {
-            setExpenses(data.expenses || {});
-            setProjects(data.projects || []);
-            setStockItems(data.stock || []);
-            setEmployees(data.employees || {});
-          }
-        });
-
-        return () => {
-          if (typeof cleanup === 'function') {
-            cleanup();
-          }
-        };
+      if (localData) {
+        console.log('Dados carregados do armazenamento local');
+        setExpenses(localData.expenses || {});
+        setProjects(localData.projects || []);
+        setStockItems(localData.stock || []);
+        setEmployees(localData.employees || {});
       } else {
-        // Carregar dados do armazenamento local
-        const localData = storage.load();
-        if (localData) {
-          setExpenses(localData.expenses || {});
-          setProjects(localData.projects || []);
-          setStockItems(localData.stock || []);
-          setEmployees(localData.employees || {});
-        }
+        console.log('Nenhum dado encontrado no armazenamento local');
       }
+
+      // Configurar sincronização em tempo real
+      syncService.init();
+      const cleanup = syncService.setupRealtimeUpdates((data) => {
+        console.log('Recebida atualização em tempo real:', data);
+        if (data) {
+          setExpenses(data.expenses || {});
+          setProjects(data.projects || []);
+          setStockItems(data.stock || []);
+          setEmployees(data.employees || {});
+        }
+      });
+
+      return () => {
+        if (typeof cleanup === 'function') {
+          cleanup();
+        }
+      };
     };
 
     initializeData();
-
-    // Inicializar o serviço de sincronização
-    syncService.init();
   }, []);
 
   // Função para salvar alterações
@@ -102,23 +96,10 @@ export default function App() {
     console.log('Salvando alterações...', JSON.stringify(newData));
     setIsSaving(true);
     try {
-      // Garantir que estamos salvando no Supabase
-      if (isSupabaseConfigured()) {
-        console.log('Supabase configurado, salvando dados remotamente...');
-        const success = await syncService.sync(newData);
-        if (success) {
-          console.log('Dados salvos com sucesso no Supabase');
-          setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
-        } else {
-          console.error('Falha ao salvar dados no Supabase');
-          setShowFeedback({ show: true, message: 'Erro ao salvar dados!', type: 'error' });
-        }
-      } else {
-        console.log('Supabase não configurado, salvando apenas localmente');
-        // Salvar localmente
-        saveData(newData);
-        setShowFeedback({ show: true, message: 'Dados salvos localmente!', type: 'success' });
-      }
+      // Salvar dados
+      await saveData(newData);
+      console.log('Dados salvos com sucesso');
+      setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
       setShowFeedback({ show: true, message: 'Erro ao salvar dados!', type: 'error' });
@@ -548,28 +529,24 @@ export default function App() {
     setSelectedList(value);
     setIsDropdownOpen(false);
     
-    const storageData = storage.getData();
+    const storageData = getData();
     storageData.expenses = expenses;
     storageData.projects = projects;
     storageData.stock = stockItems;
     storageData.employees = employees;
-    storageData.lastSync = Date.now();
     
-    // Usar saveChanges para salvar os dados
     saveChanges(storageData);
   };
 
   const handleEmployeeSelect = (value: EmployeeName) => {
     setSelectedEmployee(value);
     
-    const storageData = storage.getData();
+    const storageData = getData();
     storageData.expenses = expenses;
     storageData.projects = projects;
     storageData.stock = stockItems;
     storageData.employees = employees;
-    storageData.lastSync = Date.now();
     
-    // Usar saveChanges para salvar os dados
     saveChanges(storageData);
   };
 
@@ -749,9 +726,9 @@ export default function App() {
                     className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
-              </div>
-            </div>
-          )}
+          </div>
+        </div>
+      )}
       
       <main className="px-4 pb-20">
             <div className="space-y-2 max-w-[800px] mx-auto relative z-0">
