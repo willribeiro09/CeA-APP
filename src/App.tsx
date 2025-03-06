@@ -271,10 +271,11 @@ export default function App() {
     } else if (activeCategory === 'Employees') {
       const employee = data as Employee;
       employee.id = id;
-
-      // Formatar a data da semana
+      
+      // Formatar a data da semana como string no formato yyyy-MM-dd
       const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
       employee.weekStartDate = weekStartDate;
+      employee.daysWorked = 0; // Iniciar com zero dias trabalhados
 
       console.log("Adicionando funcionário com data da semana:", weekStartDate);
 
@@ -282,6 +283,7 @@ export default function App() {
       setEmployees(prevEmployees => {
         console.log("Estado atual de employees:", JSON.stringify(prevEmployees));
         
+        // Criar uma cópia do objeto
         const newEmployees = { ...prevEmployees };
         
         // Garantir que a chave da semana existe
@@ -290,7 +292,7 @@ export default function App() {
           newEmployees[weekStartDate] = [];
         }
 
-        // Adicionar o novo funcionário
+        // Adicionar o novo funcionário à semana atual
         newEmployees[weekStartDate] = [...(newEmployees[weekStartDate] || []), employee];
         
         console.log(`Funcionário adicionado à semana ${weekStartDate}:`, JSON.stringify(employee));
@@ -347,83 +349,99 @@ export default function App() {
     saveChanges(storageData);
   };
 
-  const handleAddDay = (employeeId: string, employeeName: string) => {
+  const handleAddDay = (employeeId: string, weekStartDate: string) => {
+    console.log(`Adicionando dia para funcionário ${employeeId} na semana ${weekStartDate}`);
+    
     setEmployees(prevEmployees => {
       const newEmployees = { ...prevEmployees };
-      let employeeFound = false;
-      let updatedEmployee = null;
       
-      for (const [weekStartDate, weekEmployees] of Object.entries(newEmployees)) {
-        const employeeIndex = weekEmployees.findIndex(e => e.id === employeeId);
-        
-        if (employeeIndex !== -1) {
-          updatedEmployee = { ...weekEmployees[employeeIndex] };
-          updatedEmployee.daysWorked += 1;
-          
-          const updatedWeekEmployees = [...weekEmployees];
-          updatedWeekEmployees[employeeIndex] = updatedEmployee;
-          newEmployees[weekStartDate] = updatedWeekEmployees;
-          
-          employeeFound = true;
-          break;
-        }
-      }
-      
-      if (!employeeFound) {
-        console.error(`Funcionário com ID ${employeeId} não encontrado`);
+      // Verificar se a semana existe
+      if (!newEmployees[weekStartDate]) {
+        console.error(`Semana ${weekStartDate} não encontrada`);
         return prevEmployees;
       }
       
-      const storageData = storage.getData();
-      storageData.employees = newEmployees;
-      storageData.lastSync = Date.now();
+      // Encontrar o funcionário na semana
+      const employeeIndex = newEmployees[weekStartDate].findIndex(e => e.id === employeeId);
       
-      if (isSupabaseConfigured()) {
-        saveData(storageData);
-      } else {
-        storage.saveData(storageData);
+      if (employeeIndex === -1) {
+        console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${weekStartDate}`);
+        return prevEmployees;
       }
+      
+      // Atualizar os dias trabalhados
+      const updatedEmployee = { ...newEmployees[weekStartDate][employeeIndex] };
+      updatedEmployee.daysWorked += 1;
+      
+      // Atualizar a lista de funcionários
+      newEmployees[weekStartDate] = [
+        ...newEmployees[weekStartDate].slice(0, employeeIndex),
+        updatedEmployee,
+        ...newEmployees[weekStartDate].slice(employeeIndex + 1)
+      ];
+      
+      console.log(`Funcionário ${updatedEmployee.name} atualizado: ${updatedEmployee.daysWorked} dias trabalhados`);
+      
+      // Salvar as alterações
+      const storageData: StorageItems = {
+        expenses,
+        projects,
+        stock: stockItems,
+        employees: newEmployees,
+        lastSync: Date.now()
+      };
+      
+      // Salvar no Supabase e localmente
+      saveChanges(storageData);
       
       return newEmployees;
     });
   };
 
-  const handleResetEmployee = (employeeId: string, employeeName: string) => {
+  const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
+    console.log(`Resetando dias para funcionário ${employeeId} na semana ${weekStartDate}`);
+    
     setEmployees(prevEmployees => {
       const newEmployees = { ...prevEmployees };
-      let employeeFound = false;
-      let updatedEmployee = null;
       
-      for (const [weekStartDate, weekEmployees] of Object.entries(newEmployees)) {
-        const employeeIndex = weekEmployees.findIndex(e => e.id === employeeId);
-        
-        if (employeeIndex !== -1) {
-          updatedEmployee = { ...weekEmployees[employeeIndex] };
-          updatedEmployee.daysWorked = 0;
-          
-          const updatedWeekEmployees = [...weekEmployees];
-          updatedWeekEmployees[employeeIndex] = updatedEmployee;
-          newEmployees[weekStartDate] = updatedWeekEmployees;
-          
-          employeeFound = true;
-          break;
-        }
-      }
-      
-      if (!employeeFound) {
-        console.error(`Funcionário com ID ${employeeId} não encontrado`);
+      // Verificar se a semana existe
+      if (!newEmployees[weekStartDate]) {
+        console.error(`Semana ${weekStartDate} não encontrada`);
         return prevEmployees;
       }
       
-      const storageData = storage.getData();
-      storageData.employees = newEmployees;
-      storageData.lastSync = Date.now();
+      // Encontrar o funcionário na semana
+      const employeeIndex = newEmployees[weekStartDate].findIndex(e => e.id === employeeId);
       
-      if (isSupabaseConfigured()) {
-        saveData(storageData);
-      } else {
-        storage.saveData(storageData);
+      if (employeeIndex === -1) {
+        console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${weekStartDate}`);
+        return prevEmployees;
       }
+      
+      // Resetar os dias trabalhados
+      const updatedEmployee = { ...newEmployees[weekStartDate][employeeIndex] };
+      updatedEmployee.daysWorked = 0;
+      
+      // Atualizar a lista de funcionários
+      newEmployees[weekStartDate] = [
+        ...newEmployees[weekStartDate].slice(0, employeeIndex),
+        updatedEmployee,
+        ...newEmployees[weekStartDate].slice(employeeIndex + 1)
+      ];
+      
+      console.log(`Funcionário ${updatedEmployee.name} resetado: ${updatedEmployee.daysWorked} dias trabalhados`);
+      
+      // Salvar as alterações
+      const storageData: StorageItems = {
+        expenses,
+        projects,
+        stock: stockItems,
+        employees: newEmployees,
+        lastSync: Date.now()
+      };
+      
+      // Salvar no Supabase e localmente
+      saveChanges(storageData);
       
       return newEmployees;
     });
@@ -550,44 +568,36 @@ export default function App() {
             ))}
             {activeCategory === 'Employees' && (
               <>
-                {/* Debug: Mostrar todas as chaves de funcionários */}
-                <div className="bg-gray-100 p-2 mb-4 rounded text-xs">
-                  <p>Debug - Chaves de funcionários: {Object.keys(employees).join(', ')}</p>
-                  <p>Data da semana selecionada: {format(selectedWeekStart, 'yyyy-MM-dd')}</p>
-                </div>
-                
-                {Object.entries(employees).map(([weekKey, employeeList]) => {
-                  console.log(`Renderizando funcionários da semana ${weekKey}, total: ${employeeList.length}`);
+                {(() => {
+                  // Formatar a data da semana selecionada para comparação
+                  const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+                  console.log(`Buscando funcionários para a semana: ${formattedSelectedWeekStart}`);
                   
-                  // Filtrar funcionários pela semana selecionada
-                  const filteredEmployees = employeeList.filter(employee => {
-                    const employeeWeekStart = new Date(employee.weekStartDate);
-                    const selectedWeekStartDate = new Date(selectedWeekStart);
-                    
-                    const isSameWeek = 
-                      employeeWeekStart.getFullYear() === selectedWeekStartDate.getFullYear() &&
-                      employeeWeekStart.getMonth() === selectedWeekStartDate.getMonth() &&
-                      employeeWeekStart.getDate() === selectedWeekStartDate.getDate();
-                    
-                    console.log(`Funcionário ${employee.name}, semana ${employee.weekStartDate}, mesma semana: ${isSameWeek}`);
-                    return isSameWeek;
-                  });
+                  // Obter a lista de funcionários para a semana selecionada
+                  const weekEmployees = employees[formattedSelectedWeekStart] || [];
+                  console.log(`Encontrados ${weekEmployees.length} funcionários para a semana ${formattedSelectedWeekStart}`);
                   
-                  console.log(`Funcionários filtrados: ${filteredEmployees.length}`);
+                  if (weekEmployees.length === 0) {
+                    return (
+                      <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+                        <p className="text-gray-500">Nenhum funcionário registrado para esta semana.</p>
+                      </div>
+                    );
+                  }
                   
-                  return filteredEmployees.map(employee => (
-                    <div key={employee.id} className="bg-white p-2.5 rounded-lg shadow-sm">
+                  return weekEmployees.map(employee => (
+                    <div key={employee.id} className="bg-white p-2.5 rounded-lg shadow-sm mb-2">
                       <div className="flex items-center justify-between mb-1.5">
                         <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
                         <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => handleAddDay(employee.id, weekKey)}
+                            onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
                             className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center"
                           >
                             +1 Day
                           </button>
                           <button
-                            onClick={() => handleResetEmployee(employee.id, weekKey)}
+                            onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
                             className="px-2.5 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors"
                           >
                             Reset
@@ -596,11 +606,11 @@ export default function App() {
                       </div>
                       <div className="space-y-0.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-gray-700 text-sm">Days Worked:</span>
+                          <span className="text-gray-700 text-sm">Dias Trabalhados:</span>
                           <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-gray-700 text-sm">Amount to Receive:</span>
+                          <span className="text-gray-700 text-sm">Valor a Receber:</span>
                           <span className="text-xl font-bold text-[#5ABB37]">
                             $ {(employee.daysWorked * 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </span>
@@ -608,7 +618,7 @@ export default function App() {
                       </div>
                     </div>
                   ));
-                })}
+                })()}
               </>
             )}
           </div>

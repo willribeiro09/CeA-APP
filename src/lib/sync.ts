@@ -283,6 +283,18 @@ export const syncService = {
 
     console.log('Sincronizando dados...');
     
+    // Verificar se há funcionários antes de salvar
+    if (data.employees) {
+      console.log('Funcionários sendo sincronizados:', JSON.stringify(data.employees));
+      
+      // Verificar se há funcionários específicos
+      const allEmployees = Object.values(data.employees).flat();
+      console.log(`Total de funcionários: ${allEmployees.length}`);
+      
+      // Verificar as chaves de semanas
+      console.log(`Semanas com funcionários: ${Object.keys(data.employees).join(', ')}`);
+    }
+    
     // Salvar no Supabase
     const success = await saveData(data);
     
@@ -299,6 +311,7 @@ export const syncService = {
           data,
           timestamp: Date.now()
         });
+        console.log('Mensagem enviada via BroadcastChannel');
         setTimeout(() => broadcastChannel.close(), 1000); // Fechar após 1 segundo
       } catch (error) {
         console.error('Erro ao transmitir via BroadcastChannel:', error);
