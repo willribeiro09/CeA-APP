@@ -65,6 +65,14 @@ export default function App() {
         setProjects(localData.projects || []);
         setStockItems(localData.stock || []);
         setEmployees(localData.employees || {});
+        
+        // Carregar dados do Will se existirem
+        if (localData.willBaseRate !== undefined) {
+          setWillBaseRate(localData.willBaseRate);
+        }
+        if (localData.willBonus !== undefined) {
+          setWillBonus(localData.willBonus);
+        }
       } else {
         console.log('Nenhum dado encontrado no armazenamento local');
       }
@@ -78,6 +86,14 @@ export default function App() {
           setProjects(data.projects || []);
           setStockItems(data.stock || []);
           setEmployees(data.employees || {});
+          
+          // Atualizar dados do Will se existirem
+          if (data.willBaseRate !== undefined) {
+            setWillBaseRate(data.willBaseRate);
+          }
+          if (data.willBonus !== undefined) {
+            setWillBonus(data.willBonus);
+          }
         }
       });
 
@@ -653,6 +669,51 @@ export default function App() {
     setWillBonus(0);
   };
 
+  // Adicionar função para salvar os dados do Will
+  const handleSaveWillData = () => {
+    const storageData = getData();
+    // Adicionar os dados do Will ao objeto de armazenamento
+    storageData.willBaseRate = willBaseRate;
+    storageData.willBonus = willBonus;
+    
+    // Salvar todas as alterações
+    saveChanges(storageData);
+  };
+
+  // Modificar a função que adiciona bônus ao Will
+  const handleAddBonus = () => {
+    setWillBonus(prev => {
+      const newBonus = prev + 100;
+      // Salvar dados após atualizar o bônus
+      setTimeout(() => {
+        const storageData = getData();
+        storageData.willBaseRate = willBaseRate;
+        storageData.willBonus = newBonus;
+        saveChanges(storageData);
+      }, 0);
+      return newBonus;
+    });
+  };
+
+  // Modificar a função que altera o salário base do Will
+  const handleWillRateChange = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const newBaseRate = parseFloat(formData.get('baseRate') as string) || 200;
+    
+    setWillBaseRate(newBaseRate);
+    setIsRateDialogOpen(false);
+    
+    // Salvar dados após atualizar o salário base
+    setTimeout(() => {
+      const storageData = getData();
+      storageData.willBaseRate = newBaseRate;
+      storageData.willBonus = willBonus;
+      saveChanges(storageData);
+    }, 0);
+  };
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
@@ -819,8 +880,8 @@ export default function App() {
                                 Increase
                               </button>
                               <button
-                                onClick={() => setWillBonus(prev => prev + 100)}
                                 className="px-2.5 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 transition-colors h-8"
+                                onClick={handleAddBonus}
                               >
                                 BONUS
                               </button>
@@ -916,17 +977,7 @@ export default function App() {
                         </div>
                         
                         <form 
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            const formData = new FormData(e.target as HTMLFormElement);
-                            const newBaseRate = parseFloat(formData.get('baseRate') as string);
-                            if (!isNaN(newBaseRate) && newBaseRate >= 200) {
-                              setWillBaseRate(newBaseRate);
-                              setIsRateDialogOpen(false);
-                            } else {
-                              alert('Por favor, insira um valor maior ou igual a $200');
-                            }
-                          }} 
+                          onSubmit={handleWillRateChange} 
                           className="space-y-4"
                         >
                           <div>

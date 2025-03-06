@@ -56,6 +56,8 @@ export interface StorageItems {
   stock: StockItem[];
   employees: Record<string, Employee[]>;
   lastSync: number | string;
+  willBaseRate?: number;
+  willBonus?: number;
 }
 
 export type SyncData = StorageItems;
