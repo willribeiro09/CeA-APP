@@ -92,10 +92,10 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-lg font-semibold">
-              {category === 'Expenses' ? 'Nova Despesa' : 
-               category === 'Projects' ? 'Novo Projeto' : 
-               category === 'Stock' ? 'Novo Item de Estoque' :
-               'Novo Registro de Trabalho'}
+              {category === 'Expenses' ? 'New Expense' : 
+               category === 'Projects' ? 'New Project' : 
+               category === 'Stock' ? 'New Inventory Item' :
+               'New Employee'}
             </Dialog.Title>
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
@@ -113,7 +113,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
               <>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Descrição
+                    Description
                   </label>
                   <input
                     type="text"
@@ -125,7 +125,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                 </div>
                 <div>
                   <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-                    Valor
+                    Amount
                   </label>
                   <input
                     type="number"
@@ -138,7 +138,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                 </div>
                 <div>
                   <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700">
-                    Data de Vencimento
+                    Due Date
                   </label>
                   <input
                     type="date"
@@ -155,7 +155,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
               <>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome do Projeto
+                    Project Name
                   </label>
                   <input
                     type="text"
@@ -167,7 +167,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                 </div>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Descrição
+                    Description
                   </label>
                   <textarea
                     id="description"
@@ -178,7 +178,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                 </div>
                 <div>
                   <label htmlFor="client" className="block text-sm font-medium text-gray-700">
-                    Cliente
+                    Client
                   </label>
                   <input
                     type="text"
@@ -190,7 +190,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                 </div>
                 <div>
                   <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
-                    Data de Início
+                    Start Date
                   </label>
                   <input
                     type="date"
@@ -207,7 +207,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
               <>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome do Item
+                    Item Name
                   </label>
                   <input
                     type="text"
@@ -219,7 +219,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                 </div>
                 <div>
                   <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                    Quantidade
+                    Quantity
                   </label>
                   <input
                     type="number"
@@ -231,7 +231,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                 </div>
                 <div>
                   <label htmlFor="unit" className="block text-sm font-medium text-gray-700">
-                    Unidade
+                    Unit
                   </label>
                   <input
                     type="text"
@@ -248,7 +248,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
               <>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome do Funcionário
+                    Employee Name
                   </label>
                   <input
                     type="text"
@@ -260,7 +260,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                 </div>
                 <div>
                   <label htmlFor="dailyRate" className="block text-sm font-medium text-gray-700">
-                    Valor por Dia (R$)
+                    Daily Rate ($)
                   </label>
                   <input
                     type="number"
@@ -284,13 +284,13 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
             
             <div className="flex justify-end gap-3 mt-6">
               <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
-                Cancelar
+                Cancel
               </Dialog.Close>
               <button
                 type="submit"
                 className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
               >
-                Adicionar
+                Add
               </button>
             </div>
           </form>

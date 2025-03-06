@@ -120,10 +120,10 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-lg font-semibold">
-              {itemCategory === 'Expenses' ? 'Editar Despesa' : 
-               itemCategory === 'Projects' ? 'Editar Projeto' : 
-               itemCategory === 'Stock' ? 'Editar Item de Estoque' :
-               'Editar Funcionário'}
+              {itemCategory === 'Expenses' ? 'Edit Expense' : 
+               itemCategory === 'Projects' ? 'Edit Project' : 
+               itemCategory === 'Stock' ? 'Edit Inventory Item' :
+               'Edit Employee'}
             </Dialog.Title>
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
@@ -141,7 +141,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
               <>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Descrição
+                    Description
                   </label>
                   <input
                     type="text"
@@ -154,7 +154,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-                    Valor
+                    Amount
                   </label>
                   <input
                     type="number"
@@ -168,7 +168,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700">
-                    Data de Vencimento
+                    Due Date
                   </label>
                   <input
                     type="date"
@@ -186,7 +186,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
               <>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome do Projeto
+                    Project Name
                   </label>
                   <input
                     type="text"
@@ -199,7 +199,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Descrição
+                    Description
                   </label>
                   <textarea
                     id="description"
@@ -211,7 +211,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="client" className="block text-sm font-medium text-gray-700">
-                    Cliente
+                    Client
                   </label>
                   <input
                     type="text"
@@ -224,7 +224,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
-                    Data de Início
+                    Start Date
                   </label>
                   <input
                     type="date"
@@ -246,9 +246,9 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   >
-                    <option value="pending">Pendente</option>
-                    <option value="in_progress">Em Progresso</option>
-                    <option value="completed">Concluído</option>
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
                   </select>
                 </div>
               </>
@@ -258,7 +258,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
               <>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome do Item
+                    Item Name
                   </label>
                   <input
                     type="text"
@@ -271,7 +271,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                    Quantidade
+                    Quantity
                   </label>
                   <input
                     type="number"
@@ -284,7 +284,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="unit" className="block text-sm font-medium text-gray-700">
-                    Unidade
+                    Unit
                   </label>
                   <input
                     type="text"
@@ -302,7 +302,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
               <>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome do Funcionário
+                    Employee Name
                   </label>
                   <input
                     type="text"
@@ -315,7 +315,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="dailyRate" className="block text-sm font-medium text-gray-700">
-                    Valor por Dia (R$)
+                    Daily Rate ($)
                   </label>
                   <input
                     type="number"
@@ -333,13 +333,13 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
             
             <div className="flex justify-end gap-3 mt-6">
               <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
-                Cancelar
+                Cancel
               </Dialog.Close>
               <button
                 type="submit"
                 className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
               >
-                Salvar
+                Save
               </button>
             </div>
           </form>

@@ -34,7 +34,7 @@ export function Navigation({ activeCategory, onCategoryChange }: NavigationProps
           }`}
         >
           <Package2 className="w-5 h-5 text-white" />
-          <span className="text-white text-sm">Stock</span>
+          <span className="text-white text-sm">Inventory</span>
         </button>
         <button
           onClick={() => onCategoryChange('Employees')}

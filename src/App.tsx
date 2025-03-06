@@ -889,18 +889,18 @@ export default function App() {
                           </div>
                           <div className="space-y-0.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-gray-700 text-sm">Dias Trabalhados:</span>
+                              <span className="text-gray-700 text-sm">Days Worked:</span>
                               <span className="text-xl font-bold text-gray-900">7</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-gray-700 text-sm">Valor a Receber:</span>
+                              <span className="text-gray-700 text-sm">Amount to Receive:</span>
                               <span className="text-xl font-bold text-[#5ABB37]">
                                 $ {(willBaseRate + willBonus).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                               </span>
                             </div>
                             {willBonus > 0 && (
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Bônus:</span>
+                                <span className="text-gray-700 text-sm">Bonus:</span>
                                 <span className="text-sm font-semibold text-blue-500">
                                   $ {willBonus.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                 </span>
@@ -939,17 +939,17 @@ export default function App() {
                             </div>
                             <div className="space-y-0.5">
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Dias Trabalhados:</span>
+                                <span className="text-gray-700 text-sm">Days Worked:</span>
                                 <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Valor a Receber:</span>
+                                <span className="text-gray-700 text-sm">Amount to Receive:</span>
                                 <span className="text-xl font-bold text-[#5ABB37]">
                                   $ {((employee.daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Valor por Dia:</span>
+                                <span className="text-gray-700 text-sm">Daily Rate:</span>
                                 <span className="text-sm text-gray-600">
                                   $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                 </span>
@@ -969,7 +969,7 @@ export default function App() {
                       <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
                         <div className="flex justify-between items-center mb-4">
                           <Dialog.Title className="text-lg font-semibold">
-                            Ajustar Valor Base
+                            Adjust Base Rate
                           </Dialog.Title>
                           <Dialog.Close className="text-gray-400 hover:text-gray-600">
                             <X className="w-5 h-5" />
@@ -982,7 +982,7 @@ export default function App() {
                         >
                           <div>
                             <label htmlFor="baseRate" className="block text-sm font-medium text-gray-700">
-                              Novo Valor Base (mínimo $200)
+                              New Base Rate (minimum $200)
                             </label>
                             <input
                               type="number"
@@ -998,13 +998,13 @@ export default function App() {
                           
                           <div className="flex justify-end gap-3 mt-6">
                             <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
-                              Cancelar
+                              Cancel
                             </Dialog.Close>
                             <button
                               type="submit"
                               className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
                             >
-                              Confirmar
+                              Confirm
                             </button>
                           </div>
                         </form>
