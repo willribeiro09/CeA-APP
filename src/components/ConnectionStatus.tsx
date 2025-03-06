@@ -35,7 +35,7 @@ export function ConnectionStatus() {
   }, []);
 
   return (
-    <div className="fixed top-0 right-0 m-4 flex items-center space-x-2">
+    <div className="fixed top-0 right-0 m-4 flex items-center space-x-2 z-50">
       <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
       <span className="text-sm text-gray-600">
         {isOnline ? 'Online' : 'Offline'}

@@ -66,7 +66,7 @@ export function SwipeableItem({ children, onDelete, onEdit }: SwipeableItemProps
   return (
     <div 
       ref={itemRef}
-      className="relative overflow-hidden touch-none"
+      className="relative overflow-hidden touch-none mb-2"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -75,28 +75,30 @@ export function SwipeableItem({ children, onDelete, onEdit }: SwipeableItemProps
       onMouseUp={handleTouchEnd}
       onMouseLeave={handleTouchEnd}
     >
-      {/* Conteúdo principal que será deslizado */}
-      <div 
-        className="relative z-10 bg-white transition-transform duration-300"
-        style={{ transform: `translateX(-${translateX}px)` }}
-      >
-        {children}
-      </div>
-      
-      {/* Ações que aparecem ao deslizar */}
-      <div className="absolute top-0 right-0 bottom-0 flex items-center justify-end h-full">
+      {/* Ações que aparecem ao deslizar - posicionadas atrás do conteúdo principal */}
+      <div className="absolute top-0 right-0 bottom-0 flex items-stretch justify-end h-full">
         <button 
           onClick={onEdit}
-          className="h-full px-4 bg-blue-500 flex items-center justify-center text-white"
+          className="w-[60px] h-full bg-blue-500 flex items-center justify-center text-white rounded-l-md mr-0.5"
+          style={{ height: '100%' }}
         >
           <Edit size={20} />
         </button>
         <button 
           onClick={onDelete}
-          className="h-full px-4 bg-red-500 flex items-center justify-center text-white"
+          className="w-[60px] h-full bg-red-500 flex items-center justify-center text-white rounded-r-md"
+          style={{ height: '100%' }}
         >
           <Trash2 size={20} />
         </button>
+      </div>
+      
+      {/* Conteúdo principal que será deslizado - posicionado acima das ações */}
+      <div 
+        className="relative bg-white transition-transform duration-300 rounded-lg overflow-hidden"
+        style={{ transform: `translateX(-${translateX}px)` }}
+      >
+        {children}
       </div>
     </div>
   );

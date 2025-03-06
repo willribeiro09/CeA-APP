@@ -549,64 +549,64 @@ export default function App() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
-        <Header activeCategory={activeCategory} />
-        <Navigation
-          activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
-        />
-        
+    <div className="min-h-screen bg-gray-50">
+      <Header activeCategory={activeCategory} />
+      <Navigation
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+      />
+      
         {(activeCategory === 'Expenses') && (
-          <div className="fixed top-[170px] left-0 right-0 px-4 z-10 bg-gray-50">
+          <div className="fixed top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
             <div className="relative max-w-[800px] mx-auto pb-4">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
-              >
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
+            >
                 <span className="text-gray-700 font-medium">
                   {selectedList}
                 </span>
-                <ChevronDown
-                  className={`w-5 h-5 text-gray-500 transition-transform ${
-                    isDropdownOpen ? 'transform rotate-180' : ''
+              <ChevronDown
+                className={`w-5 h-5 text-gray-500 transition-transform ${
+                  isDropdownOpen ? 'transform rotate-180' : ''
+                }`}
+              />
+            </button>
+            
+            {isDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-35">
+                <button
+                  onClick={() => handleListSelect('Carlos')}
+                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
                   }`}
-                />
-              </button>
-              
-              {isDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                  <button
-                    onClick={() => handleListSelect('Carlos')}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                    }`}
-                  >
-                    Carlos
-                  </button>
-                  <button
-                    onClick={() => handleListSelect('Diego')}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                    }`}
-                  >
-                    Diego
-                  </button>
-                  <button
-                    onClick={() => handleListSelect('C&A')}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                    }`}
-                  >
-                    C&A
-                  </button>
-                </div>
-              )}
-            </div>
+                >
+                  Carlos
+                </button>
+                <button
+                  onClick={() => handleListSelect('Diego')}
+                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                  }`}
+                >
+                  Diego
+                </button>
+                <button
+                  onClick={() => handleListSelect('C&A')}
+                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                  }`}
+                >
+                  C&A
+                </button>
+              </div>
+            )}
           </div>
-        )}
-
+        </div>
+      )}
+      
         {(activeCategory === 'Employees') && (
-          <div className="fixed top-[170px] left-0 right-0 px-4 z-10 bg-gray-50">
+          <div className="fixed top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
             <div className="relative max-w-[800px] mx-auto pb-4">
               <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
                 <span className="text-gray-700 font-medium">
@@ -628,16 +628,16 @@ export default function App() {
             ? 'mt-[170px]'
             : 'mt-[234px]'
         }`}>
-          <div className="space-y-2 max-w-[800px] mx-auto">
+          <div className="space-y-0 max-w-[800px] mx-auto relative z-0">
             {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-              <ExpenseItem
-                key={expense.id}
-                expense={expense}
-                onTogglePaid={handleTogglePaid}
+            <ExpenseItem
+              key={expense.id}
+              expense={expense}
+              onTogglePaid={handleTogglePaid}
                 onDelete={(id) => handleDeleteItem(id, 'Expenses')}
                 onEdit={(expense) => handleEditItem(expense)}
-              />
-            ))}
+            />
+          ))}
             {activeCategory === 'Projects' && projects.map(project => (
               <SwipeableItem 
                 key={project.id}
@@ -705,19 +705,19 @@ export default function App() {
                       onDelete={() => handleDeleteItem(employee.id, 'Employees')}
                       onEdit={() => handleEditItem(employee)}
                     >
-                      <div className="bg-white p-2.5 rounded-lg shadow-sm mb-2">
+                      <div className="bg-white p-2.5 rounded-lg shadow-sm">
                         <div className="flex items-center justify-between mb-1.5">
                           <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
-                              className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center"
+                              className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
                             >
                               +1 Day
                             </button>
                             <button
                               onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
-                              className="px-2.5 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors"
+                              className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
                             >
                               Reset
                             </button>
@@ -741,21 +741,21 @@ export default function App() {
                 })()}
               </>
             )}
-          </div>
-        </main>
+        </div>
+      </main>
 
-        <AddButton onClick={() => setIsAddDialogOpen(true)} />
-        
-        <AddItemDialog
-          isOpen={isAddDialogOpen}
-          onOpenChange={setIsAddDialogOpen}
-          category={activeCategory}
-          onSubmit={handleAddItem}
+      <AddButton onClick={() => setIsAddDialogOpen(true)} />
+
+      <AddItemDialog
+        isOpen={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        category={activeCategory}
+        onSubmit={handleAddItem}
           selectedWeekStart={selectedWeekStart}
-        />
+      />
 
         {isSupabaseConfigured() && <ConnectionStatus />}
-      </div>
+    </div>
     </>
   );
 }
