@@ -20,15 +20,21 @@ export function SwipeableItem({
 }: SwipeableItemProps) {
   const [translateX, setTranslateX] = useState(0);
   const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [direction, setDirection] = useState<'none' | 'horizontal' | 'vertical'>('none');
   const itemRef = useRef<HTMLDivElement>(null);
   
   const THRESHOLD = 80;
   const MAX_SWIPE = 180;
+  const DIRECTION_THRESHOLD = 10; // Distância em pixels para determinar a direção do gesto
   
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     setStartX(clientX);
+    setStartY(clientY);
+    setDirection('none');
     setIsDragging(true);
   };
   
@@ -36,13 +42,44 @@ export function SwipeableItem({
     if (!isDragging) return;
     
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const diff = startX - clientX;
-    const newTranslateX = Math.max(0, Math.min(diff, MAX_SWIPE));
-    setTranslateX(newTranslateX);
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const diffX = startX - clientX;
+    const diffY = startY - clientY;
+    
+    // Determinar a direção do movimento se ainda não foi determinada
+    if (direction === 'none') {
+      const absX = Math.abs(diffX);
+      const absY = Math.abs(diffY);
+      
+      // Se o movimento for principalmente horizontal e maior que o limite
+      if (absX > DIRECTION_THRESHOLD && absX > absY) {
+        setDirection('horizontal');
+      }
+      // Se o movimento for principalmente vertical e maior que o limite
+      else if (absY > DIRECTION_THRESHOLD && absY > absX) {
+        setDirection('vertical');
+      }
+    }
+    
+    // Se a direção for horizontal, permitir o deslize
+    if (direction === 'horizontal') {
+      // Só permitir swipe da direita para a esquerda (diffX positivo)
+      if (diffX > 0) {
+        const newTranslateX = Math.max(0, Math.min(diffX, MAX_SWIPE));
+        setTranslateX(newTranslateX);
+      }
+      
+      // Prevenir rolagem da página durante o swipe horizontal
+      if (e.cancelable && 'touches' in e) {
+        e.preventDefault();
+      }
+    }
   };
   
   const handleTouchEnd = () => {
     setIsDragging(false);
+    setDirection('none');
+    
     if (translateX > THRESHOLD) {
       setTranslateX(MAX_SWIPE);
     } else {
@@ -67,7 +104,7 @@ export function SwipeableItem({
     <div 
       ref={itemRef}
       className="relative mb-2"
-      style={{ overflow: 'hidden', touchAction: 'none' }}
+      style={{ overflow: 'hidden' }}
     >
       {/* Botões de ação */}
       <div 
