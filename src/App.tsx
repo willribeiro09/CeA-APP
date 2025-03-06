@@ -824,11 +824,12 @@ export default function App() {
                         showEditButton={true}
                         customEditButton={
                           <button
-                            className="px-2.5 py-1 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-colors h-8"
+                            className="h-full w-[90px] bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-colors flex items-center justify-center"
                           >
                             Lay off
                           </button>
                         }
+                        isWill={true}
                       >
                         <div className="bg-white p-2.5 rounded-lg shadow-sm">
                           <div className="flex items-center justify-between mb-1.5">

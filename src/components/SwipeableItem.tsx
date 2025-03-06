@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, ReactNode } from 'react';
-import { Edit, RotateCcw } from 'lucide-react';
+import { Edit, Trash2, RotateCcw } from 'lucide-react';
 
 export interface SwipeableItemProps {
   children: ReactNode;
@@ -7,9 +7,17 @@ export interface SwipeableItemProps {
   onEdit: () => void;
   showEditButton?: boolean;
   customEditButton?: ReactNode;
+  isWill?: boolean;
 }
 
-export function SwipeableItem({ children, onDelete, onEdit, showEditButton = true, customEditButton }: SwipeableItemProps) {
+export function SwipeableItem({ 
+  children, 
+  onDelete, 
+  onEdit, 
+  showEditButton = true, 
+  customEditButton,
+  isWill = false
+}: SwipeableItemProps) {
   const [translateX, setTranslateX] = useState(0);
   const [startX, setStartX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -66,19 +74,37 @@ export function SwipeableItem({ children, onDelete, onEdit, showEditButton = tru
         className="absolute top-0 right-0 h-full flex items-center gap-2 pr-3"
         style={{ zIndex: 1 }}
       >
-        <button
-          onClick={onDelete}
-          className="h-[calc(100%-8px)] w-[40px] bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors flex items-center justify-center"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </button>
-        {showEditButton && (
-          <button
-            onClick={onEdit}
-            className="h-[calc(100%-8px)] w-[90px] bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors flex items-center justify-center"
-          >
-            {customEditButton}
-          </button>
+        {isWill ? (
+          <>
+            <button
+              onClick={onDelete}
+              className="h-full w-[40px] bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors flex items-center justify-center"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            {customEditButton && (
+              <div onClick={onEdit} className="h-full">
+                {customEditButton}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <button
+              onClick={onDelete}
+              className="h-[calc(100%-8px)] w-[40px] bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors flex items-center justify-center"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            {showEditButton && (
+              <button
+                onClick={onEdit}
+                className="h-[calc(100%-8px)] w-[90px] bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center justify-center"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
+          </>
         )}
       </div>
 
