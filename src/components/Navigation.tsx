@@ -7,7 +7,7 @@ interface NavigationProps {
 
 export function Navigation({ activeCategory, onCategoryChange }: NavigationProps) {
   return (
-    <nav className="fixed top-[100px] left-0 right-0 bg-[#5ABB37] rounded-b-xl z-40">
+    <nav className="nav-fixed top-[100px] bg-[#5ABB37] rounded-b-xl z-40">
       <div className="flex justify-around divide-x divide-white/20">
         <button
           onClick={() => onCategoryChange('Expenses')}
