@@ -15,6 +15,7 @@ import { isSupabaseConfigured } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
 import { format } from 'date-fns';
+import { SwipeableItem } from './components/SwipeableItem';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -158,6 +159,105 @@ export default function App() {
         return newExpenses;
       });
     }
+  };
+
+  const handleDeleteItem = (id: string, category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
+    console.log(`Deletando item ${id} da categoria ${category}`);
+    
+    if (category === 'Expenses') {
+      setExpenses(prevExpenses => {
+        const newExpenses = { ...prevExpenses };
+        
+        // Procurar e remover a despesa em todas as listas
+        Object.keys(newExpenses).forEach(listName => {
+          newExpenses[listName as ListName] = newExpenses[listName as ListName].filter(
+            expense => expense.id !== id
+          );
+        });
+        
+        // Salvar as alterações
+        const storageData: StorageItems = {
+          expenses: newExpenses,
+          projects,
+          stock: stockItems,
+          employees,
+          lastSync: Date.now()
+        };
+        
+        // Salvar no Supabase e localmente
+        saveChanges(storageData);
+        
+        return newExpenses;
+      });
+    } else if (category === 'Projects') {
+      setProjects(prevProjects => {
+        const newProjects = prevProjects.filter(project => project.id !== id);
+        
+        // Salvar as alterações
+        const storageData: StorageItems = {
+          expenses,
+          projects: newProjects,
+          stock: stockItems,
+          employees,
+          lastSync: Date.now()
+        };
+        
+        // Salvar no Supabase e localmente
+        saveChanges(storageData);
+        
+        return newProjects;
+      });
+    } else if (category === 'Stock') {
+      setStockItems(prevStockItems => {
+        const newStockItems = prevStockItems.filter(item => item.id !== id);
+        
+        // Salvar as alterações
+        const storageData: StorageItems = {
+          expenses,
+          projects,
+          stock: newStockItems,
+          employees,
+          lastSync: Date.now()
+        };
+        
+        // Salvar no Supabase e localmente
+        saveChanges(storageData);
+        
+        return newStockItems;
+      });
+    } else if (category === 'Employees') {
+      setEmployees(prevEmployees => {
+        const newEmployees = { ...prevEmployees };
+        
+        // Procurar e remover o funcionário em todas as semanas
+        Object.keys(newEmployees).forEach(weekStartDate => {
+          newEmployees[weekStartDate] = newEmployees[weekStartDate].filter(
+            employee => employee.id !== id
+          );
+        });
+        
+        // Salvar as alterações
+        const storageData: StorageItems = {
+          expenses,
+          projects,
+          stock: stockItems,
+          employees: newEmployees,
+          lastSync: Date.now()
+        };
+        
+        // Salvar no Supabase e localmente
+        saveChanges(storageData);
+        
+        return newEmployees;
+      });
+    }
+  };
+
+  const handleEditItem = (item: Item) => {
+    console.log(`Editando item:`, item);
+    // A implementação completa da edição será feita posteriormente
+    // Por enquanto, apenas mostramos um alerta
+    alert(`Funcionalidade de edição será implementada em breve para o item: ${item.id}`);
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -534,37 +634,51 @@ export default function App() {
                 key={expense.id}
                 expense={expense}
                 onTogglePaid={handleTogglePaid}
+                onDelete={(id) => handleDeleteItem(id, 'Expenses')}
+                onEdit={(expense) => handleEditItem(expense)}
               />
             ))}
             {activeCategory === 'Projects' && projects.map(project => (
-              <div key={project.id} className="bg-white p-4 rounded-lg shadow-sm">
-                <h3 className="font-medium">{project.name}</h3>
-                <p className="text-gray-600 text-sm mt-1">{project.description}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-sm text-gray-500">
-                    Start: {new Date(project.startDate).toLocaleDateString('en-US')}
-                  </span>
-                  <span className={`text-sm px-2 py-0.5 rounded ${
-                    project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {project.status === 'completed' ? 'Completed' :
-                     project.status === 'in_progress' ? 'In Progress' :
-                     'Pending'}
-                  </span>
+              <SwipeableItem 
+                key={project.id}
+                onDelete={() => handleDeleteItem(project.id, 'Projects')}
+                onEdit={() => handleEditItem(project)}
+              >
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <h3 className="font-medium">{project.name}</h3>
+                  <p className="text-gray-600 text-sm mt-1">{project.description}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-sm text-gray-500">
+                      Start: {new Date(project.startDate).toLocaleDateString('en-US')}
+                    </span>
+                    <span className={`text-sm px-2 py-0.5 rounded ${
+                      project.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {project.status === 'completed' ? 'Completed' :
+                       project.status === 'in_progress' ? 'In Progress' :
+                       'Pending'}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </SwipeableItem>
             ))}
             {activeCategory === 'Stock' && stockItems.map(item => (
-              <div key={item.id} className="bg-white p-4 rounded-lg shadow-sm">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-medium">{item.name}</h3>
-                  <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                    {item.quantity} {item.unit}
-                  </span>
+              <SwipeableItem 
+                key={item.id}
+                onDelete={() => handleDeleteItem(item.id, 'Stock')}
+                onEdit={() => handleEditItem(item)}
+              >
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium">{item.name}</h3>
+                    <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                      {item.quantity} {item.unit}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </SwipeableItem>
             ))}
             {activeCategory === 'Employees' && (
               <>
@@ -586,37 +700,43 @@ export default function App() {
                   }
                   
                   return weekEmployees.map(employee => (
-                    <div key={employee.id} className="bg-white p-2.5 rounded-lg shadow-sm mb-2">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
-                            className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center"
-                          >
-                            +1 Day
-                          </button>
-                          <button
-                            onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
-                            className="px-2.5 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors"
-                          >
-                            Reset
-                          </button>
+                    <SwipeableItem 
+                      key={employee.id}
+                      onDelete={() => handleDeleteItem(employee.id, 'Employees')}
+                      onEdit={() => handleEditItem(employee)}
+                    >
+                      <div className="bg-white p-2.5 rounded-lg shadow-sm mb-2">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
+                              className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center"
+                            >
+                              +1 Day
+                            </button>
+                            <button
+                              onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
+                              className="px-2.5 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-700 text-sm">Dias Trabalhados:</span>
+                            <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-700 text-sm">Valor a Receber:</span>
+                            <span className="text-xl font-bold text-[#5ABB37]">
+                              $ {(employee.daysWorked * 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="space-y-0.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700 text-sm">Dias Trabalhados:</span>
-                          <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700 text-sm">Valor a Receber:</span>
-                          <span className="text-xl font-bold text-[#5ABB37]">
-                            $ {(employee.daysWorked * 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    </SwipeableItem>
                   ));
                 })()}
               </>

@@ -1,20 +1,35 @@
 import { format } from 'date-fns';
 import { Check } from 'lucide-react';
 import { Expense } from '../types';
+import { SwipeableItem } from './SwipeableItem';
 
 interface ExpenseItemProps {
   expense: Expense;
   onTogglePaid: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onEdit?: (expense: Expense) => void;
 }
 
-export function ExpenseItem({ expense, onTogglePaid }: ExpenseItemProps) {
+export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: ExpenseItemProps) {
   // Convertendo a string de data para objeto Date
   const dueDate = expense.date ? new Date(expense.date) : new Date();
   
   const isNearDue = !expense.paid &&
     Math.abs(new Date().getTime() - dueDate.getTime()) <= 3 * 24 * 60 * 60 * 1000;
 
-  return (
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(expense.id);
+    }
+  };
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(expense);
+    }
+  };
+
+  const expenseContent = (
     <div className={`flex items-center p-4 rounded-lg ${
       expense.paid ? 'bg-[#e8f5e9]' : isNearDue ? 'bg-[#fff3cd]' : 'bg-white'
     } border border-gray-100 transition-colors duration-300`}>
@@ -42,5 +57,11 @@ export function ExpenseItem({ expense, onTogglePaid }: ExpenseItemProps) {
         </span>
       </div>
     </div>
+  );
+
+  return (
+    <SwipeableItem onDelete={handleDelete} onEdit={handleEdit}>
+      {expenseContent}
+    </SwipeableItem>
   );
 }
