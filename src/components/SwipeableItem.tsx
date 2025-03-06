@@ -103,7 +103,7 @@ export function SwipeableItem({
   return (
     <div 
       ref={itemRef}
-      className="relative mb-2"
+      className="relative mb-2 list-item"
       style={{ overflow: 'hidden' }}
     >
       {/* Botões de ação */}
@@ -151,7 +151,8 @@ export function SwipeableItem({
         style={{ 
           transform: `translateX(-${translateX}px)`,
           transition: isDragging ? 'none' : 'transform 0.3s ease',
-          zIndex: 2
+          zIndex: 2,
+          backfaceVisibility: 'hidden'
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

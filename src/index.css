@@ -26,3 +26,69 @@
     --radius: 0.5rem;
   }
 }
+
+/* Estilos para melhorar a rolagem */
+.header-nav-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+
+.nav-fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 40;
+}
+
+.dropdown-fixed {
+  position: sticky;
+  z-index: 30;
+  background-color: rgb(249 250 251);
+  backdrop-filter: blur(8px);
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.content-area {
+  position: relative;
+  z-index: 10;
+  padding-bottom: 5rem;
+}
+
+.list-item {
+  position: relative;
+  z-index: 5;
+  transition: transform 0.2s ease;
+}
+
+/* Scrolling and stacking improvements */
+.fixed, .sticky {
+  isolation: isolate;
+}
+
+/* Ensures the main content area has proper scrolling behavior */
+body {
+  overflow-x: hidden;
+}
+
+/* Improve rendering performance during scrolling */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Improve dropdown position */
+.dropdown-content {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+  backdrop-filter: blur(4px);
+  transform: translateZ(0);
+}
+
+/* Improve list items appearance during scrolling */
+main > div > * {
+  transform: translateZ(0);
+  will-change: transform;
+  transition: transform 0.2s ease;
+}
