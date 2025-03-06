@@ -56,52 +56,76 @@ export default function App() {
     const initializeData = async () => {
       console.log('Inicializando dados...');
       
-      // Carregar dados iniciais
-      const localData = await loadInitialData();
-
-      if (localData) {
-        console.log('Dados carregados do armazenamento local');
-        setExpenses(localData.expenses || {});
-        setProjects(localData.projects || []);
-        setStockItems(localData.stock || []);
-        setEmployees(localData.employees || {});
+      if (isSupabaseConfigured()) {
+        console.log('Supabase configurado, inicializando tabela...');
+        // Inicializar tabela de sincronização
+        await initSyncTable();
         
-        // Carregar dados do Will se existirem
-        if (localData.willBaseRate !== undefined) {
-          setWillBaseRate(localData.willBaseRate);
-        }
-        if (localData.willBonus !== undefined) {
-          setWillBonus(localData.willBonus);
-        }
-      } else {
-        console.log('Nenhum dado encontrado no armazenamento local');
-      }
+        // Carregar dados iniciais
+        const supabaseData = await loadInitialData();
 
-      // Configurar sincronização em tempo real
-      syncService.init();
-      const cleanup = syncService.setupRealtimeUpdates((data) => {
-        console.log('Recebida atualização em tempo real:', data);
-        if (data) {
-          setExpenses(data.expenses || {});
-          setProjects(data.projects || []);
-          setStockItems(data.stock || []);
-          setEmployees(data.employees || {});
+        if (supabaseData) {
+          console.log('Dados carregados do Supabase');
+          setExpenses(supabaseData.expenses || {});
+          setProjects(supabaseData.projects || []);
+          setStockItems(supabaseData.stock || []);
+          setEmployees(supabaseData.employees || {});
           
-          // Atualizar dados do Will se existirem
-          if (data.willBaseRate !== undefined) {
-            setWillBaseRate(data.willBaseRate);
+          // Carregar dados do Will se existirem
+          if (supabaseData.willBaseRate !== undefined) {
+            setWillBaseRate(supabaseData.willBaseRate);
           }
-          if (data.willBonus !== undefined) {
-            setWillBonus(data.willBonus);
+          if (supabaseData.willBonus !== undefined) {
+            setWillBonus(supabaseData.willBonus);
           }
+        } else {
+          console.log('Nenhum dado encontrado no Supabase');
         }
-      });
 
-      return () => {
-        if (typeof cleanup === 'function') {
-          cleanup();
+        // Configurar sincronização em tempo real
+        syncService.init();
+        const cleanup = syncService.setupRealtimeUpdates((data) => {
+          console.log('Recebida atualização em tempo real:', data);
+          if (data) {
+            setExpenses(data.expenses || {});
+            setProjects(data.projects || []);
+            setStockItems(data.stock || []);
+            setEmployees(data.employees || {});
+            
+            // Atualizar dados do Will se existirem
+            if (data.willBaseRate !== undefined) {
+              setWillBaseRate(data.willBaseRate);
+            }
+            if (data.willBonus !== undefined) {
+              setWillBonus(data.willBonus);
+            }
+          }
+        });
+
+        return () => {
+          if (typeof cleanup === 'function') {
+            cleanup();
+          }
+        };
+      } else {
+        console.log('Supabase não configurado, usando armazenamento local');
+        // Carregar dados do armazenamento local
+        const localData = storage.load();
+        if (localData) {
+          setExpenses(localData.expenses || {});
+          setProjects(localData.projects || []);
+          setStockItems(localData.stock || []);
+          setEmployees(localData.employees || {});
+          
+          // Carregar dados do Will se existirem
+          if (localData.willBaseRate !== undefined) {
+            setWillBaseRate(localData.willBaseRate);
+          }
+          if (localData.willBonus !== undefined) {
+            setWillBonus(localData.willBonus);
+          }
         }
-      };
+      }
     };
 
     initializeData();

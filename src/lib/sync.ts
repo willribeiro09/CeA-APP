@@ -56,16 +56,20 @@ export const syncService = {
           console.log('Mudança recebida:', payload);
           if (payload.new) {
             const data = payload.new as any;
+            console.log('Dados brutos do Supabase:', data);
+            
+            // Garantir que transformamos os dados corretamente
             const storageData: StorageItems = {
               expenses: data.expenses || {},
               projects: data.projects || [],
               stock: data.stock || [],
               employees: data.employees || {},
-              willBaseRate: data.willBaseRate || 200,
-              willBonus: data.willBonus || 0,
+              willBaseRate: data.willBaseRate !== undefined ? data.willBaseRate : 200,
+              willBonus: data.willBonus !== undefined ? data.willBonus : 0,
               lastSync: new Date().getTime()
             };
-            console.log('Dados processados para armazenamento local:', storageData);
+            
+            console.log('Dados processados para sincronização:', storageData);
             storage.save(storageData);
             window.dispatchEvent(new CustomEvent('dataUpdated', { 
               detail: storageData 
@@ -140,15 +144,11 @@ export const syncService = {
 
     try {
       console.log('Sincronizando dados com Supabase usando UUID:', FIXED_UUID);
-      console.log('Dados a serem salvos:', {
-        id: FIXED_UUID,
-        expenses: data.expenses,
-        projects: data.projects,
-        stock: data.stock,
-        employees: data.employees,
+      
+      // Garantir que os dados do Will sejam enviados
+      console.log('Dados a serem salvos (incluindo Will):', {
         willBaseRate: data.willBaseRate,
-        willBonus: data.willBonus,
-        updated_at: new Date().toISOString()
+        willBonus: data.willBonus
       });
       
       // Salvar no Supabase
