@@ -61,8 +61,11 @@ export const syncService = {
               projects: data.projects || [],
               stock: data.stock || [],
               employees: data.employees || {},
+              willBaseRate: data.willBaseRate || 200,
+              willBonus: data.willBonus || 0,
               lastSync: new Date().getTime()
             };
+            console.log('Dados processados para armazenamento local:', storageData);
             storage.save(storageData);
             window.dispatchEvent(new CustomEvent('dataUpdated', { 
               detail: storageData 
@@ -93,6 +96,41 @@ export const syncService = {
     };
   },
 
+  async loadLatestData(): Promise<StorageItems | null> {
+    if (!supabase) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('sync_data')
+        .select('*')
+        .eq('id', FIXED_UUID)
+        .single();
+
+      if (error) {
+        console.error('Erro ao carregar dados mais recentes:', error);
+        return null;
+      }
+
+      if (data) {
+        console.log('Dados recebidos do Supabase:', data);
+        return {
+          expenses: data.expenses || {},
+          projects: data.projects || [],
+          stock: data.stock || [],
+          employees: data.employees || {},
+          willBaseRate: data.willBaseRate || 200,
+          willBonus: data.willBonus || 0,
+          lastSync: new Date().getTime()
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Erro ao carregar dados mais recentes:', error);
+      return null;
+    }
+  },
+
   async sync(data: StorageItems): Promise<boolean> {
     if (!supabase) {
       console.log('Supabase não configurado, salvando apenas localmente');
@@ -102,6 +140,16 @@ export const syncService = {
 
     try {
       console.log('Sincronizando dados com Supabase usando UUID:', FIXED_UUID);
+      console.log('Dados a serem salvos:', {
+        id: FIXED_UUID,
+        expenses: data.expenses,
+        projects: data.projects,
+        stock: data.stock,
+        employees: data.employees,
+        willBaseRate: data.willBaseRate,
+        willBonus: data.willBonus,
+        updated_at: new Date().toISOString()
+      });
       
       // Salvar no Supabase
       const { error } = await supabase
@@ -112,6 +160,8 @@ export const syncService = {
           projects: data.projects,
           stock: data.stock,
           employees: data.employees,
+          willBaseRate: data.willBaseRate,
+          willBonus: data.willBonus,
           updated_at: new Date().toISOString()
         });
 
@@ -155,6 +205,8 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
           projects: [],
           stock: [],
           employees: {},
+          willBaseRate: 200,
+          willBonus: 0,
           lastSync: new Date().getTime()
         };
         
@@ -172,6 +224,8 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
         projects: data.projects || [],
         stock: data.stock || [],
         employees: data.employees || {},
+        willBaseRate: data.willBaseRate || 200,
+        willBonus: data.willBonus || 0,
         lastSync: new Date().getTime()
       };
       

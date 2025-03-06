@@ -30,7 +30,12 @@ export const storage = {
     try {
       console.log('Salvando dados no armazenamento local:', data);
       const serialized = JSON.stringify({
-        ...data,
+        expenses: data.expenses || {},
+        projects: data.projects || [],
+        stock: data.stock || [],
+        employees: data.employees || {},
+        willBaseRate: data.willBaseRate || 200,
+        willBonus: data.willBonus || 0,
         lastSync: new Date().getTime()
       });
       localStorage.setItem(STORAGE_KEY, serialized);
