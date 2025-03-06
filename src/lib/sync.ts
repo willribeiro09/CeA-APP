@@ -83,86 +83,139 @@ export const syncService = {
   },
 
   setupRealtimeUpdates(callback: (data: StorageItems) => void) {
-    if (!supabase) return () => {};
-
-    const handleDataUpdate = (event: CustomEvent<StorageItems>) => {
-      console.log('Evento de atualização recebido:', event.detail);
-      callback(event.detail);
-    };
-
-    window.addEventListener('dataUpdated', handleDataUpdate as EventListener);
-    return () => {
-      window.removeEventListener('dataUpdated', handleDataUpdate as EventListener);
-      if (this.channel) {
-        this.channel.unsubscribe();
-        this.isInitialized = false;
+    if (!supabase) {
+      console.error('Supabase não configurado para atualizações em tempo real');
+      return;
+    }
+    
+    const handleDataUpdate = async (payload: any) => {
+      try {
+        console.log('Dados recebidos do Supabase Realtime:', payload);
+        
+        // Extrair e normalizar os dados
+        const receivedData = payload.new;
+        
+        // Logs para debug
+        console.log('Dados brutos recebidos:', JSON.stringify(receivedData));
+        
+        // Processa os dados para o formato StorageItems
+        const processedData: StorageItems = {
+          expenses: receivedData.expenses || {},
+          projects: receivedData.projects || [],
+          stock: receivedData.stock || [],
+          employees: receivedData.employees || {},
+          willBaseRate: receivedData.willbaseRate !== undefined ? Number(receivedData.willbaseRate) : 200,
+          willBonus: receivedData.willbonus !== undefined ? Number(receivedData.willbonus) : 0,
+          lastSync: new Date().toISOString()
+        };
+        
+        console.log('Dados processados para sincronização:', processedData);
+        
+        // Atualiza o callback com os dados
+        callback(processedData);
+        
+        // Salva no armazenamento local
+        storage.save(processedData);
+      } catch (error) {
+        console.error('Erro ao processar atualização em tempo real:', error);
       }
     };
+    
+    // Inscreve-se nas alterações da tabela
+    const channel = supabase
+      .channel('table-db-changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'storage',
+        filter: `id=eq.${FIXED_UUID}`
+      }, handleDataUpdate)
+      .subscribe((status) => {
+        console.log('Status da inscrição Realtime:', status);
+      });
   },
 
   async loadLatestData(): Promise<StorageItems | null> {
-    if (!supabase) return null;
-    
+    if (!supabase) {
+      console.log('Supabase não configurado para carregamento de dados');
+      return null;
+    }
+
     try {
+      console.log('Carregando dados mais recentes do Supabase...');
       const { data, error } = await supabase
-        .from('sync_data')
+        .from('storage')
         .select('*')
         .eq('id', FIXED_UUID)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        console.error('Erro ao carregar dados mais recentes:', error);
+        console.error('Erro ao carregar dados:', error);
         return null;
       }
 
-      if (data) {
-        console.log('Dados recebidos do Supabase:', data);
-        return {
-          expenses: data.expenses || {},
-          projects: data.projects || [],
-          stock: data.stock || [],
-          employees: data.employees || {},
-          willBaseRate: data.willBaseRate || 200,
-          willBonus: data.willBonus || 0,
-          lastSync: new Date().getTime()
-        };
+      if (!data) {
+        console.log('Nenhum dado encontrado no Supabase');
+        return null;
       }
+
+      console.log('Dados carregados do Supabase:', data);
       
-      return null;
+      // Normalize data
+      const normalizedData: StorageItems = {
+        expenses: data.expenses || {},
+        projects: data.projects || [],
+        stock: data.stock || [],
+        employees: data.employees || {},
+        willBaseRate: data.willbaseRate !== undefined ? Number(data.willbaseRate) : 200,
+        willBonus: data.willbonus !== undefined ? Number(data.willbonus) : 0,
+        lastSync: new Date().toISOString()
+      };
+
+      console.log('Dados normalizados:', normalizedData);
+      return normalizedData;
     } catch (error) {
-      console.error('Erro ao carregar dados mais recentes:', error);
+      console.error('Erro ao carregar dados do Supabase:', error);
       return null;
     }
   },
 
   async sync(data: StorageItems): Promise<boolean> {
-    if (!supabase) {
-      console.log('Supabase não configurado, salvando apenas localmente');
-      storage.save(data);
-      return true;
-    }
-
     try {
-      console.log('Sincronizando dados com Supabase usando UUID:', FIXED_UUID);
+      console.log('Sincronizando dados com UUID:', FIXED_UUID);
+      console.log('Dados contendo willBaseRate:', data.willBaseRate, 'e willBonus:', data.willBonus);
       
-      // Garantir que os dados do Will sejam enviados
-      console.log('Dados a serem salvos (incluindo Will):', {
-        willBaseRate: data.willBaseRate,
-        willBonus: data.willBonus
-      });
+      // Ensure we have will data with proper defaults
+      const willBaseRate = data.willBaseRate !== undefined ? data.willBaseRate : 200;
+      const willBonus = data.willBonus !== undefined ? data.willBonus : 0;
       
-      // Salvar no Supabase
+      if (!supabase) {
+        console.log('Supabase não configurado, salvando apenas localmente');
+        storage.save(data);
+        return true;
+      }
+      
+      const { data: existingData, error: fetchError } = await supabase
+        .from('storage')
+        .select('*')
+        .eq('id', FIXED_UUID)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Erro ao verificar dados existentes:', fetchError);
+        return false;
+      }
+
       const { error } = await supabase
-        .from('sync_data')
-        .upsert({ 
+        .from('storage')
+        .upsert({
           id: FIXED_UUID,
-          expenses: data.expenses,
-          projects: data.projects,
-          stock: data.stock,
-          employees: data.employees,
-          willBaseRate: data.willBaseRate,
-          willBonus: data.willBonus,
-          updated_at: new Date().toISOString()
+          expenses: data.expenses || {},
+          projects: data.projects || [],
+          stock: data.stock || [],
+          employees: data.employees || {},
+          willBaseRate: willBaseRate,
+          willBonus: willBonus
         });
 
       if (error) {
@@ -172,9 +225,10 @@ export const syncService = {
 
       // Salvar localmente
       storage.save(data);
+      console.log('Dados sincronizados com sucesso. Will data:', { willBaseRate, willBonus });
       return true;
     } catch (error) {
-      console.error('Erro na sincronização:', error);
+      console.error('Erro ao sincronizar dados:', error);
       return false;
     }
   },
