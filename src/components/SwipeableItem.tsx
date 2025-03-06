@@ -66,28 +66,25 @@ export function SwipeableItem({ children, onDelete, onEdit }: SwipeableItemProps
   return (
     <div 
       ref={itemRef}
-      className="relative overflow-hidden touch-none mb-2"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleTouchStart}
-      onMouseMove={handleTouchMove}
-      onMouseUp={handleTouchEnd}
-      onMouseLeave={handleTouchEnd}
+      className="relative mb-2"
+      style={{ overflow: 'hidden', touchAction: 'none' }}
     >
       {/* Ações que aparecem ao deslizar - posicionadas atrás do conteúdo principal */}
-      <div className="absolute top-0 right-0 bottom-0 flex items-stretch justify-end h-full">
+      <div 
+        className="absolute top-0 right-0 h-full flex items-center justify-end gap-1 pr-1"
+        style={{ zIndex: 1 }}
+      >
         <button 
           onClick={onEdit}
-          className="w-[60px] h-full bg-blue-500 flex items-center justify-center text-white rounded-l-md mr-0.5"
-          style={{ height: '100%' }}
+          className="h-[calc(100%-2px)] bg-blue-500 flex items-center justify-center text-white rounded-md"
+          style={{ width: '55px' }}
         >
           <Edit size={20} />
         </button>
         <button 
           onClick={onDelete}
-          className="w-[60px] h-full bg-red-500 flex items-center justify-center text-white rounded-r-md"
-          style={{ height: '100%' }}
+          className="h-[calc(100%-2px)] bg-red-500 flex items-center justify-center text-white rounded-md"
+          style={{ width: '55px' }}
         >
           <Trash2 size={20} />
         </button>
@@ -95,8 +92,19 @@ export function SwipeableItem({ children, onDelete, onEdit }: SwipeableItemProps
       
       {/* Conteúdo principal que será deslizado - posicionado acima das ações */}
       <div 
-        className="relative bg-white transition-transform duration-300 rounded-lg overflow-hidden"
-        style={{ transform: `translateX(-${translateX}px)` }}
+        className="relative bg-white rounded-lg shadow-sm"
+        style={{ 
+          transform: `translateX(-${translateX}px)`,
+          transition: 'transform 0.3s ease',
+          zIndex: 2
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleTouchStart}
+        onMouseMove={handleTouchMove}
+        onMouseUp={handleTouchEnd}
+        onMouseLeave={handleTouchEnd}
       >
         {children}
       </div>

@@ -6,6 +6,7 @@ import { CalendarButton } from './components/CalendarButton';
 import { AddButton } from './components/AddButton';
 import { Calendar } from './components/Calendar';
 import { AddItemDialog } from './components/AddItemDialog';
+import { EditItemDialog } from './components/EditItemDialog';
 import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems, SyncData } from './types';
 import { ChevronDown } from 'lucide-react';
 import { storage } from './lib/storage';
@@ -37,6 +38,8 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
   const [selectedList, setSelectedList] = useState<ListName>('C&A');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeName>('Matheus');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -255,9 +258,115 @@ export default function App() {
 
   const handleEditItem = (item: Item) => {
     console.log(`Editando item:`, item);
-    // A implementação completa da edição será feita posteriormente
-    // Por enquanto, apenas mostramos um alerta
-    alert(`Funcionalidade de edição será implementada em breve para o item: ${item.id}`);
+    setItemToEdit(item);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateItem = (updatedItem: Partial<Item>) => {
+    console.log(`Atualizando item:`, updatedItem);
+    
+    // Verificar o tipo do item usando propriedades específicas
+    if ('description' in updatedItem) {
+      // É uma despesa
+      setExpenses(prevExpenses => {
+        const newExpenses = { ...prevExpenses };
+        
+        // Procurar e atualizar a despesa em todas as listas
+        Object.keys(newExpenses).forEach(listName => {
+          const index = newExpenses[listName as ListName].findIndex(expense => expense.id === updatedItem.id);
+          if (index !== -1) {
+            newExpenses[listName as ListName][index] = updatedItem as Expense;
+          }
+        });
+        
+        // Salvar as alterações
+        const storageData: StorageItems = {
+          expenses: newExpenses,
+          projects,
+          stock: stockItems,
+          employees,
+          lastSync: Date.now()
+        };
+        
+        // Salvar no Supabase e localmente
+        saveChanges(storageData);
+        
+        return newExpenses;
+      });
+    } else if ('client' in updatedItem) {
+      // É um projeto
+      setProjects(prevProjects => {
+        const index = prevProjects.findIndex(project => project.id === updatedItem.id);
+        if (index === -1) return prevProjects;
+        
+        const newProjects = [...prevProjects];
+        newProjects[index] = updatedItem as Project;
+        
+        // Salvar as alterações
+        const storageData: StorageItems = {
+          expenses,
+          projects: newProjects,
+          stock: stockItems,
+          employees,
+          lastSync: Date.now()
+        };
+        
+        // Salvar no Supabase e localmente
+        saveChanges(storageData);
+        
+        return newProjects;
+      });
+    } else if ('quantity' in updatedItem) {
+      // É um item de estoque
+      setStockItems(prevStockItems => {
+        const index = prevStockItems.findIndex(item => item.id === updatedItem.id);
+        if (index === -1) return prevStockItems;
+        
+        const newStockItems = [...prevStockItems];
+        newStockItems[index] = updatedItem as StockItem;
+        
+        // Salvar as alterações
+        const storageData: StorageItems = {
+          expenses,
+          projects,
+          stock: newStockItems,
+          employees,
+          lastSync: Date.now()
+        };
+        
+        // Salvar no Supabase e localmente
+        saveChanges(storageData);
+        
+        return newStockItems;
+      });
+    } else if ('employeeName' in updatedItem) {
+      // É um funcionário
+      setEmployees(prevEmployees => {
+        const newEmployees = { ...prevEmployees };
+        
+        // Procurar e atualizar o funcionário em todas as semanas
+        Object.keys(newEmployees).forEach(weekStartDate => {
+          const index = newEmployees[weekStartDate].findIndex(employee => employee.id === updatedItem.id);
+          if (index !== -1) {
+            newEmployees[weekStartDate][index] = updatedItem as Employee;
+          }
+        });
+        
+        // Salvar as alterações
+        const storageData: StorageItems = {
+          expenses,
+          projects,
+          stock: stockItems,
+          employees: newEmployees,
+          lastSync: Date.now()
+        };
+        
+        // Salvar no Supabase e localmente
+        saveChanges(storageData);
+        
+        return newEmployees;
+      });
+    }
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -376,6 +485,16 @@ export default function App() {
       const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
       employee.weekStartDate = weekStartDate;
       employee.daysWorked = 0; // Iniciar com zero dias trabalhados
+      
+      // Garantir que o dailyRate seja um número
+      if (typeof employee.dailyRate === 'string') {
+        employee.dailyRate = parseFloat(employee.dailyRate);
+      }
+      
+      // Valor padrão caso não seja fornecido
+      if (!employee.dailyRate || isNaN(employee.dailyRate)) {
+        employee.dailyRate = 250;
+      }
 
       console.log("Adicionando funcionário com data da semana:", weekStartDate);
 
@@ -628,16 +747,16 @@ export default function App() {
             ? 'mt-[170px]'
             : 'mt-[234px]'
         }`}>
-          <div className="space-y-0 max-w-[800px] mx-auto relative z-0">
+          <div className="space-y-2 max-w-[800px] mx-auto relative z-0">
             {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-            <ExpenseItem
-              key={expense.id}
-              expense={expense}
-              onTogglePaid={handleTogglePaid}
+              <ExpenseItem
+                key={expense.id}
+                expense={expense}
+                onTogglePaid={handleTogglePaid}
                 onDelete={(id) => handleDeleteItem(id, 'Expenses')}
                 onEdit={(expense) => handleEditItem(expense)}
-            />
-          ))}
+              />
+            ))}
             {activeCategory === 'Projects' && projects.map(project => (
               <SwipeableItem 
                 key={project.id}
@@ -731,7 +850,13 @@ export default function App() {
                           <div className="flex items-center justify-between">
                             <span className="text-gray-700 text-sm">Valor a Receber:</span>
                             <span className="text-xl font-bold text-[#5ABB37]">
-                              $ {(employee.daysWorked * 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              $ {((employee.daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-700 text-sm">Valor por Dia:</span>
+                            <span className="text-sm text-gray-600">
+                              $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </span>
                           </div>
                         </div>
@@ -752,6 +877,14 @@ export default function App() {
         category={activeCategory}
         onSubmit={handleAddItem}
           selectedWeekStart={selectedWeekStart}
+      />
+
+      <EditItemDialog
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        item={itemToEdit}
+        onSubmit={handleUpdateItem}
+        selectedWeekStart={selectedWeekStart}
       />
 
         {isSupabaseConfigured() && <ConnectionStatus />}

@@ -38,10 +38,11 @@ export interface Employee {
   id: string;
   name: string;
   employeeName: string;
-  role: string;
+  role?: string;
   startDate: string;
   weekStartDate: string;
   daysWorked: number;
+  dailyRate: number;
   phone?: string;
   email?: string;
   notes?: string;

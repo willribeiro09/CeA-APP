@@ -48,8 +48,8 @@ export const validation = {
     if (!employee.name?.trim()) {
       return 'Nome do funcionário é obrigatório';
     }
-    if (!employee.role?.trim()) {
-      return 'Função é obrigatória';
+    if (!employee.dailyRate || employee.dailyRate <= 0) {
+      return 'Valor por dia deve ser maior que zero';
     }
     console.log("Funcionário válido");
     return null;
