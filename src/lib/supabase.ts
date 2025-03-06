@@ -5,7 +5,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 console.log('Configuração do Supabase:');
 console.log('URL:', SUPABASE_URL);
-console.log('Chave:', SUPABASE_ANON_KEY ? 'Definida (valor oculto por segurança)' : 'Não definida');
+console.log('ANON KEY:', SUPABASE_ANON_KEY ? 'Configurado (valor oculto por segurança)' : 'Não definida');
 
 export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
