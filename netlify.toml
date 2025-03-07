@@ -1,0 +1,15 @@
+[build]
+  # Diretório que contém o código após o build
+  publish = "dist"
+  # Comando para construir o site
+  command = "npm run build"
+
+# Redirecionamentos e headers para aplicações de página única (SPA)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  
+[build.environment]
+  # Variáveis de ambiente que são seguras para serem versionadas
+  NODE_VERSION = "18" 
