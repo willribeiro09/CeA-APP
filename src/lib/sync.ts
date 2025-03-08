@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { StorageItems } from '../types';
+import { StorageItems, Expense, Project, StockItem, Employee } from '../types';
 import { storage } from './storage';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
@@ -27,6 +27,60 @@ const getUUID = (): string => {
 // ID fixo para o registro único
 const FIXED_UUID = getUUID();
 console.log('UUID do registro:', FIXED_UUID);
+
+// Intervalo de sincronização em milissegundos (5 segundos)
+const SYNC_INTERVAL = 5000;
+
+// Canais de sincronização para cada tipo de dados
+type SyncChannels = {
+  expenses: RealtimeChannel | null;
+  employees: RealtimeChannel | null;
+  projects: RealtimeChannel | null;
+  stock: RealtimeChannel | null;
+  willSettings: RealtimeChannel | null;
+};
+
+// Interface para as despesas adaptadas ao formato de banco de dados
+interface DBExpense {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  category: string;
+  project?: string;
+  photo_url?: string;
+  is_paid: boolean;
+}
+
+// Interface para os funcionários adaptados ao formato de banco de dados
+interface DBEmployee {
+  id: string;
+  name: string;
+  role?: string;
+  base_rate: number;
+  bonus: number;
+  expenses: any[];
+}
+
+// Interface para os projetos adaptados ao formato de banco de dados
+interface DBProject {
+  id: string;
+  name: string;
+  client?: string;
+  start_date?: string;
+  end_date?: string;
+  status?: string;
+  description?: string;
+}
+
+// Interface para os itens de estoque adaptados ao formato de banco de dados
+interface DBStockItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit?: string;
+  project?: string;
+}
 
 export const syncService = {
   channel: null as RealtimeChannel | null,
@@ -100,26 +154,28 @@ export const syncService = {
     if (!supabase) return null;
     
     try {
+      // Modificado: Usar .limit(1) em vez de .single() para evitar erro 406
       const { data, error } = await supabase
         .from('sync_data')
         .select('*')
         .eq('id', FIXED_UUID)
-        .single();
+        .limit(1);
 
       if (error) {
         console.error('Erro ao carregar dados mais recentes:', error);
         return null;
       }
 
-      if (data) {
-        console.log('Dados recebidos do Supabase:', data);
+      // Modificado: Verificar se o array contém dados
+      if (data && data.length > 0) {
+        console.log('Dados recebidos do Supabase:', data[0]);
         return {
-          expenses: data.expenses || {},
-          projects: data.projects || [],
-          stock: data.stock || [],
-          employees: data.employees || {},
-          willBaseRate: data.willBaseRate || 200,
-          willBonus: data.willBonus || 0,
+          expenses: data[0].expenses || {},
+          projects: data[0].projects || [],
+          stock: data[0].stock || [],
+          employees: data[0].employees || {},
+          willBaseRate: data[0].willBaseRate || 200,
+          willBonus: data[0].willBonus || 0,
           lastSync: new Date().getTime()
         };
       }
@@ -187,54 +243,49 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
   }
 
   try {
-    // Carregar dados do Supabase
+    // Modificado: Usar .limit(1) em vez de .single() para evitar erro 406
     const { data, error } = await supabase
       .from('sync_data')
       .select('*')
       .eq('id', FIXED_UUID)
-      .single();
+      .limit(1);
 
     if (error) {
       console.warn('Erro ao carregar dados iniciais do Supabase:', error);
-      
-      // Se o erro for "não encontrado", criar registro inicial
-      if (error.code === 'PGRST116') {
-        console.log('Registro não encontrado no Supabase, criando inicial');
-        const localData = storage.load() || {
-          expenses: {},
-          projects: [],
-          stock: [],
-          employees: {},
-          willBaseRate: 200,
-          willBonus: 0,
-          lastSync: new Date().getTime()
-        };
-        
-        await syncService.sync(localData);
-        return localData;
-      }
-      
       return storage.load();
     }
 
-    if (data) {
-      console.log('Dados carregados do Supabase:', data);
+    // Modificado: Verificar se o array contém dados
+    if (data && data.length > 0) {
+      console.log('Dados carregados do Supabase:', data[0]);
       const storageData: StorageItems = {
-        expenses: data.expenses || {},
-        projects: data.projects || [],
-        stock: data.stock || [],
-        employees: data.employees || {},
-        willBaseRate: data.willBaseRate || 200,
-        willBonus: data.willBonus || 0,
+        expenses: data[0].expenses || {},
+        projects: data[0].projects || [],
+        stock: data[0].stock || [],
+        employees: data[0].employees || {},
+        willBaseRate: data[0].willBaseRate || 200,
+        willBonus: data[0].willBonus || 0,
         lastSync: new Date().getTime()
       };
       
       // Salvar no armazenamento local
       storage.save(storageData);
       return storageData;
+    } else {
+      console.log('Registro não encontrado no Supabase, criando inicial');
+      const localData = storage.load() || {
+        expenses: {},
+        projects: [],
+        stock: [],
+        employees: {},
+        willBaseRate: 200,
+        willBonus: 0,
+        lastSync: new Date().getTime()
+      };
+      
+      await syncService.sync(localData);
+      return localData;
     }
-
-    return storage.load();
   } catch (error) {
     console.error('Erro ao carregar dados iniciais:', error);
     return storage.load();
