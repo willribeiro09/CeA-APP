@@ -6,6 +6,11 @@ export function ConnectionStatus() {
   const [lastSync, setLastSync] = useState<Date | null>(null);
 
   useEffect(() => {
+    if (!supabase) {
+      setIsOnline(false);
+      return;
+    }
+    
     const channel = supabase.channel('system');
     
     channel
@@ -15,6 +20,11 @@ export function ConnectionStatus() {
 
     const checkConnection = async () => {
       try {
+        if (!supabase) {
+          setIsOnline(false);
+          return;
+        }
+
         const { data } = await supabase.from('sync_data').select('lastSync').single();
         if (data?.lastSync) {
           setLastSync(new Date(data.lastSync));

@@ -11,7 +11,7 @@ export interface Expense {
   date: string;
   category: string;
   notes?: string;
-  paid?: boolean;
+  is_paid?: boolean;
 }
 
 export interface Project {
