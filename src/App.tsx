@@ -725,53 +725,53 @@ export default function App() {
       
         <div className="pt-[170px]">
           {(activeCategory === 'Expenses') && (
-            <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
-              <div className="relative max-w-[800px] mx-auto pb-4">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
-            >
+            <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
+              <div className="relative max-w-[800px] mx-auto pb-2">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
+                >
                   <span className="text-gray-700 font-medium">
                     {selectedList}
                   </span>
-              <ChevronDown
-                className={`w-5 h-5 text-gray-500 transition-transform ${
-                  isDropdownOpen ? 'transform rotate-180' : ''
-                }`}
-              />
-            </button>
-            
-            {isDropdownOpen && (
+                  <ChevronDown
+                    className={`w-5 h-5 text-gray-500 transition-transform ${
+                      isDropdownOpen ? 'transform rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                
+                {isDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-35">
-                <button
-                  onClick={() => handleListSelect('Carlos')}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                  }`}
-                >
-                  Carlos
-                </button>
-                <button
-                  onClick={() => handleListSelect('Diego')}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                  }`}
-                >
-                  Diego
-                </button>
-                <button
-                  onClick={() => handleListSelect('C&A')}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                  }`}
-                >
-                  C&A
-                </button>
+                    <button
+                      onClick={() => handleListSelect('Carlos')}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                      }`}
+                    >
+                      Carlos
+                    </button>
+                    <button
+                      onClick={() => handleListSelect('Diego')}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                      }`}
+                    >
+                      Diego
+                    </button>
+                    <button
+                      onClick={() => handleListSelect('C&A')}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                      }`}
+                    >
+                      C&A
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            </div>
+          )}
           
           {(activeCategory === 'Employees') && (
             <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
@@ -809,13 +809,22 @@ export default function App() {
                   onEdit={() => handleEditItem(project)}
                 >
                   <div className="bg-white p-4 rounded-lg shadow-sm">
-                    <h3 className="font-medium">{project.name}</h3>
-                    <p className="text-gray-600 text-sm mt-1">{project.description}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-sm text-gray-500">
-                        Start: {new Date(project.startDate).toLocaleDateString('en-US')}
-                      </span>
-                      <span className={`text-sm px-2 py-0.5 rounded ${
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-gray-900">{project.name}</h3>
+                        <p className="text-gray-600 text-sm">Client: {project.client}</p>
+                        <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-[#5ABB37]">$ {(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(project.startDate).toLocaleDateString('en-US')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex justify-between items-center">
+                      <p className="text-sm text-gray-500 line-clamp-1">{project.description}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded ${
                         project.status === 'completed' ? 'bg-green-100 text-green-800' :
                         project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
                         'bg-gray-100 text-gray-800'
@@ -853,23 +862,23 @@ export default function App() {
 
                     // Will - funcionário fixo
                     employeeElements.push(
-                      <SwipeableItem 
-                        key="will-fixed"
-                        onDelete={resetWillValues}
-                        onEdit={() => {
-                          setShowLayoffAlert(true);
-                        }}
-                        showEditButton={true}
-                        customEditButton={
-                          <button
-                            className="h-full w-[90px] bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-colors flex items-center justify-center"
+                      <div key="will-fixed" className="relative overflow-hidden mb-2">
+                        <div className="absolute right-0 top-0 bottom-0 flex h-full">
+                          <button 
+                            onClick={resetWillValues}
+                            className="h-full w-[75px] bg-gray-200 text-gray-700 flex items-center justify-center"
+                          >
+                            Reset
+                          </button>
+                          <button 
+                            onClick={() => setShowLayoffAlert(true)}
+                            className="h-full w-[75px] bg-red-500 text-white flex items-center justify-center"
                           >
                             Lay off
                           </button>
-                        }
-                        isWill={true}
-                      >
-                        <div className="bg-white p-2.5 rounded-lg shadow-sm">
+                        </div>
+                        
+                        <div className="bg-white relative z-10 p-2.5 rounded-lg shadow-sm">
                           <div className="flex items-center justify-between mb-1.5">
                             <h3 className="text-xl font-bold text-gray-800">Will</h3>
                             <div className="flex items-center gap-1.5">
@@ -908,7 +917,7 @@ export default function App() {
                             )}
                           </div>
                         </div>
-                      </SwipeableItem>
+                      </div>
                     );
 
                     // Outros funcionários

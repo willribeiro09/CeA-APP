@@ -1,5 +1,5 @@
 import React from 'react';
-import { Receipt, Briefcase, Package2, Users } from 'lucide-react';
+import { ReceiptText, Briefcase, Package, Users } from 'lucide-react';
 
 interface NavigationProps {
   activeCategory: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
@@ -14,7 +14,7 @@ export function Navigation({ activeCategory, onCategoryChange }: NavigationProps
           onClick={() => onCategoryChange('Expenses')}
           className="flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center"
         >
-          <Receipt className={`w-5 h-5 ${activeCategory === 'Expenses' ? 'text-white' : 'text-white/70'}`} />
+          <ReceiptText className={`w-6 h-6 ${activeCategory === 'Expenses' ? 'text-white' : 'text-white/70'} stroke-[2.5px]`} />
           <span className={`text-sm ${activeCategory === 'Expenses' ? 'text-white font-medium' : 'text-white/70'}`}>
             Expenses
           </span>
@@ -23,7 +23,7 @@ export function Navigation({ activeCategory, onCategoryChange }: NavigationProps
           onClick={() => onCategoryChange('Projects')}
           className="flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center"
         >
-          <Briefcase className={`w-5 h-5 ${activeCategory === 'Projects' ? 'text-white' : 'text-white/70'}`} />
+          <Briefcase className={`w-6 h-6 ${activeCategory === 'Projects' ? 'text-white' : 'text-white/70'} stroke-[2.5px]`} />
           <span className={`text-sm ${activeCategory === 'Projects' ? 'text-white font-medium' : 'text-white/70'}`}>
             Projects
           </span>
@@ -32,7 +32,7 @@ export function Navigation({ activeCategory, onCategoryChange }: NavigationProps
           onClick={() => onCategoryChange('Stock')}
           className="flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center"
         >
-          <Package2 className={`w-5 h-5 ${activeCategory === 'Stock' ? 'text-white' : 'text-white/70'}`} />
+          <Package className={`w-6 h-6 ${activeCategory === 'Stock' ? 'text-white' : 'text-white/70'} stroke-[2.5px]`} />
           <span className={`text-sm ${activeCategory === 'Stock' ? 'text-white font-medium' : 'text-white/70'}`}>
             Inventory
           </span>
@@ -41,7 +41,7 @@ export function Navigation({ activeCategory, onCategoryChange }: NavigationProps
           onClick={() => onCategoryChange('Employees')}
           className="flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center"
         >
-          <Users className={`w-5 h-5 ${activeCategory === 'Employees' ? 'text-white' : 'text-white/70'}`} />
+          <Users className={`w-6 h-6 ${activeCategory === 'Employees' ? 'text-white' : 'text-white/70'} stroke-[2.5px]`} />
           <span className={`text-sm ${activeCategory === 'Employees' ? 'text-white font-medium' : 'text-white/70'}`}>
             Employees
           </span>

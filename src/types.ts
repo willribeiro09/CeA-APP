@@ -12,6 +12,7 @@ export interface Expense {
   category: string;
   notes?: string;
   is_paid?: boolean;
+  paid?: boolean;
 }
 
 export interface Project {
@@ -23,6 +24,8 @@ export interface Project {
   endDate?: string;
   status: 'completed' | 'in_progress' | 'pending';
   notes?: string;
+  location?: string;
+  value?: number;
 }
 
 export interface StockItem {
