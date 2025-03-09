@@ -1,165 +1,98 @@
-import React, { useState, useRef, useEffect, ReactNode } from 'react';
-import { Edit, Trash2, RotateCcw } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Edit, Trash2 } from 'lucide-react';
 
-export interface SwipeableItemProps {
-  children: ReactNode;
-  onDelete: () => void;
+interface SwipeableItemProps {
+  children: React.ReactNode;
   onEdit: () => void;
-  showEditButton?: boolean;
-  customEditButton?: ReactNode;
-  isWill?: boolean;
+  onDelete: () => void;
 }
 
-export function SwipeableItem({ 
-  children, 
-  onDelete, 
-  onEdit, 
-  showEditButton = true, 
-  customEditButton,
-  isWill = false
-}: SwipeableItemProps) {
-  const [translateX, setTranslateX] = useState(0);
-  const [startX, setStartX] = useState(0);
-  const [startY, setStartY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [direction, setDirection] = useState<'none' | 'horizontal' | 'vertical'>('none');
+export function SwipeableItem({ children, onEdit, onDelete }: SwipeableItemProps) {
+  const [isSwiped, setIsSwiped] = useState(false);
+  const startX = useRef<number | null>(null);
+  const currentX = useRef<number | null>(null);
+  const swipeDistance = useRef<number>(0);
   const itemRef = useRef<HTMLDivElement>(null);
-  
-  const THRESHOLD = 80;
-  const MAX_SWIPE = 180;
-  const DIRECTION_THRESHOLD = 10; // Distância em pixels para determinar a direção do gesto
-  
-  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    setStartX(clientX);
-    setStartY(clientY);
-    setDirection('none');
-    setIsDragging(true);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    currentX.current = startX.current;
+    swipeDistance.current = 0;
   };
-  
-  const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isDragging) return;
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!startX.current) return;
     
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const diffX = startX - clientX;
-    const diffY = startY - clientY;
+    currentX.current = e.touches[0].clientX;
+    const diff = (startX.current - currentX.current);
     
-    // Determinar a direção do movimento se ainda não foi determinada
-    if (direction === 'none') {
-      const absX = Math.abs(diffX);
-      const absY = Math.abs(diffY);
-      
-      // Se o movimento for principalmente horizontal e maior que o limite
-      if (absX > DIRECTION_THRESHOLD && absX > absY) {
-        setDirection('horizontal');
-      }
-      // Se o movimento for principalmente vertical e maior que o limite
-      else if (absY > DIRECTION_THRESHOLD && absY > absX) {
-        setDirection('vertical');
-      }
+    // Limitar o swipe para a esquerda apenas (valores positivos)
+    swipeDistance.current = Math.max(0, diff);
+    
+    // Limitar a distância máxima de swipe
+    const maxSwipe = 150;
+    swipeDistance.current = Math.min(swipeDistance.current, maxSwipe);
+    
+    // Aplicar a transformação
+    if (itemRef.current) {
+      itemRef.current.style.transform = `translateX(-${swipeDistance.current}px)`;
     }
     
-    // Se a direção for horizontal, permitir o deslize
-    if (direction === 'horizontal') {
-      // Só permitir swipe da direita para a esquerda (diffX positivo)
-      if (diffX > 0) {
-        const newTranslateX = Math.max(0, Math.min(diffX, MAX_SWIPE));
-        setTranslateX(newTranslateX);
-      }
-      
-      // Prevenir rolagem da página durante o swipe horizontal
-      if (e.cancelable && 'touches' in e) {
-        e.preventDefault();
-      }
-    }
+    // Atualizar o estado de swipe
+    setIsSwiped(swipeDistance.current > 50);
   };
-  
+
   const handleTouchEnd = () => {
-    setIsDragging(false);
-    setDirection('none');
-    
-    if (translateX > THRESHOLD) {
-      setTranslateX(MAX_SWIPE);
-    } else {
-      setTranslateX(0);
-    }
-  };
-  
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (itemRef.current && !itemRef.current.contains(e.target as Node) && translateX > 0) {
-        setTranslateX(0);
+    // Snap para a posição aberta ou fechada
+    if (swipeDistance.current > 50) {
+      // Abrir completamente
+      if (itemRef.current) {
+        itemRef.current.style.transform = 'translateX(-150px)';
       }
-    };
+      setIsSwiped(true);
+    } else {
+      // Fechar
+      resetSwipe();
+    }
+    
+    startX.current = null;
+    currentX.current = null;
+  };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [translateX]);
-  
+  const resetSwipe = () => {
+    if (itemRef.current) {
+      itemRef.current.style.transform = 'translateX(0)';
+    }
+    setIsSwiped(false);
+    swipeDistance.current = 0;
+  };
+
   return (
-    <div 
-      ref={itemRef}
-      className="relative mb-2"
-      style={{ overflow: 'hidden' }}
-    >
-      {/* Botões de ação */}
-      <div 
-        className="absolute top-0 right-0 h-full flex items-center gap-2 pr-3"
-        style={{ zIndex: 1 }}
-      >
-        {isWill ? (
-          <>
-            <button
-              onClick={onDelete}
-              className="h-full w-[40px] bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors flex items-center justify-center"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-            {customEditButton && (
-              <div onClick={onEdit} className="h-full">
-                {customEditButton}
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <button
-              onClick={onDelete}
-              className="h-[calc(100%-8px)] w-[40px] bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors flex items-center justify-center"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-            {showEditButton && (
-              <button
-                onClick={onEdit}
-                className="h-[calc(100%-8px)] w-[90px] bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center justify-center"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-            )}
-          </>
-        )}
+    <div className="relative overflow-hidden">
+      {/* Ações de swipe */}
+      <div className="absolute right-0 top-0 bottom-0 flex h-full">
+        <button 
+          onClick={onEdit}
+          className="bg-blue-500 text-white flex items-center justify-center w-[75px] h-full"
+        >
+          <Edit size={20} />
+        </button>
+        <button 
+          onClick={onDelete}
+          className="bg-red-500 text-white flex items-center justify-center w-[75px] h-full"
+        >
+          <Trash2 size={20} />
+        </button>
       </div>
-
-      {/* Conteúdo principal */}
-      <div 
-        className="relative bg-white rounded-lg shadow-sm"
-        style={{ 
-          transform: `translateX(-${translateX}px)`,
-          transition: isDragging ? 'none' : 'transform 0.3s ease',
-          zIndex: 2
-        }}
+      
+      {/* Item principal */}
+      <div
+        ref={itemRef}
+        className="bg-white relative z-10 transition-transform touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onMouseDown={handleTouchStart}
-        onMouseMove={handleTouchMove}
-        onMouseUp={handleTouchEnd}
-        onMouseLeave={handleTouchEnd}
+        onClick={isSwiped ? resetSwipe : undefined}
       >
         {children}
       </div>
