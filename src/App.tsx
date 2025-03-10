@@ -307,11 +307,31 @@ export default function App() {
         // É um projeto
         setProjects(prevProjects => {
           try {
+            console.log("Updating project:", updatedItem);
+            
+            // Verificar se o ID existe
             const index = prevProjects.findIndex(project => project.id === updatedItem.id);
-            if (index === -1) return prevProjects;
+            if (index === -1) {
+              console.error("Project not found with ID:", updatedItem.id);
+              return prevProjects;
+            }
+            
+            // Preparar dados do projeto verificando que todos os campos necessários estão presentes
+            const updatedProject = {
+              ...prevProjects[index],
+              ...updatedItem,
+              id: updatedItem.id,
+              name: updatedItem.name || prevProjects[index].name,
+              description: updatedItem.description || prevProjects[index].description,
+              client: updatedItem.client || prevProjects[index].client,
+              startDate: updatedItem.startDate || prevProjects[index].startDate,
+              status: updatedItem.status || prevProjects[index].status
+            };
+            
+            console.log("Project data prepared for update:", updatedProject);
             
             const newProjects = [...prevProjects];
-            newProjects[index] = updatedItem as Project;
+            newProjects[index] = updatedProject as Project;
             
             // Salvar as alterações
             const storageData: StorageItems = {
@@ -319,6 +339,8 @@ export default function App() {
               projects: newProjects,
               stock: stockItems,
               employees,
+              willBaseRate,
+              willBonus,
               lastSync: Date.now()
             };
             
@@ -327,7 +349,7 @@ export default function App() {
             
             return newProjects;
           } catch (error) {
-            console.error("Erro ao atualizar projeto:", error);
+            console.error("Error updating project:", error);
             // Garantir que retornamos o estado anterior em caso de erro
             return prevProjects;
           }

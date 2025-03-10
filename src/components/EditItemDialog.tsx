@@ -47,27 +47,21 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     } else if (item && 'client' in item) {
       // É um projeto
       try {
-        console.log("Processando projeto para edição:", item);
-        
-        // Usar type assertion mais segura para garantir que o item seja tratado como Project
-        const projectItem = item as unknown as Project;
-        
         // Garantir que todos os campos estejam presentes e com valores válidos
-        const projectName = data.name as string || projectItem.name || '';
-        const projectDescription = data.description as string || projectItem.description || '';
-        const projectClient = data.client as string || projectItem.client || '';
-        const projectLocation = data.location as string || projectItem.location || '';
+        const projectName = data.name as string || item.name || '';
+        const projectDescription = data.description as string || item.description || '';
+        const projectClient = data.client as string || item.client || '';
+        const projectLocation = data.location as string || item.location || '';
         
         // Tratar o valor como número, com fallback para o valor atual ou zero
         let projectValue = 0;
         try {
           projectValue = parseFloat(data.value as string);
           if (isNaN(projectValue)) {
-            projectValue = projectItem.value || 0;
+            projectValue = item.value || 0;
           }
         } catch (e) {
-          console.error("Erro ao processar valor do projeto:", e);
-          projectValue = projectItem.value || 0;
+          projectValue = item.value || 0;
         }
         
         // Tratar a data com fallback para a data atual ou a data do item
@@ -75,18 +69,17 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         try {
           projectStartDate = new Date(data.startDate as string).toISOString();
         } catch (e) {
-          console.error("Erro ao processar data do projeto:", e);
-          projectStartDate = projectItem.startDate || new Date().toISOString();
+          projectStartDate = item.startDate || new Date().toISOString();
         }
         
         // Garantir que o status seja um dos valores válidos
         const projectStatus = ['completed', 'in_progress', 'pending'].includes(data.status as string) 
           ? data.status as 'completed' | 'in_progress' | 'pending'
-          : (projectItem.status || 'pending');
+          : (item.status || 'pending');
         
-        // Criar um objeto limpo para evitar propriedades indesejadas
         itemData = {
-          id: projectItem.id,
+          ...item,
+          id: item.id,
           name: projectName,
           description: projectDescription,
           client: projectClient,
@@ -97,7 +90,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           category: 'Projects'
         };
         
-        console.log("Projeto formatado para atualização:", itemData);
+        console.log("Project data formatted:", itemData);
         validationError = validation.project(itemData as Partial<Project>);
       } catch (error) {
         console.error("Error processing project data:", error);
