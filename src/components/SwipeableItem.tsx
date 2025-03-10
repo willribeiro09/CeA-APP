@@ -102,33 +102,35 @@ export function SwipeableItem({
           {isWill ? (
             <>
               <button
-                onClick={onDelete}
-                className="bg-gray-200 text-gray-700 flex items-center justify-center w-[40px] h-full"
+                onClick={onEdit}
+                className="bg-gray-200 text-gray-700 flex items-center justify-center w-[50px] h-full"
               >
                 <RotateCcw className="w-4 h-4" />
+                <span className="ml-1 text-xs">Reset</span>
               </button>
-              {customEditButton && (
-                <div onClick={onEdit} className="h-full">
-                  {customEditButton}
-                </div>
-              )}
+              <button
+                onClick={onDelete}
+                className="bg-red-500 text-white flex items-center justify-center w-[100px] h-full"
+              >
+                <span className="font-medium">Lay off</span>
+              </button>
             </>
           ) : (
             <>
               <button
-                onClick={onDelete}
-                className="bg-red-500 text-white flex items-center justify-center w-[40px] h-full"
+                onClick={onEdit}
+                className="bg-blue-500 text-white flex items-center justify-center w-[75px] h-full"
               >
-                <Trash2 className="w-4 h-4" />
+                <Edit className="w-4 h-4 mr-1" />
+                <span className="text-sm">Edit</span>
               </button>
-              {showEditButton && (
-                <button
-                  onClick={onEdit}
-                  className="bg-blue-500 text-white flex items-center justify-center w-[90px] h-full"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-              )}
+              <button
+                onClick={onDelete}
+                className="bg-red-500 text-white flex items-center justify-center w-[75px] h-full"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                <span className="text-sm">Delete</span>
+              </button>
             </>
           )}
         </div>

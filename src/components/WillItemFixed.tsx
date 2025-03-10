@@ -20,8 +20,9 @@ export function WillItemFixed({
 }: WillItemFixedProps) {
   return (
     <SwipeableItem
-      onEdit={onIncreaseRate}
+      onEdit={onReset}
       onDelete={onLayoff}
+      isWill={true}
     >
       <div className="p-2.5">
         <div className="flex items-center justify-between mb-1.5">

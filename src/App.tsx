@@ -274,107 +274,122 @@ export default function App() {
   const handleUpdateItem = (updatedItem: Partial<Item>) => {
     console.log(`Atualizando item:`, updatedItem);
     
-    // Verificar o tipo do item usando propriedades específicas
-    if ('description' in updatedItem) {
-      // É uma despesa
-      setExpenses(prevExpenses => {
-        const newExpenses = { ...prevExpenses };
-        
-        // Procurar e atualizar a despesa em todas as listas
-        Object.keys(newExpenses).forEach(listName => {
-          const index = newExpenses[listName as ListName].findIndex(expense => expense.id === updatedItem.id);
-          if (index !== -1) {
-            newExpenses[listName as ListName][index] = updatedItem as Expense;
+    try {
+      // Verificar o tipo do item usando propriedades específicas
+      if ('description' in updatedItem) {
+        // É uma despesa
+        setExpenses(prevExpenses => {
+          const newExpenses = { ...prevExpenses };
+          
+          // Procurar e atualizar a despesa em todas as listas
+          Object.keys(newExpenses).forEach(listName => {
+            const index = newExpenses[listName as ListName].findIndex(expense => expense.id === updatedItem.id);
+            if (index !== -1) {
+              newExpenses[listName as ListName][index] = updatedItem as Expense;
+            }
+          });
+          
+          // Salvar as alterações
+          const storageData: StorageItems = {
+            expenses: newExpenses,
+            projects,
+            stock: stockItems,
+            employees,
+            lastSync: Date.now()
+          };
+          
+          // Salvar no Supabase e localmente
+          saveChanges(storageData);
+          
+          return newExpenses;
+        });
+      } else if ('client' in updatedItem) {
+        // É um projeto
+        setProjects(prevProjects => {
+          try {
+            const index = prevProjects.findIndex(project => project.id === updatedItem.id);
+            if (index === -1) return prevProjects;
+            
+            const newProjects = [...prevProjects];
+            newProjects[index] = updatedItem as Project;
+            
+            // Salvar as alterações
+            const storageData: StorageItems = {
+              expenses,
+              projects: newProjects,
+              stock: stockItems,
+              employees,
+              lastSync: Date.now()
+            };
+            
+            // Salvar no Supabase e localmente
+            saveChanges(storageData);
+            
+            return newProjects;
+          } catch (error) {
+            console.error("Erro ao atualizar projeto:", error);
+            // Garantir que retornamos o estado anterior em caso de erro
+            return prevProjects;
           }
         });
-        
-        // Salvar as alterações
-        const storageData: StorageItems = {
-          expenses: newExpenses,
-          projects,
-          stock: stockItems,
-          employees,
-          lastSync: Date.now()
-        };
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
-        
-        return newExpenses;
-      });
-    } else if ('client' in updatedItem) {
-      // É um projeto
-      setProjects(prevProjects => {
-        const index = prevProjects.findIndex(project => project.id === updatedItem.id);
-        if (index === -1) return prevProjects;
-        
-        const newProjects = [...prevProjects];
-        newProjects[index] = updatedItem as Project;
-        
-        // Salvar as alterações
-        const storageData: StorageItems = {
-          expenses,
-          projects: newProjects,
-          stock: stockItems,
-          employees,
-          lastSync: Date.now()
-        };
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
-        
-        return newProjects;
-      });
-    } else if ('quantity' in updatedItem) {
-      // É um item de estoque
-      setStockItems(prevStockItems => {
-        const index = prevStockItems.findIndex(item => item.id === updatedItem.id);
-        if (index === -1) return prevStockItems;
-        
-        const newStockItems = [...prevStockItems];
-        newStockItems[index] = updatedItem as StockItem;
-        
-        // Salvar as alterações
-        const storageData: StorageItems = {
-          expenses,
-          projects,
-          stock: newStockItems,
-          employees,
-          lastSync: Date.now()
-        };
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
-        
-        return newStockItems;
-      });
-    } else if ('employeeName' in updatedItem) {
-      // É um funcionário
-      setEmployees(prevEmployees => {
-        const newEmployees = { ...prevEmployees };
-        
-        // Procurar e atualizar o funcionário em todas as semanas
-        Object.keys(newEmployees).forEach(weekStartDate => {
-          const index = newEmployees[weekStartDate].findIndex(employee => employee.id === updatedItem.id);
-          if (index !== -1) {
-            newEmployees[weekStartDate][index] = updatedItem as Employee;
-          }
+      } else if ('quantity' in updatedItem) {
+        // É um item de estoque
+        setStockItems(prevStockItems => {
+          const index = prevStockItems.findIndex(item => item.id === updatedItem.id);
+          if (index === -1) return prevStockItems;
+          
+          const newStockItems = [...prevStockItems];
+          newStockItems[index] = updatedItem as StockItem;
+          
+          // Salvar as alterações
+          const storageData: StorageItems = {
+            expenses,
+            projects,
+            stock: newStockItems,
+            employees,
+            lastSync: Date.now()
+          };
+          
+          // Salvar no Supabase e localmente
+          saveChanges(storageData);
+          
+          return newStockItems;
         });
-        
-        // Salvar as alterações
-        const storageData: StorageItems = {
-          expenses,
-          projects,
-          stock: stockItems,
-          employees: newEmployees,
-          lastSync: Date.now()
-        };
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
-        
-        return newEmployees;
-      });
+      } else if ('employeeName' in updatedItem) {
+        // É um funcionário
+        setEmployees(prevEmployees => {
+          const newEmployees = { ...prevEmployees };
+          
+          // Procurar e atualizar o funcionário em todas as semanas
+          Object.keys(newEmployees).forEach(weekStartDate => {
+            const index = newEmployees[weekStartDate].findIndex(employee => employee.id === updatedItem.id);
+            if (index !== -1) {
+              newEmployees[weekStartDate][index] = updatedItem as Employee;
+            }
+          });
+          
+          // Salvar as alterações
+          const storageData: StorageItems = {
+            expenses,
+            projects,
+            stock: stockItems,
+            employees: newEmployees,
+            lastSync: Date.now()
+          };
+          
+          // Salvar no Supabase e localmente
+          saveChanges(storageData);
+          
+          return newEmployees;
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar item:", error);
+      // Garantir que o diálogo seja fechado mesmo em caso de erro
+      setIsEditDialogOpen(false);
+    } finally {
+      // Fechar o diálogo após atualizar o item
+      setIsEditDialogOpen(false);
     }
   };
 
