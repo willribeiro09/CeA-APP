@@ -18,6 +18,7 @@ import { getData } from './lib/storage';
 import { format } from 'date-fns';
 import { SwipeableItem } from './components/SwipeableItem';
 import * as Dialog from '@radix-ui/react-dialog';
+import { WillItemFixed } from './components/WillItemFixed';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -116,9 +117,15 @@ export default function App() {
       await saveData(newData);
       console.log('Dados salvos com sucesso');
       setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
+      
+      // Garantir que o estado local seja atualizado mesmo se houver problemas com o Supabase
+      localStorage.setItem('expenses-app-data', JSON.stringify(newData));
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
       setShowFeedback({ show: true, message: 'Erro ao salvar dados!', type: 'error' });
+      
+      // Mesmo com erro, atualizar o estado local para evitar perda de dados
+      localStorage.setItem('expenses-app-data', JSON.stringify(newData));
     } finally {
       setIsSaving(false);
       // Esconder o feedback após 3 segundos
@@ -727,48 +734,48 @@ export default function App() {
           {(activeCategory === 'Expenses') && (
             <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
               <div className="relative max-w-[800px] mx-auto pb-2">
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
-                >
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
+            >
                   <span className="text-gray-700 font-medium">
                     {selectedList}
                   </span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-gray-500 transition-transform ${
-                      isDropdownOpen ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                
-                {isDropdownOpen && (
+              <ChevronDown
+                className={`w-5 h-5 text-gray-500 transition-transform ${
+                  isDropdownOpen ? 'transform rotate-180' : ''
+                }`}
+              />
+            </button>
+            
+            {isDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-35">
-                    <button
-                      onClick={() => handleListSelect('Carlos')}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                      }`}
-                    >
-                      Carlos
-                    </button>
-                    <button
-                      onClick={() => handleListSelect('Diego')}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                      }`}
-                    >
-                      Diego
-                    </button>
-                    <button
-                      onClick={() => handleListSelect('C&A')}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                      }`}
-                    >
-                      C&A
-                    </button>
-                  </div>
-                )}
+                <button
+                  onClick={() => handleListSelect('Carlos')}
+                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                  }`}
+                >
+                  Carlos
+                </button>
+                <button
+                  onClick={() => handleListSelect('Diego')}
+                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                  }`}
+                >
+                  Diego
+                </button>
+                <button
+                  onClick={() => handleListSelect('C&A')}
+                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                  }`}
+                >
+                  C&A
+                </button>
+              </div>
+            )}
               </div>
             </div>
           )}
@@ -862,62 +869,15 @@ export default function App() {
 
                     // Will - funcionário fixo
                     employeeElements.push(
-                      <div key="will-fixed" className="relative overflow-hidden mb-2">
-                        <div className="absolute right-0 top-0 bottom-0 flex h-full">
-                          <button 
-                            onClick={resetWillValues}
-                            className="h-full w-[75px] bg-gray-200 text-gray-700 flex items-center justify-center"
-                          >
-                            Reset
-                          </button>
-                          <button 
-                            onClick={() => setShowLayoffAlert(true)}
-                            className="h-full w-[75px] bg-red-500 text-white flex items-center justify-center"
-                          >
-                            Lay off
-                          </button>
-                        </div>
-                        
-                        <div className="bg-white relative z-10 p-2.5 rounded-lg shadow-sm">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <h3 className="text-xl font-bold text-gray-800">Will</h3>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => setIsRateDialogOpen(true)}
-                                className="px-4 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
-                              >
-                                Increase
-                              </button>
-                              <button
-                                className="px-2.5 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 transition-colors h-8"
-                                onClick={handleAddBonus}
-                              >
-                                BONUS
-                              </button>
-                            </div>
-                          </div>
-                          <div className="space-y-0.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-700 text-sm">Days Worked:</span>
-                              <span className="text-xl font-bold text-gray-900">7</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-700 text-sm">Amount to Receive:</span>
-                              <span className="text-xl font-bold text-[#5ABB37]">
-                                $ {(willBaseRate + willBonus).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                            {willBonus > 0 && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Bonus:</span>
-                                <span className="text-sm font-semibold text-blue-500">
-                                  $ {willBonus.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      <WillItemFixed
+                        key="will-fixed"
+                        willBaseRate={willBaseRate}
+                        willBonus={willBonus}
+                        onReset={resetWillValues}
+                        onLayoff={() => setShowLayoffAlert(true)}
+                        onIncreaseRate={() => setIsRateDialogOpen(true)}
+                        onAddBonus={handleAddBonus}
+                      />
                     );
 
                     // Outros funcionários

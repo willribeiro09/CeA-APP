@@ -1,25 +1,39 @@
-import React, { useState, useRef } from 'react';
-import { Edit, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, ReactNode } from 'react';
+import { Edit, Trash2, RotateCcw } from 'lucide-react';
 
-interface SwipeableItemProps {
-  children: React.ReactNode;
-  onEdit: () => void;
+export interface SwipeableItemProps {
+  children: ReactNode;
   onDelete: () => void;
+  onEdit: () => void;
+  showEditButton?: boolean;
+  customEditButton?: ReactNode;
+  isWill?: boolean;
 }
 
-export function SwipeableItem({ children, onEdit, onDelete }: SwipeableItemProps) {
+export function SwipeableItem({ 
+  children, 
+  onDelete, 
+  onEdit, 
+  showEditButton = true, 
+  customEditButton,
+  isWill = false
+}: SwipeableItemProps) {
   const [isSwiped, setIsSwiped] = useState(false);
   const startX = useRef<number | null>(null);
   const currentX = useRef<number | null>(null);
   const swipeDistance = useRef<number>(0);
   const itemRef = useRef<HTMLDivElement>(null);
-
+  
+  const THRESHOLD = 80;
+  const MAX_SWIPE = 180;
+  const DIRECTION_THRESHOLD = 10; // Distância em pixels para determinar a direção do gesto
+  
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
     currentX.current = startX.current;
     swipeDistance.current = 0;
   };
-
+  
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!startX.current) return;
     
@@ -41,7 +55,7 @@ export function SwipeableItem({ children, onEdit, onDelete }: SwipeableItemProps
     // Atualizar o estado de swipe
     setIsSwiped(swipeDistance.current > 50);
   };
-
+  
   const handleTouchEnd = () => {
     // Snap para a posição aberta ou fechada
     if (swipeDistance.current > 50) {
@@ -58,7 +72,7 @@ export function SwipeableItem({ children, onEdit, onDelete }: SwipeableItemProps
     startX.current = null;
     currentX.current = null;
   };
-
+  
   const resetSwipe = () => {
     if (itemRef.current) {
       itemRef.current.style.transform = 'translateX(0)';
@@ -66,35 +80,71 @@ export function SwipeableItem({ children, onEdit, onDelete }: SwipeableItemProps
     setIsSwiped(false);
     swipeDistance.current = 0;
   };
+  
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (itemRef.current && !itemRef.current.contains(e.target as Node) && swipeDistance.current > 0) {
+        resetSwipe();
+      }
+    };
 
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
   return (
-    <div className="relative overflow-hidden">
-      {/* Ações de swipe */}
-      <div className="absolute right-0 top-0 bottom-0 flex h-full">
-        <button 
-          onClick={onEdit}
-          className="bg-blue-500 text-white flex items-center justify-center w-[75px] h-full"
+    <div className="mb-4" style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
+      <div className="relative overflow-hidden" style={{ borderRadius: '0.75rem' }}>
+        {/* Ações de swipe */}
+        <div className="absolute right-0 top-0 bottom-0 flex h-full">
+          {isWill ? (
+            <>
+              <button
+                onClick={onDelete}
+                className="bg-gray-200 text-gray-700 flex items-center justify-center w-[40px] h-full"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+              {customEditButton && (
+                <div onClick={onEdit} className="h-full">
+                  {customEditButton}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onDelete}
+                className="bg-red-500 text-white flex items-center justify-center w-[40px] h-full"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              {showEditButton && (
+                <button
+                  onClick={onEdit}
+                  className="bg-blue-500 text-white flex items-center justify-center w-[90px] h-full"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              )}
+            </>
+          )}
+        </div>
+        
+        {/* Item principal */}
+        <div
+          ref={itemRef}
+          className="bg-white relative z-10 transition-transform touch-pan-y shadow-sm"
+          style={{ borderRadius: '0.75rem' }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onClick={isSwiped ? resetSwipe : undefined}
         >
-          <Edit size={20} />
-        </button>
-        <button 
-          onClick={onDelete}
-          className="bg-red-500 text-white flex items-center justify-center w-[75px] h-full"
-        >
-          <Trash2 size={20} />
-        </button>
-      </div>
-      
-      {/* Item principal */}
-      <div
-        ref={itemRef}
-        className="bg-white relative z-10 transition-transform touch-pan-y"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onClick={isSwiped ? resetSwipe : undefined}
-      >
-        {children}
+          {children}
+        </div>
       </div>
     </div>
   );
