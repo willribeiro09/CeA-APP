@@ -822,229 +822,238 @@ export default function App() {
       )}
       
       <main className="px-4 pb-20">
-            <div className="space-y-4 max-w-[800px] mx-auto relative z-0 mt-2" style={{ minHeight: 'calc(100vh - 250px)' }}>
-              {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-            <ExpenseItem
-              key={expense.id}
-              expense={expense}
-              onTogglePaid={handleTogglePaid}
-                  onDelete={(id) => handleDeleteItem(id, 'Expenses')}
-                  onEdit={(expense) => handleEditItem(expense)}
-            />
-          ))}
-              {activeCategory === 'Projects' && projects.map(project => (
-                <SwipeableItem 
-                  key={project.id}
-                  onDelete={() => handleDeleteItem(project.id, 'Projects')}
-                  onEdit={() => handleEditItem(project)}
-                >
-                  <div className="bg-white p-4 rounded-lg shadow-sm">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{project.name}</h3>
-                        <p className="text-gray-600 text-sm">Client: {project.client}</p>
-                        <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-[#5ABB37]">$ {(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(project.startDate).toLocaleDateString('en-US')}
-                        </p>
-                      </div>
+        <div 
+          className="max-w-[800px] mx-auto relative z-0 mt-2" 
+          style={{ 
+            height: 'calc(100vh - 250px)', 
+            overflowY: 'auto',
+            position: 'relative'
+          }}
+        >
+          <div className="space-y-4">
+            {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
+              <ExpenseItem
+                key={expense.id}
+                expense={expense}
+                onTogglePaid={handleTogglePaid}
+                onDelete={(id) => handleDeleteItem(id, 'Expenses')}
+                onEdit={(expense) => handleEditItem(expense)}
+              />
+            ))}
+            {activeCategory === 'Projects' && projects.map(project => (
+              <SwipeableItem 
+                key={project.id}
+                onDelete={() => handleDeleteItem(project.id, 'Projects')}
+                onEdit={() => handleEditItem(project)}
+              >
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-medium text-gray-900">{project.name}</h3>
+                      <p className="text-gray-600 text-sm">Client: {project.client}</p>
+                      <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
                     </div>
-                    <div className="mt-2 flex justify-between items-center">
-                      <p className="text-sm text-gray-500 line-clamp-1">{project.description}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {project.status === 'completed' ? 'Completed' :
-                         project.status === 'in_progress' ? 'In Progress' :
-                         'Pending'}
-                      </span>
+                    <div className="text-right">
+                      <p className="font-semibold text-[#5ABB37]">$ {(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(project.startDate).toLocaleDateString('en-US')}
+                      </p>
                     </div>
                   </div>
-                </SwipeableItem>
-              ))}
-              {activeCategory === 'Stock' && stockItems.map(item => (
-                <SwipeableItem 
-                  key={item.id}
-                  onDelete={() => handleDeleteItem(item.id, 'Stock')}
-                  onEdit={() => handleEditItem(item)}
-                >
-                  <div className="bg-white p-4 rounded-lg shadow-sm">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-medium">{item.name}</h3>
-                      <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                        {item.quantity} {item.unit}
-                      </span>
-                    </div>
+                  <div className="mt-2 flex justify-between items-center">
+                    <p className="text-sm text-gray-500 line-clamp-1">{project.description}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      project.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {project.status === 'completed' ? 'Completed' :
+                       project.status === 'in_progress' ? 'In Progress' :
+                       'Pending'}
+                    </span>
                   </div>
-                </SwipeableItem>
-              ))}
-              {activeCategory === 'Employees' && (
-                <>
-                  {(() => {
-                    const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-                    const weekEmployees = employees[formattedSelectedWeekStart] || [];
-                    const employeeElements = [];
+                </div>
+              </SwipeableItem>
+            ))}
+            {activeCategory === 'Stock' && stockItems.map(item => (
+              <SwipeableItem 
+                key={item.id}
+                onDelete={() => handleDeleteItem(item.id, 'Stock')}
+                onEdit={() => handleEditItem(item)}
+              >
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium">{item.name}</h3>
+                    <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                      {item.quantity} {item.unit}
+                    </span>
+                  </div>
+                </div>
+              </SwipeableItem>
+            ))}
+            {activeCategory === 'Employees' && (
+              <>
+                {(() => {
+                  const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+                  const weekEmployees = employees[formattedSelectedWeekStart] || [];
+                  const employeeElements = [];
 
-                    // Will - funcionário fixo
+                  // Will - funcionário fixo
+                  employeeElements.push(
+                    <WillItemFixed
+                      key="will-fixed"
+                      willBaseRate={willBaseRate}
+                      willBonus={willBonus}
+                      onReset={resetWillValues}
+                      onLayoff={() => setShowLayoffAlert(true)}
+                      onIncreaseRate={() => setIsRateDialogOpen(true)}
+                      onAddBonus={handleAddBonus}
+                    />
+                  );
+
+                  // Outros funcionários
+                  weekEmployees.forEach(employee => {
                     employeeElements.push(
-                      <WillItemFixed
-                        key="will-fixed"
-                        willBaseRate={willBaseRate}
-                        willBonus={willBonus}
-                        onReset={resetWillValues}
-                        onLayoff={() => setShowLayoffAlert(true)}
-                        onIncreaseRate={() => setIsRateDialogOpen(true)}
-                        onAddBonus={handleAddBonus}
-                      />
-                    );
-
-                    // Outros funcionários
-                    weekEmployees.forEach(employee => {
-                      employeeElements.push(
-                        <SwipeableItem 
-                          key={employee.id}
-                          onDelete={() => handleDeleteItem(employee.id, 'Employees')}
-                          onEdit={() => handleEditItem(employee)}
-                        >
-                          <div className="bg-white p-2.5 rounded-lg shadow-sm">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
-                                  className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
-                                >
-                                  +1 Day
-                                </button>
-                                <button
-                                  onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
-                                  className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
-                                >
-                                  Reset
-                                </button>
-                              </div>
-                            </div>
-                            <div className="space-y-0.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Days Worked:</span>
-                                <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Amount to Receive:</span>
-                                <span className="text-xl font-bold text-[#5ABB37]">
-                                  $ {((employee.daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Daily Rate:</span>
-                                <span className="text-sm text-gray-600">
-                                  $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
+                      <SwipeableItem 
+                        key={employee.id}
+                        onDelete={() => handleDeleteItem(employee.id, 'Employees')}
+                        onEdit={() => handleEditItem(employee)}
+                      >
+                        <div className="bg-white p-2.5 rounded-lg shadow-sm">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
+                                className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
+                              >
+                                +1 Day
+                              </button>
+                              <button
+                                onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
+                                className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
+                              >
+                                Reset
+                              </button>
                             </div>
                           </div>
-                        </SwipeableItem>
-                      );
-                    });
+                          <div className="space-y-0.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-700 text-sm">Days Worked:</span>
+                              <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-700 text-sm">Amount to Receive:</span>
+                              <span className="text-xl font-bold text-[#5ABB37]">
+                                $ {((employee.daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-700 text-sm">Daily Rate:</span>
+                              <span className="text-sm text-gray-600">
+                                $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </SwipeableItem>
+                    );
+                  });
 
-                    return employeeElements;
-                  })()}
+                  return employeeElements;
+                })()}
 
-                  <Dialog.Root open={isRateDialogOpen} onOpenChange={setIsRateDialogOpen}>
-                    <Dialog.Portal>
-                      <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-                      <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
-                        <div className="flex justify-between items-center mb-4">
-                          <Dialog.Title className="text-lg font-semibold">
-                            Adjust Base Rate
-                          </Dialog.Title>
-                          <Dialog.Close className="text-gray-400 hover:text-gray-600">
-                            <X className="w-5 h-5" />
-                          </Dialog.Close>
+                <Dialog.Root open={isRateDialogOpen} onOpenChange={setIsRateDialogOpen}>
+                  <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
+                      <div className="flex justify-between items-center mb-4">
+                        <Dialog.Title className="text-lg font-semibold">
+                          Adjust New Salary
+                        </Dialog.Title>
+                        <Dialog.Close className="text-gray-400 hover:text-gray-600">
+                          <X className="w-5 h-5" />
+                        </Dialog.Close>
+                      </div>
+                      
+                      <form 
+                        onSubmit={handleWillRateChange} 
+                        className="space-y-4"
+                      >
+                        <div>
+                          <label htmlFor="baseRate" className="block text-sm font-medium text-gray-700">
+                            New Salary
+                          </label>
+                          <input
+                            type="number"
+                            id="baseRate"
+                            name="baseRate"
+                            defaultValue={willBaseRate}
+                            min="200"
+                            step="1"
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                          />
                         </div>
                         
-                        <form 
-                          onSubmit={handleWillRateChange} 
-                          className="space-y-4"
-                        >
-                          <div>
-                            <label htmlFor="baseRate" className="block text-sm font-medium text-gray-700">
-                              New Base Rate (minimum $200)
-                            </label>
-                            <input
-                              type="number"
-                              id="baseRate"
-                              name="baseRate"
-                              defaultValue={willBaseRate}
-                              min="200"
-                              step="1"
-                              required
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                            />
-                          </div>
-                          
-                          <div className="flex justify-end gap-3 mt-6">
-                            <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
-                              Cancel
-                            </Dialog.Close>
-                            <button
-                              type="submit"
-                              className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
-                            >
-                              Confirm
-                            </button>
-                          </div>
-                        </form>
-                      </Dialog.Content>
-                    </Dialog.Portal>
-                  </Dialog.Root>
-                </>
-              )}
-            </div>
-          </main>
+                        <div className="flex justify-end gap-3 mt-6">
+                          <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
+                            Cancel
+                          </Dialog.Close>
+                          <button
+                            type="submit"
+                            className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
+                          >
+                            Confirm
+                          </button>
+                        </div>
+                      </form>
+                    </Dialog.Content>
+                  </Dialog.Portal>
+                </Dialog.Root>
+              </>
+            )}
+          </div>
         </div>
-
-      <AddButton onClick={() => setIsAddDialogOpen(true)} />
-
-      <AddItemDialog
-        isOpen={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        category={activeCategory}
-        onSubmit={handleAddItem}
-          selectedWeekStart={selectedWeekStart}
-        />
-        
-        <EditItemDialog
-          isOpen={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          item={itemToEdit}
-          onSubmit={handleUpdateItem}
-          selectedWeekStart={selectedWeekStart}
-        />
-
-        {isSupabaseConfigured() && <ConnectionStatus />}
-      </div>
-
-      <Dialog.Root open={showLayoffAlert} onOpenChange={setShowLayoffAlert}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-50">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
+      </main>
     </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-    </>
+
+    <AddButton onClick={() => setIsAddDialogOpen(true)} />
+
+    <AddItemDialog
+      isOpen={isAddDialogOpen}
+      onOpenChange={setIsAddDialogOpen}
+      category={activeCategory}
+      onSubmit={handleAddItem}
+      selectedWeekStart={selectedWeekStart}
+    />
+    
+    <EditItemDialog
+      isOpen={isEditDialogOpen}
+      onOpenChange={setIsEditDialogOpen}
+      item={itemToEdit}
+      onSubmit={handleUpdateItem}
+      selectedWeekStart={selectedWeekStart}
+    />
+
+    {isSupabaseConfigured() && <ConnectionStatus />}
+  </div>
+
+  <Dialog.Root open={showLayoffAlert} onOpenChange={setShowLayoffAlert}>
+    <Dialog.Portal>
+      <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+      <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-50">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
+        </div>
+      </Dialog.Content>
+    </Dialog.Portal>
+  </Dialog.Root>
+</>
   );
 }

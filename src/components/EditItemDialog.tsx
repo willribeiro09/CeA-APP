@@ -47,6 +47,8 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     } else if (item && 'client' in item) {
       // É um projeto
       try {
+        console.log("Processando projeto para edição:", item);
+        
         // Usar type assertion mais segura para garantir que o item seja tratado como Project
         const projectItem = item as unknown as Project;
         
@@ -64,6 +66,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
             projectValue = projectItem.value || 0;
           }
         } catch (e) {
+          console.error("Erro ao processar valor do projeto:", e);
           projectValue = projectItem.value || 0;
         }
         
@@ -72,6 +75,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         try {
           projectStartDate = new Date(data.startDate as string).toISOString();
         } catch (e) {
+          console.error("Erro ao processar data do projeto:", e);
           projectStartDate = projectItem.startDate || new Date().toISOString();
         }
         
@@ -80,8 +84,8 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           ? data.status as 'completed' | 'in_progress' | 'pending'
           : (projectItem.status || 'pending');
         
+        // Criar um objeto limpo para evitar propriedades indesejadas
         itemData = {
-          ...projectItem,
           id: projectItem.id,
           name: projectName,
           description: projectDescription,
@@ -93,7 +97,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           category: 'Projects'
         };
         
-        console.log("Project data formatted:", itemData);
+        console.log("Projeto formatado para atualização:", itemData);
         validationError = validation.project(itemData as Partial<Project>);
       } catch (error) {
         console.error("Error processing project data:", error);
@@ -358,7 +362,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="dailyRate" className="block text-sm font-medium text-gray-700">
-                    Daily Rate (R$)
+                    Daily Rate ($)
                   </label>
                   <input
                     type="number"
