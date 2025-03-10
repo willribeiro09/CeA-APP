@@ -24,10 +24,6 @@ export function SwipeableItem({
   const swipeDistance = useRef<number>(0);
   const itemRef = useRef<HTMLDivElement>(null);
   
-  const THRESHOLD = 80;
-  const MAX_SWIPE = 180;
-  const DIRECTION_THRESHOLD = 10; // Distância em pixels para determinar a direção do gesto
-  
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
     currentX.current = startX.current;
@@ -83,7 +79,7 @@ export function SwipeableItem({
   
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (itemRef.current && !itemRef.current.contains(e.target as Node) && swipeDistance.current > 0) {
+      if (itemRef.current && !itemRef.current.contains(e.target as Node) && isSwiped) {
         resetSwipe();
       }
     };
@@ -92,7 +88,7 @@ export function SwipeableItem({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isSwiped]);
   
   return (
     <div className="mb-4" style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
@@ -106,7 +102,6 @@ export function SwipeableItem({
                 className="bg-gray-200 text-gray-700 flex items-center justify-center w-[50px] h-full"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span className="ml-1 text-xs">Reset</span>
               </button>
               <button
                 onClick={onDelete}
@@ -150,4 +145,4 @@ export function SwipeableItem({
       </div>
     </div>
   );
-} 
+}
