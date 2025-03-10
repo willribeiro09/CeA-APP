@@ -358,6 +358,12 @@ export default function App() {
       } else if ('employeeName' in updatedItem) {
         // É um funcionário
         setEmployees(prevEmployees => {
+          // Não permitir alterações no Will através da edição normal de funcionários
+          if (updatedItem.name === 'Will' || updatedItem.employeeName === 'Will') {
+            console.log("Tentativa de editar Will através da edição normal de funcionários. Ignorando.");
+            return prevEmployees;
+          }
+          
           const newEmployees = { ...prevEmployees };
           
           // Procurar e atualizar o funcionário em todas as semanas
@@ -374,6 +380,8 @@ export default function App() {
             projects,
             stock: stockItems,
             employees: newEmployees,
+            willBaseRate,
+            willBonus,
             lastSync: Date.now()
           };
           
@@ -814,7 +822,7 @@ export default function App() {
       )}
       
       <main className="px-4 pb-20">
-            <div className="space-y-4 max-w-[800px] mx-auto relative z-0 mt-2">
+            <div className="space-y-4 max-w-[800px] mx-auto relative z-0 mt-2" style={{ minHeight: 'calc(100vh - 250px)' }}>
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
             <ExpenseItem
               key={expense.id}
