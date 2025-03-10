@@ -47,21 +47,27 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     } else if (item && 'client' in item) {
       // É um projeto
       try {
+        console.log("Processing project for editing:", item);
+        
+        // Usar type assertion mais segura para garantir que o item seja tratado como Project
+        const projectItem = item as unknown as Project;
+        
         // Garantir que todos os campos estejam presentes e com valores válidos
-        const projectName = data.name as string || item.name || '';
-        const projectDescription = data.description as string || item.description || '';
-        const projectClient = data.client as string || item.client || '';
-        const projectLocation = data.location as string || item.location || '';
+        const projectName = data.name as string || projectItem.name || '';
+        const projectDescription = data.description as string || projectItem.description || '';
+        const projectClient = data.client as string || projectItem.client || '';
+        const projectLocation = data.location as string || projectItem.location || '';
         
         // Tratar o valor como número, com fallback para o valor atual ou zero
         let projectValue = 0;
         try {
           projectValue = parseFloat(data.value as string);
           if (isNaN(projectValue)) {
-            projectValue = item.value || 0;
+            projectValue = projectItem.value || 0;
           }
         } catch (e) {
-          projectValue = item.value || 0;
+          console.error("Error processing project value:", e);
+          projectValue = projectItem.value || 0;
         }
         
         // Tratar a data com fallback para a data atual ou a data do item
@@ -69,28 +75,28 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         try {
           projectStartDate = new Date(data.startDate as string).toISOString();
         } catch (e) {
-          projectStartDate = item.startDate || new Date().toISOString();
+          console.error("Error processing project date:", e);
+          projectStartDate = projectItem.startDate || new Date().toISOString();
         }
         
         // Garantir que o status seja um dos valores válidos
         const projectStatus = ['completed', 'in_progress', 'pending'].includes(data.status as string) 
           ? data.status as 'completed' | 'in_progress' | 'pending'
-          : (item.status || 'pending');
+          : (projectItem.status || 'pending');
         
+        // Criar um objeto limpo sem o spread operator (que pode causar problemas)
         itemData = {
-          ...item,
-          id: item.id,
+          id: projectItem.id,
           name: projectName,
           description: projectDescription,
           client: projectClient,
           location: projectLocation,
           value: projectValue,
           startDate: projectStartDate,
-          status: projectStatus,
-          category: 'Projects'
+          status: projectStatus
         };
         
-        console.log("Project data formatted:", itemData);
+        console.log("Project data formatted - SAFE VERSION:", itemData);
         validationError = validation.project(itemData as Partial<Project>);
       } catch (error) {
         console.error("Error processing project data:", error);

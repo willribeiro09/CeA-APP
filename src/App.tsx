@@ -295,6 +295,8 @@ export default function App() {
             projects,
             stock: stockItems,
             employees,
+            willBaseRate,  // Preservar o valor original
+            willBonus,     // Preservar o valor original
             lastSync: Date.now()
           };
           
@@ -307,7 +309,7 @@ export default function App() {
         // É um projeto
         setProjects(prevProjects => {
           try {
-            console.log("Updating project:", updatedItem);
+            console.log("Updating project, pre-check:", updatedItem);
             
             // Verificar se o ID existe
             const index = prevProjects.findIndex(project => project.id === updatedItem.id);
@@ -316,33 +318,38 @@ export default function App() {
               return prevProjects;
             }
             
-            // Preparar dados do projeto verificando que todos os campos necessários estão presentes
-            const updatedProject = {
-              ...prevProjects[index],
-              ...updatedItem,
-              id: updatedItem.id,
-              name: updatedItem.name || prevProjects[index].name,
-              description: updatedItem.description || prevProjects[index].description,
-              client: updatedItem.client || prevProjects[index].client,
-              startDate: updatedItem.startDate || prevProjects[index].startDate,
-              status: updatedItem.status || prevProjects[index].status
+            // Garantir que todos os campos obrigatórios estejam presentes
+            const existingProject = prevProjects[index];
+            
+            // Criar uma cópia do projeto com todos os campos necessários
+            const updatedProject: Project = {
+              id: updatedItem.id || existingProject.id,
+              name: updatedItem.name || existingProject.name,
+              description: updatedItem.description || existingProject.description,
+              client: updatedItem.client || existingProject.client,
+              startDate: updatedItem.startDate || existingProject.startDate,
+              status: updatedItem.status || existingProject.status,
+              location: updatedItem.location || existingProject.location || '',
+              value: updatedItem.value !== undefined ? updatedItem.value : existingProject.value || 0
             };
             
             console.log("Project data prepared for update:", updatedProject);
             
             const newProjects = [...prevProjects];
-            newProjects[index] = updatedProject as Project;
+            newProjects[index] = updatedProject;
             
-            // Salvar as alterações
+            // Salvar as alterações com os valores de Will preservados
             const storageData: StorageItems = {
               expenses,
               projects: newProjects,
               stock: stockItems,
               employees,
-              willBaseRate,
-              willBonus,
+              willBaseRate, // Preservar o valor original
+              willBonus,    // Preservar o valor original
               lastSync: Date.now()
             };
+            
+            console.log("Storage data for projects update:", storageData);
             
             // Salvar no Supabase e localmente
             saveChanges(storageData);
@@ -369,6 +376,8 @@ export default function App() {
             projects,
             stock: newStockItems,
             employees,
+            willBaseRate, // Preservar o valor original
+            willBonus,    // Preservar o valor original
             lastSync: Date.now()
           };
           
@@ -402,10 +411,12 @@ export default function App() {
             projects,
             stock: stockItems,
             employees: newEmployees,
-            willBaseRate,
-            willBonus,
+            willBaseRate,  // Preservar o valor original
+            willBonus,     // Preservar o valor original
             lastSync: Date.now()
           };
+          
+          console.log("Saving employees with Will data preserved:", storageData.willBaseRate, storageData.willBonus);
           
           // Salvar no Supabase e localmente
           saveChanges(storageData);
