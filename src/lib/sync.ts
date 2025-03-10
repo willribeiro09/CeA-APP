@@ -109,20 +109,50 @@ export const syncService = {
         (payload: RealtimePostgresChangesPayload<any>) => {
           console.log('Mudança recebida:', payload);
           if (payload.new) {
-            const data = payload.new as any;
-            const storageData: StorageItems = {
-              expenses: data.expenses || {},
-              projects: data.projects || [],
-              stock: data.stock || [],
-              employees: data.employees || {},
-              willBaseRate: data.willBaseRate || 200,
-              willBonus: data.willBonus || 0,
+            const newData = payload.new as any;
+            
+            // Obter dados locais existentes
+            const localData = storage.load();
+            if (!localData) {
+              // Se não há dados locais, simplesmente salvar os novos dados
+              const storageData: StorageItems = {
+                expenses: newData.expenses || {},
+                projects: newData.projects || [],
+                stock: newData.stock || [],
+                employees: newData.employees || {},
+                willBaseRate: newData.willBaseRate || 200,
+                willBonus: newData.willBonus || 0,
+                lastSync: new Date().getTime()
+              };
+              console.log('Sem dados locais, salvando novos dados:', storageData);
+              storage.save(storageData);
+              window.dispatchEvent(new CustomEvent('dataUpdated', { 
+                detail: storageData 
+              }));
+              return;
+            }
+            
+            // Mesclar dados de forma inteligente, atualizando apenas o que mudou
+            // Verificar quais categorias foram atualizadas comparando timestamps
+            const mergedData: StorageItems = {
+              // Mesclar despesas por lista
+              expenses: this.mergeExpenses(localData.expenses, newData.expenses || {}),
+              // Mesclar projetos por ID
+              projects: this.mergeProjects(localData.projects, newData.projects || []),
+              // Mesclar itens de estoque por ID
+              stock: this.mergeStock(localData.stock, newData.stock || []),
+              // Mesclar funcionários por semana e ID
+              employees: this.mergeEmployees(localData.employees, newData.employees || {}),
+              // Preservar configurações de Will apenas se atualizadas
+              willBaseRate: newData.willBaseRate !== undefined ? newData.willBaseRate : localData.willBaseRate,
+              willBonus: newData.willBonus !== undefined ? newData.willBonus : localData.willBonus,
               lastSync: new Date().getTime()
             };
-            console.log('Dados processados para armazenamento local:', storageData);
-            storage.save(storageData);
+            
+            console.log('Dados mesclados para armazenamento local:', mergedData);
+            storage.save(mergedData);
             window.dispatchEvent(new CustomEvent('dataUpdated', { 
-              detail: storageData 
+              detail: mergedData 
             }));
           }
         }
@@ -130,6 +160,124 @@ export const syncService = {
       .subscribe((status: string) => {
         console.log('Status da inscrição do canal:', status);
       });
+  },
+
+  // Função auxiliar para mesclar despesas por lista
+  mergeExpenses(localExpenses: Record<string, Expense[]>, remoteExpenses: Record<string, Expense[]>): Record<string, Expense[]> {
+    const result = { ...localExpenses };
+    
+    // Para cada lista em remoteExpenses
+    Object.keys(remoteExpenses).forEach(listName => {
+      if (!result[listName]) {
+        // Se a lista não existe localmente, adicioná-la
+        result[listName] = [...remoteExpenses[listName]];
+      } else {
+        // Se a lista existe, mesclar item por item
+        const localList = result[listName];
+        const remoteList = remoteExpenses[listName];
+        
+        // Atualizar itens existentes e adicionar novos
+        remoteList.forEach(remoteItem => {
+          const localIndex = localList.findIndex(item => item.id === remoteItem.id);
+          if (localIndex >= 0) {
+            // Item existe, atualizá-lo
+            localList[localIndex] = remoteItem;
+          } else {
+            // Item novo, adicioná-lo
+            localList.push(remoteItem);
+          }
+        });
+        
+        // Identificar itens excluídos (existem localmente mas não remotamente)
+        result[listName] = localList.filter(localItem => 
+          remoteList.some(remoteItem => remoteItem.id === localItem.id) || 
+          !remoteExpenses[listName] // Manter se a lista remota nem existe
+        );
+      }
+    });
+    
+    return result;
+  },
+  
+  // Função auxiliar para mesclar projetos por ID
+  mergeProjects(localProjects: Project[], remoteProjects: Project[]): Project[] {
+    const result = [...localProjects];
+    
+    // Atualizar projetos existentes e adicionar novos
+    remoteProjects.forEach(remoteProject => {
+      const localIndex = result.findIndex(project => project.id === remoteProject.id);
+      if (localIndex >= 0) {
+        // Projeto existe, atualizá-lo
+        result[localIndex] = remoteProject;
+      } else {
+        // Projeto novo, adicioná-lo
+        result.push(remoteProject);
+      }
+    });
+    
+    // Identificar projetos excluídos (existem localmente mas não remotamente)
+    return result.filter(localProject => 
+      remoteProjects.some(remoteProject => remoteProject.id === localProject.id)
+    );
+  },
+  
+  // Função auxiliar para mesclar itens de estoque por ID
+  mergeStock(localStock: StockItem[], remoteStock: StockItem[]): StockItem[] {
+    const result = [...localStock];
+    
+    // Atualizar itens existentes e adicionar novos
+    remoteStock.forEach(remoteItem => {
+      const localIndex = result.findIndex(item => item.id === remoteItem.id);
+      if (localIndex >= 0) {
+        // Item existe, atualizá-lo
+        result[localIndex] = remoteItem;
+      } else {
+        // Item novo, adicioná-lo
+        result.push(remoteItem);
+      }
+    });
+    
+    // Identificar itens excluídos (existem localmente mas não remotamente)
+    return result.filter(localItem => 
+      remoteStock.some(remoteItem => remoteItem.id === localItem.id)
+    );
+  },
+  
+  // Função auxiliar para mesclar funcionários por semana e ID
+  mergeEmployees(localEmployees: Record<string, Employee[]>, remoteEmployees: Record<string, Employee[]>): Record<string, Employee[]> {
+    const result = { ...localEmployees };
+    
+    // Para cada semana em remoteEmployees
+    Object.keys(remoteEmployees).forEach(weekStartDate => {
+      if (!result[weekStartDate]) {
+        // Se a semana não existe localmente, adicioná-la
+        result[weekStartDate] = [...remoteEmployees[weekStartDate]];
+      } else {
+        // Se a semana existe, mesclar funcionário por funcionário
+        const localList = result[weekStartDate];
+        const remoteList = remoteEmployees[weekStartDate];
+        
+        // Atualizar funcionários existentes e adicionar novos
+        remoteList.forEach(remoteEmployee => {
+          const localIndex = localList.findIndex(employee => employee.id === remoteEmployee.id);
+          if (localIndex >= 0) {
+            // Funcionário existe, atualizá-lo
+            localList[localIndex] = remoteEmployee;
+          } else {
+            // Funcionário novo, adicioná-lo
+            localList.push(remoteEmployee);
+          }
+        });
+        
+        // Identificar funcionários excluídos (existem localmente mas não remotamente)
+        result[weekStartDate] = localList.filter(localEmployee => 
+          remoteList.some(remoteEmployee => remoteEmployee.id === localEmployee.id) || 
+          !remoteEmployees[weekStartDate] // Manter se a semana remota nem existe
+        );
+      }
+    });
+    
+    return result;
   },
 
   setupRealtimeUpdates(callback: (data: StorageItems) => void) {

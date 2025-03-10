@@ -83,12 +83,41 @@ export default function App() {
       const cleanup = syncService.setupRealtimeUpdates((data) => {
         console.log('Recebida atualização em tempo real:', data);
         if (data) {
-          setExpenses(data.expenses || {});
-          setProjects(data.projects || []);
-          setStockItems(data.stock || []);
-          setEmployees(data.employees || {});
+          // Atualizar o estado de forma seletiva, apenas para os dados que foram alterados
           
-          // Atualizar dados do Will se existirem
+          // Atualizar despesas apenas se houver mudanças
+          if (data.expenses && Object.keys(data.expenses).length > 0) {
+            setExpenses(prevExpenses => {
+              console.log('Atualizando despesas com dados remotos');
+              return data.expenses;
+            });
+          }
+          
+          // Atualizar projetos apenas se houver mudanças
+          if (data.projects && data.projects.length > 0) {
+            setProjects(prevProjects => {
+              console.log('Atualizando projetos com dados remotos');
+              return data.projects;
+            });
+          }
+          
+          // Atualizar itens de estoque apenas se houver mudanças
+          if (data.stock && data.stock.length > 0) {
+            setStockItems(prevStock => {
+              console.log('Atualizando estoque com dados remotos');
+              return data.stock;
+            });
+          }
+          
+          // Atualizar funcionários apenas se houver mudanças
+          if (data.employees && Object.keys(data.employees).length > 0) {
+            setEmployees(prevEmployees => {
+              console.log('Atualizando funcionários com dados remotos');
+              return data.employees;
+            });
+          }
+          
+          // Atualizar dados do Will somente se explicitamente alterados
           if (data.willBaseRate !== undefined) {
             setWillBaseRate(data.willBaseRate);
           }
@@ -865,14 +894,14 @@ export default function App() {
         >
           <div className="space-y-4">
             {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-              <ExpenseItem
-                key={expense.id}
-                expense={expense}
-                onTogglePaid={handleTogglePaid}
+            <ExpenseItem
+              key={expense.id}
+              expense={expense}
+              onTogglePaid={handleTogglePaid}
                 onDelete={(id) => handleDeleteItem(id, 'Expenses')}
                 onEdit={(expense) => handleEditItem(expense)}
-              />
-            ))}
+            />
+          ))}
             {activeCategory === 'Projects' && projects.map(project => (
               <SwipeableItem 
                 key={project.id}
@@ -1051,13 +1080,13 @@ export default function App() {
       </main>
     </div>
 
-    <AddButton onClick={() => setIsAddDialogOpen(true)} />
+      <AddButton onClick={() => setIsAddDialogOpen(true)} />
 
-    <AddItemDialog
-      isOpen={isAddDialogOpen}
-      onOpenChange={setIsAddDialogOpen}
-      category={activeCategory}
-      onSubmit={handleAddItem}
+      <AddItemDialog
+        isOpen={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        category={activeCategory}
+        onSubmit={handleAddItem}
       selectedWeekStart={selectedWeekStart}
     />
     
@@ -1083,7 +1112,7 @@ export default function App() {
             </svg>
           </div>
           <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
-        </div>
+    </div>
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>
