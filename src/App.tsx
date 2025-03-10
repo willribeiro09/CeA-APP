@@ -814,7 +814,7 @@ export default function App() {
       )}
       
       <main className="px-4 pb-20">
-            <div className="space-y-2 max-w-[800px] mx-auto relative z-0">
+            <div className="space-y-4 max-w-[800px] mx-auto relative z-0 mt-2">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
             <ExpenseItem
               key={expense.id}

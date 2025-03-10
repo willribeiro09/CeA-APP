@@ -52,17 +52,17 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           name: data.name as string,
           description: data.description as string,
           client: data.client as string,
-          location: data.location as string,
+          location: data.location as string || '',
           value: parseFloat(data.value as string) || 0,
           startDate: new Date(data.startDate as string).toISOString(),
           status: data.status as 'completed' | 'in_progress' | 'pending',
           category: 'Projects'
         };
-        console.log("Dados de projeto formatados:", itemData);
+        console.log("Project data formatted:", itemData);
         validationError = validation.project(itemData as Partial<Project>);
       } catch (error) {
-        console.error("Erro ao processar dados do projeto:", error);
-        setErrors([{ field: 'form', message: 'Erro ao processar dados do projeto. Tente novamente.' }]);
+        console.error("Error processing project data:", error);
+        setErrors([{ field: 'form', message: 'Error processing project data. Please try again.' }]);
         return;
       }
     } else if (item && 'quantity' in item) {
@@ -93,19 +93,19 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     }
 
     if (validationError) {
-      console.error("Erro de validação:", validationError);
+      console.error("Validation error:", validationError);
       setErrors([{ field: 'form', message: validationError }]);
       return;
     }
 
     try {
-      console.log("Dados válidos, chamando onSubmit com:", itemData);
+      console.log("Valid data, calling onSubmit with:", itemData);
       setErrors([]);
       onSubmit(itemData);
       onOpenChange(false);
     } catch (error) {
-      console.error("Erro ao submeter dados:", error);
-      setErrors([{ field: 'form', message: 'Erro ao salvar. Tente novamente.' }]);
+      console.error("Error submitting data:", error);
+      setErrors([{ field: 'form', message: 'Error saving data. Please try again.' }]);
     }
   };
 
@@ -133,10 +133,10 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-lg font-semibold">
-              {itemCategory === 'Expenses' ? 'Editar Despesa' : 
-               itemCategory === 'Projects' ? 'Editar Projeto' : 
-               itemCategory === 'Stock' ? 'Editar Item de Estoque' :
-               'Editar Funcionário'}
+              {itemCategory === 'Expenses' ? 'Edit Expense' : 
+               itemCategory === 'Projects' ? 'Edit Project' : 
+               itemCategory === 'Stock' ? 'Edit Inventory Item' :
+               'Edit Employee'}
             </Dialog.Title>
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
@@ -145,214 +145,222 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           
           <form onSubmit={handleSubmit} className="space-y-4">
             {errors.find(error => error.field === 'form') && (
-              <p className="text-sm text-red-600 bg-red-50 p-2 rounded">
+              <div className="mb-4 p-2 bg-red-50 text-red-500 rounded-md text-sm">
                 {errors.find(error => error.field === 'form')?.message}
-              </p>
+              </div>
             )}
             
             {itemCategory === 'Expenses' && (
               <>
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Descrição
-                  </label>
-                  <input
-                    type="text"
-                    id="description"
-                    name="description"
-                    defaultValue={(item as Expense).description}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-                    Valor
-                  </label>
-                  <input
-                    type="number"
-                    id="amount"
-                    name="amount"
-                    step="0.01"
-                    defaultValue={(item as Expense).amount}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700">
-                    Data de Vencimento
-                  </label>
-                  <input
-                    type="date"
-                    id="dueDate"
-                    name="dueDate"
-                    defaultValue={new Date((item as Expense).date).toISOString().split('T')[0]}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                      Description
+                    </label>
+                    <input
+                      type="text"
+                      id="description"
+                      name="description"
+                      defaultValue={(item as Expense).description}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
+                      Amount
+                    </label>
+                    <input
+                      type="number"
+                      id="amount"
+                      name="amount"
+                      step="0.01"
+                      defaultValue={(item as Expense).amount}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700">
+                      Due Date
+                    </label>
+                    <input
+                      type="date"
+                      id="dueDate"
+                      name="dueDate"
+                      defaultValue={new Date((item as Expense).date).toISOString().split('T')[0]}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
                 </div>
               </>
             )}
             
             {itemCategory === 'Projects' && (
               <>
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome do Projeto
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    defaultValue={(item as Project).name}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Descrição
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    defaultValue={(item as Project).description}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="client" className="block text-sm font-medium text-gray-700">
-                    Cliente
-                  </label>
-                  <input
-                    type="text"
-                    id="client"
-                    name="client"
-                    defaultValue={(item as Project).client}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
-                    Data de Início
-                  </label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    defaultValue={new Date((item as Project).startDate).toISOString().split('T')[0]}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                    Status
-                  </label>
-                  <select
-                    id="status"
-                    name="status"
-                    defaultValue={(item as Project).status}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  >
-                    <option value="pending">Pendente</option>
-                    <option value="in_progress">Em Progresso</option>
-                    <option value="completed">Concluído</option>
-                  </select>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                      Nome do Projeto
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      defaultValue={(item as Project).name}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                      Descrição
+                    </label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      defaultValue={(item as Project).description}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="client" className="block text-sm font-medium text-gray-700">
+                      Cliente
+                    </label>
+                    <input
+                      type="text"
+                      id="client"
+                      name="client"
+                      defaultValue={(item as Project).client}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
+                      Data de Início
+                    </label>
+                    <input
+                      type="date"
+                      id="startDate"
+                      name="startDate"
+                      defaultValue={new Date((item as Project).startDate).toISOString().split('T')[0]}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                      Status
+                    </label>
+                    <select
+                      id="status"
+                      name="status"
+                      defaultValue={(item as Project).status}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    >
+                      <option value="pending">Pendente</option>
+                      <option value="in_progress">Em Progresso</option>
+                      <option value="completed">Concluído</option>
+                    </select>
+                  </div>
                 </div>
               </>
             )}
             
             {itemCategory === 'Stock' && (
               <>
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome do Item
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    defaultValue={(item as StockItem).name}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                    Quantidade
-                  </label>
-                  <input
-                    type="number"
-                    id="quantity"
-                    name="quantity"
-                    defaultValue={(item as StockItem).quantity}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="unit" className="block text-sm font-medium text-gray-700">
-                    Unidade
-                  </label>
-                  <input
-                    type="text"
-                    id="unit"
-                    name="unit"
-                    defaultValue={(item as StockItem).unit}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                      Nome do Item
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      defaultValue={(item as StockItem).name}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
+                      Quantidade
+                    </label>
+                    <input
+                      type="number"
+                      id="quantity"
+                      name="quantity"
+                      defaultValue={(item as StockItem).quantity}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="unit" className="block text-sm font-medium text-gray-700">
+                      Unidade
+                    </label>
+                    <input
+                      type="text"
+                      id="unit"
+                      name="unit"
+                      defaultValue={(item as StockItem).unit}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
                 </div>
               </>
             )}
 
             {itemCategory === 'Employees' && (
               <>
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Nome do Funcionário
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    defaultValue={(item as Employee).name}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="dailyRate" className="block text-sm font-medium text-gray-700">
-                    Valor por Dia (R$)
-                  </label>
-                  <input
-                    type="number"
-                    id="dailyRate"
-                    name="dailyRate"
-                    defaultValue={(item as Employee).dailyRate || 250}
-                    min="1"
-                    step="1"
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                      Nome do Funcionário
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      defaultValue={(item as Employee).name}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="dailyRate" className="block text-sm font-medium text-gray-700">
+                      Valor por Dia (R$)
+                    </label>
+                    <input
+                      type="number"
+                      id="dailyRate"
+                      name="dailyRate"
+                      defaultValue={(item as Employee).dailyRate || 250}
+                      min="1"
+                      step="1"
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    />
+                  </div>
                 </div>
               </>
             )}
             
             <div className="flex justify-end gap-3 mt-6">
               <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
-                Cancelar
+                Cancel
               </Dialog.Close>
               <button
                 type="submit"
                 className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
               >
-                Salvar
+                Save
               </button>
             </div>
           </form>
