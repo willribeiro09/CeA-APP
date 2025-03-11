@@ -30,6 +30,29 @@ const initialExpenses: Record<ListName, Expense[]> = {
 
 const initialEmployees: Record<string, Employee[]> = {};
 
+// Após as importações no topo do arquivo, adicione estas funções auxiliares para cálculo de datas
+const getWeekStart = (date: Date): Date => {
+  const result = new Date(date);
+  const day = result.getDay();
+  // 3 = quarta-feira (0 é domingo, 1 é segunda, etc.)
+  const diff = day >= 3 ? day - 3 : day + 4;
+  result.setDate(result.getDate() - diff);
+  result.setHours(0, 0, 0, 0);
+  return result;
+};
+
+const getWeekEnd = (date: Date): Date => {
+  const weekStart = getWeekStart(date);
+  const result = new Date(weekStart);
+  result.setDate(result.getDate() + 6); // 6 dias após quarta = terça
+  result.setHours(23, 59, 59, 999);
+  return result;
+};
+
+const formatDateRange = (start: Date, end: Date): string => {
+  return `${start.toLocaleDateString('pt-BR')} - ${end.toLocaleDateString('pt-BR')}`;
+};
+
 export default function App() {
   console.log('Iniciando renderização do App');
   const [expenses, setExpenses] = useState<Record<ListName, Expense[]>>(initialExpenses);
@@ -45,7 +68,9 @@ export default function App() {
   const [selectedList, setSelectedList] = useState<ListName>('C&A');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeName>('Matheus');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(new Date());
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(getWeekStart(new Date()));
+  const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(getWeekEnd(new Date()));
+  const [weekTotalValue, setWeekTotalValue] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
   const [willBaseRate, setWillBaseRate] = useState(200);
@@ -107,6 +132,25 @@ export default function App() {
 
     initializeData();
   }, []);
+
+  // Adicione este useEffect para calcular o total dos projetos na semana selecionada
+  useEffect(() => {
+    if (projects.length === 0) return;
+    
+    const startTime = selectedWeekStart.getTime();
+    const endTime = selectedWeekEnd.getTime();
+    
+    let total = 0;
+    
+    projects.forEach(project => {
+      const projectDate = new Date(project.startDate).getTime();
+      if (projectDate >= startTime && projectDate <= endTime) {
+        total += project.value || 0;
+      }
+    });
+    
+    setWeekTotalValue(total);
+  }, [projects, selectedWeekStart, selectedWeekEnd]);
 
   // Função para salvar alterações
   const saveChanges = async (newData: StorageItems) => {
@@ -436,6 +480,14 @@ export default function App() {
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
+    
+    if (date) {
+      const weekStart = getWeekStart(date);
+      const weekEnd = getWeekEnd(date);
+      setSelectedWeekStart(weekStart);
+      setSelectedWeekEnd(weekEnd);
+    }
+    
     setIsCalendarOpen(false);
   };
 
@@ -873,7 +925,14 @@ export default function App() {
                 onEdit={(expense) => handleEditItem(expense)}
             />
           ))}
-            {activeCategory === 'Projects' && projects.map(project => (
+            {activeCategory === 'Projects' && projects
+              .filter(project => {
+                const projectDate = new Date(project.startDate).getTime();
+                const startTime = selectedWeekStart.getTime();
+                const endTime = selectedWeekEnd.getTime();
+                return projectDate >= startTime && projectDate <= endTime;
+              })
+              .map(project => (
               <SwipeableItem 
                 key={project.id}
                 onDelete={() => handleDeleteItem(project.id, 'Projects')}
@@ -907,9 +966,7 @@ export default function App() {
                         project.status === 'completed' ? 'bg-green-100 text-green-800' :
                         'bg-blue-100 text-blue-800'
                       }`}>
-                        {project.status === 'completed' ? 'Completed' :
-                         project.status === 'pending' ? 'In Progress' :
-                         'In Progress'}
+                        {project.status === 'completed' ? 'Completed' : 'In Progress'}
                       </span>
                     </div>
                   </div>
@@ -1095,6 +1152,25 @@ export default function App() {
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>
+
+  {activeCategory === 'Projects' && (
+    <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
+      <div className="relative max-w-[800px] mx-auto pb-4">
+        <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between">
+          <div className="mb-2 sm:mb-0">
+            <span className="text-gray-700 font-medium mr-2">Semana:</span>
+            <span className="text-gray-900">{formatDateRange(selectedWeekStart, selectedWeekEnd)}</span>
+          </div>
+          <div className="flex items-center">
+            <span className="text-gray-700 font-medium mr-2">Total:</span>
+            <span className="text-[#5ABB37] font-semibold">
+              ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
 </>
   );
 }

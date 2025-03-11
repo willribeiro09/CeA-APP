@@ -81,7 +81,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         // Garantir que o status seja um dos valores válidos
         const projectStatus = ['completed', 'in_progress'].includes(data.status as string) 
           ? data.status as 'completed' | 'in_progress'
-          : (projectItem.status === 'pending' ? 'in_progress' : projectItem.status || 'in_progress');
+          : 'in_progress'; // Defaulting to 'in_progress' instead of checking for 'pending'
         
         // Verificar se o invoice está OK
         const invoiceOk = data.invoiceOk === 'on';
@@ -303,7 +303,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                   <select
                     id="status"
                     name="status"
-                    defaultValue={(item as Project).status === 'pending' ? 'in_progress' : (item as Project).status}
+                    defaultValue={(item as Project).status}
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   >
