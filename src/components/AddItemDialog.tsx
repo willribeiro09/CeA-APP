@@ -37,13 +37,13 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
       itemData = {
-        name: data.name as string,
-        description: data.description as string,
+        name: data.client as string,
         client: data.client as string,
         projectNumber: data.projectNumber as string,
         location: data.location as string,
         startDate: new Date(data.startDate as string).toISOString(),
-        status: 'pending',
+        status: data.status as 'completed' | 'in_progress',
+        value: parseFloat(data.value as string) || 0,
         invoiceOk: (data.invoiceOk === 'on'),
         category: 'Projects'
       };
@@ -157,29 +157,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
             {category === 'Projects' && (
               <>
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Project Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
                   <label htmlFor="client" className="block text-sm font-medium text-gray-700">
                     Client
                   </label>
@@ -193,13 +170,12 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                 </div>
                 <div>
                   <label htmlFor="projectNumber" className="block text-sm font-medium text-gray-700">
-                    Project Number
+                    Number
                   </label>
                   <input
                     type="text"
                     id="projectNumber"
                     name="projectNumber"
-                    required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
@@ -216,6 +192,18 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                   />
                 </div>
                 <div>
+                  <label htmlFor="value" className="block text-sm font-medium text-gray-700">
+                    Value
+                  </label>
+                  <input
+                    type="number"
+                    id="value"
+                    name="value"
+                    step="0.01"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
                   <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
                     Start Date
                   </label>
@@ -226,6 +214,20 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
+                </div>
+                <div>
+                  <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                    Status
+                  </label>
+                  <select
+                    id="status"
+                    name="status"
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  >
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
                 </div>
                 <div>
                   <label htmlFor="invoiceOk" className="block text-sm font-medium text-gray-700">

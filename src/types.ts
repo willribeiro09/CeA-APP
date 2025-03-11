@@ -18,12 +18,12 @@ export interface Expense {
 export interface Project {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   client: string;
   projectNumber?: string;
   startDate: string;
   endDate?: string;
-  status: 'completed' | 'in_progress' | 'pending';
+  status: 'completed' | 'in_progress';
   notes?: string;
   location?: string;
   value?: number;

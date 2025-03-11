@@ -865,14 +865,14 @@ export default function App() {
         >
           <div className="space-y-4">
             {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-              <ExpenseItem
-                key={expense.id}
-                expense={expense}
-                onTogglePaid={handleTogglePaid}
+            <ExpenseItem
+              key={expense.id}
+              expense={expense}
+              onTogglePaid={handleTogglePaid}
                 onDelete={(id) => handleDeleteItem(id, 'Expenses')}
                 onEdit={(expense) => handleEditItem(expense)}
-              />
-            ))}
+            />
+          ))}
             {activeCategory === 'Projects' && projects.map(project => (
               <SwipeableItem 
                 key={project.id}
@@ -882,10 +882,9 @@ export default function App() {
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium text-gray-900">{project.name}</h3>
-                      <p className="text-gray-600 text-sm">Client: {project.client}</p>
+                      <h3 className="font-medium text-gray-900">{project.client}</h3>
                       {project.projectNumber && (
-                        <p className="text-gray-600 text-sm">Project #: {project.projectNumber}</p>
+                        <p className="text-gray-600 text-sm">Number: {project.projectNumber}</p>
                       )}
                       <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
                     </div>
@@ -897,7 +896,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className="mt-2 flex justify-between items-center">
-                    <p className="text-sm text-gray-500 line-clamp-1">{project.description}</p>
+                    <div></div>
                     <div className="flex items-center space-x-2">
                       {project.invoiceOk && (
                         <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
@@ -906,12 +905,11 @@ export default function App() {
                       )}
                       <span className={`text-xs px-2 py-0.5 rounded ${
                         project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
+                        'bg-blue-100 text-blue-800'
                       }`}>
                         {project.status === 'completed' ? 'Completed' :
-                         project.status === 'in_progress' ? 'In Progress' :
-                         'Pending'}
+                         project.status === 'pending' ? 'In Progress' :
+                         'In Progress'}
                       </span>
                     </div>
                   </div>
@@ -1061,13 +1059,13 @@ export default function App() {
       </main>
     </div>
 
-    <AddButton onClick={() => setIsAddDialogOpen(true)} />
+      <AddButton onClick={() => setIsAddDialogOpen(true)} />
 
-    <AddItemDialog
-      isOpen={isAddDialogOpen}
-      onOpenChange={setIsAddDialogOpen}
-      category={activeCategory}
-      onSubmit={handleAddItem}
+      <AddItemDialog
+        isOpen={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        category={activeCategory}
+        onSubmit={handleAddItem}
       selectedWeekStart={selectedWeekStart}
     />
     
@@ -1093,7 +1091,7 @@ export default function App() {
             </svg>
           </div>
           <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
-        </div>
+    </div>
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>

@@ -53,8 +53,6 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         const projectItem = item as unknown as Project;
         
         // Garantir que todos os campos estejam presentes e com valores válidos
-        const projectName = data.name as string || projectItem.name || '';
-        const projectDescription = data.description as string || projectItem.description || '';
         const projectClient = data.client as string || projectItem.client || '';
         const projectLocation = data.location as string || projectItem.location || '';
         const projectNumber = data.projectNumber as string || projectItem.projectNumber || '';
@@ -81,9 +79,9 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         }
         
         // Garantir que o status seja um dos valores válidos
-        const projectStatus = ['completed', 'in_progress', 'pending'].includes(data.status as string) 
-          ? data.status as 'completed' | 'in_progress' | 'pending'
-          : (projectItem.status || 'pending');
+        const projectStatus = ['completed', 'in_progress'].includes(data.status as string) 
+          ? data.status as 'completed' | 'in_progress'
+          : (projectItem.status === 'pending' ? 'in_progress' : projectItem.status || 'in_progress');
         
         // Verificar se o invoice está OK
         const invoiceOk = data.invoiceOk === 'on';
@@ -91,8 +89,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         // Criar um objeto limpo sem o spread operator (que pode causar problemas)
         itemData = {
           id: projectItem.id,
-          name: projectName,
-          description: projectDescription,
+          name: projectClient, // Usando client como name
           client: projectClient,
           location: projectLocation,
           projectNumber: projectNumber,
@@ -237,19 +234,6 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
             {itemCategory === 'Projects' && (
               <>
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Project Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    defaultValue={(item as Project).name}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
                   <label htmlFor="client" className="block text-sm font-medium text-gray-700">
                     Client
                   </label>
@@ -264,7 +248,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                 </div>
                 <div>
                   <label htmlFor="projectNumber" className="block text-sm font-medium text-gray-700">
-                    Project Number
+                    Number
                   </label>
                   <input
                     type="text"
@@ -287,14 +271,15 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                   />
                 </div>
                 <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Description
+                  <label htmlFor="value" className="block text-sm font-medium text-gray-700">
+                    Value
                   </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    defaultValue={(item as Project).description}
-                    required
+                  <input
+                    type="number"
+                    id="value"
+                    name="value"
+                    defaultValue={(item as Project).value || ''}
+                    step="0.01"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
@@ -318,11 +303,10 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                   <select
                     id="status"
                     name="status"
-                    defaultValue={(item as Project).status}
+                    defaultValue={(item as Project).status === 'pending' ? 'in_progress' : (item as Project).status}
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   >
-                    <option value="pending">Pending</option>
                     <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                   </select>
