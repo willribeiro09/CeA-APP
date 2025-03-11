@@ -10,6 +10,7 @@ import { EditItemDialog } from './components/EditItemDialog';
 import { Expense, Item, StorageItems } from './types';
 import { loadInitialData, saveData } from './lib/sync';
 import { WillItem } from './components/WillItem';
+import { WillItemFixed } from './components/WillItemFixed';
 
 export default function App() {
   const [activeCategory, setActiveCategory] = useState<'Expenses' | 'Projects' | 'Stock' | 'Employees'>('Expenses');
