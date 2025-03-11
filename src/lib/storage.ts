@@ -97,6 +97,8 @@ export const getData = (): StorageItems => {
     projects: [],
     stock: [],
     employees: {},
+    willBaseRate: 200,
+    willBonus: 0,
     lastSync: new Date().getTime()
   };
 };

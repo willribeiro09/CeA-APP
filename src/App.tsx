@@ -787,6 +787,14 @@ export default function App() {
   const resetWillValues = () => {
     setWillBaseRate(200);
     setWillBonus(0);
+    
+    // Salvar dados após resetar os valores
+    setTimeout(() => {
+      const storageData = getData();
+      storageData.willBaseRate = 200;
+      storageData.willBonus = 0;
+      saveChanges(storageData);
+    }, 0);
   };
 
   // Adicionar função para salvar os dados do Will
@@ -809,6 +817,7 @@ export default function App() {
         const storageData = getData();
         storageData.willBaseRate = willBaseRate;
         storageData.willBonus = newBonus;
+        console.log('Salvando bônus atualizado:', newBonus);
         saveChanges(storageData);
       }, 0);
       return newBonus;
@@ -830,6 +839,7 @@ export default function App() {
       const storageData = getData();
       storageData.willBaseRate = newBaseRate;
       storageData.willBonus = willBonus;
+      console.log('Salvando taxa base atualizada:', newBaseRate);
       saveChanges(storageData);
     }, 0);
   };
@@ -970,9 +980,9 @@ export default function App() {
                   className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                 />
               </div>
-            </div>
           </div>
-        )}
+        </div>
+      )}
       
       <main className="px-4 pb-20">
           <div 
@@ -985,16 +995,16 @@ export default function App() {
               paddingTop: '0'
             }}
           >
-            <div className="space-y-3">
+        <div className="space-y-3">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-                <ExpenseItem
-                  key={expense.id}
-                  expense={expense}
-                  onTogglePaid={handleTogglePaid}
+            <ExpenseItem
+              key={expense.id}
+              expense={expense}
+              onTogglePaid={handleTogglePaid}
                   onDelete={(id) => handleDeleteItem(id, 'Expenses')}
                   onEdit={(expense) => handleEditItem(expense)}
-                />
-              ))}
+            />
+          ))}
               
               {activeCategory === 'Projects' && projects
                 .filter(project => {
@@ -1136,8 +1146,8 @@ export default function App() {
                 </>
               )}
             </div>
-          </div>
-        </main>
+        </div>
+      </main>
       </div>
     </div>
 
@@ -1207,8 +1217,8 @@ export default function App() {
               step="1"
               required
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-            />
-          </div>
+      />
+    </div>
           
           <div className="flex justify-end gap-3 mt-6">
             <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">

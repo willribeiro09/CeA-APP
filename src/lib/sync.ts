@@ -110,6 +110,7 @@ export const syncService = {
           console.log('Mudança recebida:', payload);
           if (payload.new) {
             const data = payload.new as any;
+            console.log('Valores do Will recebidos do Supabase:', data.willBaseRate, data.willBonus);
             const storageData: StorageItems = {
               expenses: data.expenses || {},
               projects: data.projects || [],
@@ -120,6 +121,7 @@ export const syncService = {
               lastSync: new Date().getTime()
             };
             console.log('Dados processados para armazenamento local:', storageData);
+            console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
             storage.save(storageData);
             window.dispatchEvent(new CustomEvent('dataUpdated', { 
               detail: storageData 
@@ -196,6 +198,7 @@ export const syncService = {
 
     try {
       console.log('Sincronizando dados com Supabase usando UUID:', FIXED_UUID);
+      console.log('Valores do Will a serem sincronizados:', data.willBaseRate, data.willBonus);
       console.log('Dados a serem salvos:', {
         id: FIXED_UUID,
         expenses: data.expenses,
