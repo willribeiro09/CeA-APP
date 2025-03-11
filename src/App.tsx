@@ -19,6 +19,12 @@ import { format } from 'date-fns';
 import { SwipeableItem } from './components/SwipeableItem';
 import * as Dialog from '@radix-ui/react-dialog';
 import { WillItemFixed } from './components/WillItemFixed';
+import { DayPicker } from 'react-day-picker';
+import { ptBR } from 'date-fns/locale';
+import { Button } from './components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import 'react-day-picker/dist/style.css';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -50,7 +56,8 @@ const getWeekEnd = (date: Date): Date => {
 };
 
 const formatDateRange = (start: Date, end: Date): string => {
-  return `${start.toLocaleDateString('pt-BR')} - ${end.toLocaleDateString('pt-BR')}`;
+  // Mostrar apenas dia e mês para economizar espaço
+  return `${format(start, 'dd/MM')} - ${format(end, 'dd/MM')}`;
 };
 
 export default function App() {
@@ -907,6 +914,43 @@ export default function App() {
       )}
       
       <main className="px-4 pb-20">
+        {activeCategory === 'Projects' && (
+          <div className="sticky top-[70px] left-0 right-0 z-30 bg-white py-2 mb-4 border-b border-gray-200 shadow-sm">
+            <div className="max-w-[800px] mx-auto">
+              <div className="flex items-center justify-between h-[50px] px-2">
+                <div className="flex items-center">
+                  <span className="text-gray-700 font-medium">Semana:</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="ml-2 h-9 pl-3 pr-2 py-1 border border-gray-300 flex items-center text-gray-900"
+                      >
+                        {formatDateRange(selectedWeekStart, selectedWeekEnd)}
+                        <CalendarIcon className="ml-2 h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <DayPicker
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={handleDateSelect}
+                        locale={ptBR}
+                        className="border-none"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex items-center">
+                  <span className="text-gray-700 font-medium mr-2">Total:</span>
+                  <span className="text-[#5ABB37] font-bold">
+                    ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div 
           className="max-w-[800px] mx-auto relative z-0 mt-2" 
           style={{ 
@@ -1152,25 +1196,6 @@ export default function App() {
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>
-
-  {activeCategory === 'Projects' && (
-    <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
-      <div className="relative max-w-[800px] mx-auto pb-4">
-        <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between">
-          <div className="mb-2 sm:mb-0">
-            <span className="text-gray-700 font-medium mr-2">Semana:</span>
-            <span className="text-gray-900">{formatDateRange(selectedWeekStart, selectedWeekEnd)}</span>
-          </div>
-          <div className="flex items-center">
-            <span className="text-gray-700 font-medium mr-2">Total:</span>
-            <span className="text-[#5ABB37] font-semibold">
-              ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )}
 </>
   );
 }
