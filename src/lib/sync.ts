@@ -82,6 +82,14 @@ interface DBStockItem {
   project?: string;
 }
 
+// Função para garantir que os valores do Will estejam definidos
+const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number } => {
+  return {
+    willBaseRate: typeof data.willBaseRate === 'number' ? data.willBaseRate : 200,
+    willBonus: typeof data.willBonus === 'number' ? data.willBonus : 0
+  };
+};
+
 export const syncService = {
   channel: null as RealtimeChannel | null,
   isInitialized: false,
@@ -111,18 +119,27 @@ export const syncService = {
           if (payload.new) {
             const data = payload.new as any;
             console.log('Valores do Will recebidos do Supabase:', data.willBaseRate, data.willBonus);
+            
+            // Garantir que os valores do Will estejam definidos
+            const willValues = ensureWillValues(data);
+            
             const storageData: StorageItems = {
               expenses: data.expenses || {},
               projects: data.projects || [],
               stock: data.stock || [],
               employees: data.employees || {},
-              willBaseRate: data.willBaseRate || 200,
-              willBonus: data.willBonus || 0,
+              willBaseRate: willValues.willBaseRate,
+              willBonus: willValues.willBonus,
               lastSync: new Date().getTime()
             };
+            
             console.log('Dados processados para armazenamento local:', storageData);
             console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
+            
+            // Salvar no armazenamento local
             storage.save(storageData);
+            
+            // Disparar evento para atualizar a UI
             window.dispatchEvent(new CustomEvent('dataUpdated', { 
               detail: storageData 
             }));
@@ -139,6 +156,7 @@ export const syncService = {
 
     const handleDataUpdate = (event: CustomEvent<StorageItems>) => {
       console.log('Evento de atualização recebido:', event.detail);
+      console.log('Valores do Will no evento de atualização:', event.detail.willBaseRate, event.detail.willBonus);
       callback(event.detail);
     };
 
@@ -171,13 +189,17 @@ export const syncService = {
       // Modificado: Verificar se o array contém dados
       if (data && data.length > 0) {
         console.log('Dados recebidos do Supabase:', data[0]);
+        
+        // Garantir que os valores do Will estejam definidos
+        const willValues = ensureWillValues(data[0]);
+        
         return {
           expenses: data[0].expenses || {},
           projects: data[0].projects || [],
           stock: data[0].stock || [],
           employees: data[0].employees || {},
-          willBaseRate: data[0].willBaseRate || 200,
-          willBonus: data[0].willBonus || 0,
+          willBaseRate: willValues.willBaseRate,
+          willBonus: willValues.willBonus,
           lastSync: new Date().getTime()
         };
       }
@@ -197,38 +219,39 @@ export const syncService = {
     }
 
     try {
+      // Garantir que os valores do Will estejam definidos
+      const willValues = ensureWillValues(data);
+      
       console.log('Sincronizando dados com Supabase usando UUID:', FIXED_UUID);
-      console.log('Valores do Will a serem sincronizados:', data.willBaseRate, data.willBonus);
-      console.log('Dados a serem salvos:', {
+      console.log('Valores do Will a serem sincronizados:', willValues.willBaseRate, willValues.willBonus);
+      
+      const dataToSave = {
         id: FIXED_UUID,
         expenses: data.expenses,
         projects: data.projects,
         stock: data.stock,
         employees: data.employees,
-        willBaseRate: data.willBaseRate,
-        willBonus: data.willBonus,
+        willBaseRate: willValues.willBaseRate,
+        willBonus: willValues.willBonus,
         updated_at: new Date().toISOString()
-      });
+      };
+      
+      console.log('Dados a serem salvos:', dataToSave);
       
       // Salvar no Supabase
       const { error } = await supabase
         .from('sync_data')
-        .upsert({ 
-          id: FIXED_UUID,
-          expenses: data.expenses,
-          projects: data.projects,
-          stock: data.stock,
-          employees: data.employees,
-          willBaseRate: data.willBaseRate,
-          willBonus: data.willBonus,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(dataToSave);
 
       if (error) {
         console.error('Erro ao sincronizar com Supabase:', error);
         return false;
       }
 
+      // Atualizar os valores do Will nos dados originais
+      data.willBaseRate = willValues.willBaseRate;
+      data.willBonus = willValues.willBonus;
+      
       // Salvar localmente
       storage.save(data);
       return true;
@@ -261,15 +284,21 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
     // Modificado: Verificar se o array contém dados
     if (data && data.length > 0) {
       console.log('Dados carregados do Supabase:', data[0]);
+      
+      // Garantir que os valores do Will estejam definidos
+      const willValues = ensureWillValues(data[0]);
+      
       const storageData: StorageItems = {
         expenses: data[0].expenses || {},
         projects: data[0].projects || [],
         stock: data[0].stock || [],
         employees: data[0].employees || {},
-        willBaseRate: data[0].willBaseRate || 200,
-        willBonus: data[0].willBonus || 0,
+        willBaseRate: willValues.willBaseRate,
+        willBonus: willValues.willBonus,
         lastSync: new Date().getTime()
       };
+      
+      console.log('Valores do Will carregados:', storageData.willBaseRate, storageData.willBonus);
       
       // Salvar no armazenamento local
       storage.save(storageData);
@@ -286,6 +315,13 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
         lastSync: new Date().getTime()
       };
       
+      // Garantir que os valores do Will estejam definidos no localData
+      const willValues = ensureWillValues(localData);
+      localData.willBaseRate = willValues.willBaseRate;
+      localData.willBonus = willValues.willBonus;
+      
+      console.log('Valores do Will iniciais:', localData.willBaseRate, localData.willBonus);
+      
       await syncService.sync(localData);
       return localData;
     }
@@ -296,6 +332,13 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
 };
 
 export const saveData = (data: StorageItems) => {
+  // Garantir que os valores do Will estejam definidos
+  const willValues = ensureWillValues(data);
+  data.willBaseRate = willValues.willBaseRate;
+  data.willBonus = willValues.willBonus;
+  
+  console.log('Salvando dados com valores do Will:', data.willBaseRate, data.willBonus);
+  
   // Salvar localmente primeiro para resposta imediata
   storage.save(data);
   
