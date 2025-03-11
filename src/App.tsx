@@ -849,51 +849,51 @@ export default function App() {
         {(activeCategory === 'Expenses') && (
           <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
             <div className="relative max-w-[800px] mx-auto pb-2">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
-              >
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
+            >
                 <span className="text-gray-700 font-medium">
                   {selectedList}
                 </span>
-                <ChevronDown
-                  className={`w-5 h-5 text-gray-500 transition-transform ${
-                    isDropdownOpen ? 'transform rotate-180' : ''
-                  }`}
-                />
-              </button>
-              
-              {isDropdownOpen && (
+              <ChevronDown
+                className={`w-5 h-5 text-gray-500 transition-transform ${
+                  isDropdownOpen ? 'transform rotate-180' : ''
+                }`}
+              />
+            </button>
+            
+            {isDropdownOpen && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-35">
-                  <button
-                    onClick={() => handleListSelect('Carlos')}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                    }`}
-                  >
-                    Carlos
-                  </button>
-                  <button
-                    onClick={() => handleListSelect('Diego')}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                    }`}
-                  >
-                    Diego
-                  </button>
-                  <button
-                    onClick={() => handleListSelect('C&A')}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                    }`}
-                  >
-                    C&A
-                  </button>
-                </div>
-              )}
-            </div>
+                <button
+                  onClick={() => handleListSelect('Carlos')}
+                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                  }`}
+                >
+                  Carlos
+                </button>
+                <button
+                  onClick={() => handleListSelect('Diego')}
+                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                  }`}
+                >
+                  Diego
+                </button>
+                <button
+                  onClick={() => handleListSelect('C&A')}
+                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                  }`}
+                >
+                  C&A
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      )}
         
         {(activeCategory === 'Projects') && (
           <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
@@ -912,13 +912,31 @@ export default function App() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                      <DayPicker
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDateSelect}
-                        locale={ptBR}
-                        className="border-none"
-                      />
+                      {(() => {
+                        try {
+                          return (
+                            <DayPicker
+                              mode="single"
+                              selected={selectedDate}
+                              onSelect={handleDateSelect}
+                              locale={ptBR}
+                              className="border-none"
+                            />
+                          );
+                        } catch (error) {
+                          console.error("Erro ao renderizar DayPicker:", error);
+                          return (
+                            <div className="p-4 text-center">
+                              <button 
+                                onClick={() => handleDateSelect(new Date())} 
+                                className="px-4 py-2 bg-blue-500 text-white rounded"
+                              >
+                                Selecionar hoje
+                              </button>
+                            </div>
+                          );
+                        }
+                      })()}
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -956,8 +974,8 @@ export default function App() {
             </div>
           </div>
         )}
-        
-        <main className="px-4 pb-20">
+      
+      <main className="px-4 pb-20">
           <div 
             className="max-w-[800px] mx-auto relative z-0 mt-2" 
             style={{ 
@@ -968,18 +986,18 @@ export default function App() {
             }}
           >
             {/* Conteúdo principal */}
-          </div>
-        </main>
+        </div>
+      </main>
       </div>
     </div>
 
-    <AddButton onClick={() => setIsAddDialogOpen(true)} />
+      <AddButton onClick={() => setIsAddDialogOpen(true)} />
 
-    <AddItemDialog
-      isOpen={isAddDialogOpen}
-      onOpenChange={setIsAddDialogOpen}
-      category={activeCategory}
-      onSubmit={handleAddItem}
+      <AddItemDialog
+        isOpen={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        category={activeCategory}
+        onSubmit={handleAddItem}
     selectedWeekStart={selectedWeekStart}
   />
   

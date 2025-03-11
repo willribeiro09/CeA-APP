@@ -45,6 +45,9 @@ export default defineConfig({
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true
+    },
+    rollupOptions: {
+      external: ['@radix-ui/react-popover']
     }
   },
   // Adicionando as variáveis de ambiente diretamente na configuração
