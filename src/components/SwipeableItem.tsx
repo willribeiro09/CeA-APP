@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, ReactNode } from 'react';
-import { Edit, Trash2, RotateCcw } from 'lucide-react';
+import React, { ReactNode, useRef, useState } from 'react';
+import { Trash2, Edit } from 'lucide-react';
 
 export interface SwipeableItemProps {
   children: ReactNode;
@@ -14,72 +14,61 @@ export function SwipeableItem({
   children, 
   onDelete, 
   onEdit, 
-  showEditButton = true, 
-  customEditButton,
-  isWill = false
+  isWill = false,
+  customEditButton
 }: SwipeableItemProps) {
-  const [isSwiped, setIsSwiped] = useState(false);
-  const startX = useRef<number | null>(null);
-  const currentX = useRef<number | null>(null);
-  const swipeDistance = useRef<number>(0);
+  const [offset, setOffset] = useState(0);
+  const [startX, setStartX] = useState(0);
   const itemRef = useRef<HTMLDivElement>(null);
-  
+  const isDragging = useRef(false);
+  const threshold = 80; // Limiar para considerar um swipe
+
   const handleTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    currentX.current = startX.current;
-    swipeDistance.current = 0;
+    setStartX(e.touches[0].clientX);
+    isDragging.current = true;
   };
-  
+
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!startX.current) return;
+    if (!isDragging.current) return;
     
-    currentX.current = e.touches[0].clientX;
-    const diff = (startX.current - currentX.current);
+    const currentX = e.touches[0].clientX;
+    const diff = currentX - startX;
     
-    // Limitar o swipe para a esquerda apenas (valores positivos)
-    swipeDistance.current = Math.max(0, diff);
-    
-    // Limitar a distância máxima de swipe
-    const maxSwipe = 150;
-    swipeDistance.current = Math.min(swipeDistance.current, maxSwipe);
-    
-    // Aplicar a transformação
-    if (itemRef.current) {
-      itemRef.current.style.transform = `translateX(-${swipeDistance.current}px)`;
+    // Limitar o swipe para a esquerda apenas
+    if (diff < 0) {
+      // Limitar o swipe para não ultrapassar o tamanho dos botões
+      const newOffset = Math.max(diff, -threshold);
+      setOffset(newOffset);
+    } else if (diff > 0 && offset < 0) {
+      // Permitir arrastar de volta se já estiver aberto
+      const newOffset = Math.min(0, offset + diff);
+      setOffset(newOffset);
     }
-    
-    // Atualizar o estado de swipe
-    setIsSwiped(swipeDistance.current > 50);
   };
-  
+
   const handleTouchEnd = () => {
-    // Snap para a posição aberta ou fechada
-    if (swipeDistance.current > 50) {
-      // Abrir completamente
-      if (itemRef.current) {
-        itemRef.current.style.transform = 'translateX(-150px)';
-      }
-      setIsSwiped(true);
-    } else {
-      // Fechar
-      resetSwipe();
-    }
+    isDragging.current = false;
     
-    startX.current = null;
-    currentX.current = null;
-  };
-  
-  const resetSwipe = () => {
-    if (itemRef.current) {
-      itemRef.current.style.transform = 'translateX(0)';
+    // Se o swipe foi suficiente, abrir completamente
+    if (offset < -threshold / 2) {
+      setOffset(-threshold);
+    } else {
+      // Caso contrário, fechar
+      setOffset(0);
     }
-    setIsSwiped(false);
-    swipeDistance.current = 0;
   };
-  
-  useEffect(() => {
+
+  // Resetar o swipe quando clicar fora
+  const resetSwipe = () => {
+    if (offset !== 0) {
+      setOffset(0);
+    }
+  };
+
+  // Adicionar event listener para clicar fora
+  React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (itemRef.current && !itemRef.current.contains(e.target as Node) && isSwiped) {
+      if (itemRef.current && !itemRef.current.contains(e.target as Node)) {
         resetSwipe();
       }
     };
@@ -88,60 +77,47 @@ export function SwipeableItem({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isSwiped]);
-  
+  }, []);
+
   return (
-    <div className="mb-4" style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
-      <div className="relative overflow-hidden" style={{ borderRadius: '0.75rem' }}>
-        {/* Ações de swipe */}
-        <div className="absolute right-0 top-0 bottom-0 flex h-full">
-          {isWill ? (
-            <>
-              <button
-                onClick={onEdit}
-                className="bg-gray-200 text-gray-700 flex items-center justify-center w-[50px] h-full"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-              <button
-                onClick={onDelete}
-                className="bg-red-500 text-white flex items-center justify-center w-[100px] h-full"
-              >
-                <span className="font-medium">Lay off</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={onEdit}
-                className="bg-blue-500 text-white flex items-center justify-center w-[75px] h-full"
-              >
-                <Edit className="w-4 h-4 mr-1" />
-                <span className="text-sm">Edit</span>
-              </button>
-              <button
-                onClick={onDelete}
-                className="bg-red-500 text-white flex items-center justify-center w-[75px] h-full"
-              >
-                <Trash2 className="w-4 h-4 mr-1" />
-                <span className="text-sm">Delete</span>
-              </button>
-            </>
-          )}
-        </div>
-        
-        {/* Item principal */}
-        <div
-          ref={itemRef}
-          className="bg-white relative z-10 transition-transform touch-pan-y shadow-sm"
-          style={{ borderRadius: '0.75rem' }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onClick={isSwiped ? resetSwipe : undefined}
-        >
-          {children}
-        </div>
+    <div 
+      ref={itemRef}
+      className="relative overflow-hidden mb-4 rounded-lg"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div 
+        style={{ transform: `translateX(${offset}px)` }}
+        className="transition-transform duration-200 ease-out"
+      >
+        {children}
+      </div>
+      
+      <div 
+        className="absolute top-0 right-0 h-full flex items-center"
+        style={{ transform: `translateX(${threshold + offset}px)` }}
+      >
+        {isWill ? (
+          // Botões personalizados para Will
+          customEditButton
+        ) : (
+          // Botões padrão
+          <div className="flex">
+            <button
+              onClick={onEdit}
+              className="bg-blue-500 h-full px-4 flex items-center justify-center"
+            >
+              <Edit className="text-white" size={18} />
+            </button>
+            <button
+              onClick={onDelete}
+              className="bg-red-500 h-full px-4 flex items-center justify-center"
+            >
+              <Trash2 className="text-white" size={18} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

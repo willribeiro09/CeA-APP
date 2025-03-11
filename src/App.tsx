@@ -970,9 +970,9 @@ export default function App() {
                   className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                 />
               </div>
-            </div>
           </div>
-        )}
+        </div>
+      )}
       
       <main className="px-4 pb-20">
           <div 
@@ -985,16 +985,16 @@ export default function App() {
               paddingTop: '0'
             }}
           >
-            <div className="space-y-3">
+        <div className="space-y-3">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-                <ExpenseItem
-                  key={expense.id}
-                  expense={expense}
-                  onTogglePaid={handleTogglePaid}
+            <ExpenseItem
+              key={expense.id}
+              expense={expense}
+              onTogglePaid={handleTogglePaid}
                   onDelete={(id) => handleDeleteItem(id, 'Expenses')}
                   onEdit={(expense) => handleEditItem(expense)}
-                />
-              ))}
+            />
+          ))}
               
               {activeCategory === 'Projects' && projects
                 .filter(project => {
@@ -1136,8 +1136,8 @@ export default function App() {
                 </>
               )}
             </div>
-          </div>
-        </main>
+        </div>
+      </main>
       </div>
     </div>
 
@@ -1207,8 +1207,8 @@ export default function App() {
               step="1"
               required
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-            />
-          </div>
+      />
+    </div>
           
           <div className="flex justify-end gap-3 mt-6">
             <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
