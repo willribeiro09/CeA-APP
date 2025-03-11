@@ -166,6 +166,52 @@ export default function App() {
     }
   };
 
+  const handleAddDay = (employeeId: string, weekStartDate: string) => {
+    console.log(`Adicionando dia para funcionário ${employeeId} na semana ${weekStartDate}`);
+    
+    setEmployees(prevEmployees => {
+      const newEmployees = { ...prevEmployees };
+      
+      // Verificar se a semana existe
+      if (!newEmployees[weekStartDate]) {
+        console.error(`Semana ${weekStartDate} não encontrada`);
+        return prevEmployees;
+      }
+      
+      // Encontrar o funcionário na semana
+      const employeeIndex = newEmployees[weekStartDate].findIndex(e => e.id === employeeId);
+      
+      if (employeeIndex === -1) {
+        console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${weekStartDate}`);
+        return prevEmployees;
+      }
+      
+      // Atualizar os dias trabalhados
+      const updatedEmployee = { ...newEmployees[weekStartDate][employeeIndex] };
+      updatedEmployee.daysWorked += 1;
+      
+      // Atualizar a lista de funcionários
+      newEmployees[weekStartDate] = [
+        ...newEmployees[weekStartDate].slice(0, employeeIndex),
+        updatedEmployee,
+        ...newEmployees[weekStartDate].slice(employeeIndex + 1)
+      ];
+      
+      // Salvar no Supabase e localmente
+      if (storageData) {
+        const updatedStorageData = {
+          ...storageData,
+          employees: newEmployees,
+          willBaseRate: storageData.willBaseRate,  // Preservar o valor original
+          willBonus: storageData.willBonus  // Preservar o valor original
+        };
+        saveChanges(updatedStorageData);
+      }
+      
+      return newEmployees;
+    });
+  };
+
   return (
     <>
       <div className="bg-gray-50 min-h-screen flex flex-col">
