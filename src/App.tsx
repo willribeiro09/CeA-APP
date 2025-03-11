@@ -379,7 +379,8 @@ export default function App() {
               startDate: updatedItem.startDate || existingProject.startDate,
               status: updatedItem.status || existingProject.status,
               location: updatedItem.location || existingProject.location || '',
-              value: updatedItem.value !== undefined ? updatedItem.value : existingProject.value || 0
+              value: updatedItem.value !== undefined ? updatedItem.value : existingProject.value || 0,
+              invoiceOk: updatedItem.invoiceOk !== undefined ? updatedItem.invoiceOk : existingProject.invoiceOk
             };
             
             console.log("Project data prepared for update:", updatedProject);
@@ -931,20 +932,6 @@ export default function App() {
                           onChange={(e) => handleDateSelect(e.target.value ? new Date(e.target.value) : undefined)}
                           className="border border-gray-300 rounded p-2"
                         />
-                        <div className="flex justify-between mt-2">
-                          <button 
-                            onClick={() => handleDateSelect(new Date())}
-                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm"
-                          >
-                            Hoje
-                          </button>
-                          <button 
-                            onClick={() => setSelectedDate(undefined)}
-                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm"
-                          >
-                            Limpar
-                          </button>
-                        </div>
                       </div>
                     </PopoverContent>
                   </Popover>
