@@ -720,17 +720,17 @@ export default function App() {
       
       console.log(`Funcionário ${updatedEmployee.name} atualizado: ${updatedEmployee.daysWorked} dias trabalhados`);
       
-      // Salvar as alterações
-      const storageData: StorageItems = {
-        expenses,
-        projects,
-        stock: stockItems,
-        employees: newEmployees,
-        lastSync: Date.now()
-      };
-      
-      // Salvar no Supabase e localmente
-      saveChanges(storageData);
+      // Salvar as alterações preservando os valores do Will
+      const storageData = getData();
+      if (storageData) {
+        const updatedStorageData = {
+          ...storageData,
+          employees: newEmployees,
+          willBaseRate: storageData.willBaseRate,  // Preservar o valor original
+          willBonus: storageData.willBonus  // Preservar o valor original
+        };
+        saveChanges(updatedStorageData);
+      }
       
       return newEmployees;
     });
@@ -767,19 +767,17 @@ export default function App() {
         ...newEmployees[weekStartDate].slice(employeeIndex + 1)
       ];
       
-      console.log(`Funcionário ${updatedEmployee.name} resetado: ${updatedEmployee.daysWorked} dias trabalhados`);
-      
-      // Salvar as alterações
-      const storageData: StorageItems = {
-        expenses,
-        projects,
-        stock: stockItems,
-        employees: newEmployees,
-        lastSync: Date.now()
-      };
-      
       // Salvar no Supabase e localmente
-      saveChanges(storageData);
+      const storageData = getData();
+      if (storageData) {
+        const updatedStorageData = {
+          ...storageData,
+          employees: newEmployees,
+          willBaseRate: storageData.willBaseRate,  // Preservar o valor original
+          willBonus: storageData.willBonus  // Preservar o valor original
+        };
+        saveChanges(updatedStorageData);
+      }
       
       return newEmployees;
     });
@@ -982,7 +980,7 @@ export default function App() {
               paddingTop: '0'
             }}
           >
-        <div className="space-y-3">
+            <div className="space-y-3 pt-0">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
             <ExpenseItem
               key={expense.id}
