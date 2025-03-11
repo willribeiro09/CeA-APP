@@ -982,10 +982,10 @@ export default function App() {
               overflowY: 'auto',
               position: 'relative',
               marginTop: '0',
-              paddingTop: '4px'
+              paddingTop: '0'
             }}
           >
-            <div className="space-y-2">
+            <div className="space-y-3">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
                 <ExpenseItem
                   key={expense.id}
