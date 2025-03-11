@@ -924,7 +924,7 @@ export default function App() {
                 </div>
                 <div className="flex items-center">
                   <span className="text-gray-700 font-medium mr-2">Total:</span>
-                  <span className="text-[#5ABB37] text-3xl font-bold">
+                  <span className="text-[#5ABB37] text-xl font-bold">
                     ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -941,7 +941,19 @@ export default function App() {
         
         {(activeCategory === 'Employees') && (
           <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
-            {/* Conteúdo do Employees */}
+            <div className="relative max-w-[800px] mx-auto pb-4">
+              <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
+                <span className="text-gray-700 font-medium">
+                  Week Starting:
+                </span>
+                <input
+                  type="date"
+                  value={selectedWeekStart.toISOString().split('T')[0]}
+                  onChange={(e) => setSelectedWeekStart(new Date(e.target.value))}
+                  className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                />
+              </div>
+            </div>
           </div>
         )}
         
