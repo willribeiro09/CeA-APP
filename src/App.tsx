@@ -976,15 +976,16 @@ export default function App() {
       
       <main className="px-4 pb-20">
           <div 
-            className="max-w-[800px] mx-auto relative z-0 mt-2" 
+            className="max-w-[800px] mx-auto relative z-0" 
             style={{ 
               height: 'calc(100vh - 250px)', 
               overflowY: 'auto',
               position: 'relative',
-              marginTop: activeCategory === 'Projects' ? '60px' : '0'
+              marginTop: '0',
+              paddingTop: '4px'
             }}
           >
-            <div className="space-y-4">
+            <div className="space-y-2">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
                 <ExpenseItem
                   key={expense.id}
