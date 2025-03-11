@@ -46,9 +46,10 @@ export default defineConfig({
       include: [/node_modules/],
       transformMixedEsModules: true
     },
-    rollupOptions: {
-      external: ['@radix-ui/react-popover']
-    }
+    // Removendo a opção external que está causando o erro
+    // rollupOptions: {
+    //   external: ['@radix-ui/react-popover']
+    // }
   },
   // Adicionando as variáveis de ambiente diretamente na configuração
   define: {

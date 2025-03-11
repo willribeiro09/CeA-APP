@@ -19,8 +19,6 @@ import { format } from 'date-fns';
 import { SwipeableItem } from './components/SwipeableItem';
 import * as Dialog from '@radix-ui/react-dialog';
 import { WillItemFixed } from './components/WillItemFixed';
-import { DayPicker } from 'react-day-picker';
-import { ptBR } from 'date-fns/locale';
 import { Button } from './components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
 import { Calendar as CalendarIcon } from 'lucide-react';
@@ -911,32 +909,33 @@ export default function App() {
                         <CalendarIcon className="ml-2 h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      {(() => {
-                        try {
-                          return (
-                            <DayPicker
-                              mode="single"
-                              selected={selectedDate}
-                              onSelect={handleDateSelect}
-                              locale={ptBR}
-                              className="border-none"
-                            />
-                          );
-                        } catch (error) {
-                          console.error("Erro ao renderizar DayPicker:", error);
-                          return (
-                            <div className="p-4 text-center">
-                              <button 
-                                onClick={() => handleDateSelect(new Date())} 
-                                className="px-4 py-2 bg-blue-500 text-white rounded"
-                              >
-                                Selecionar hoje
-                              </button>
-                            </div>
-                          );
-                        }
-                      })()}
+                    <PopoverContent className="w-auto p-4">
+                      <div className="flex flex-col gap-2">
+                        <label htmlFor="date-select" className="text-sm font-medium">
+                          Selecione uma data
+                        </label>
+                        <input
+                          id="date-select"
+                          type="date"
+                          value={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
+                          onChange={(e) => handleDateSelect(e.target.value ? new Date(e.target.value) : undefined)}
+                          className="border border-gray-300 rounded p-2"
+                        />
+                        <div className="flex justify-between mt-2">
+                          <button 
+                            onClick={() => handleDateSelect(new Date())}
+                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm"
+                          >
+                            Hoje
+                          </button>
+                          <button 
+                            onClick={() => setSelectedDate(undefined)}
+                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm"
+                          >
+                            Limpar
+                          </button>
+                        </div>
+                      </div>
                     </PopoverContent>
                   </Popover>
                 </div>
