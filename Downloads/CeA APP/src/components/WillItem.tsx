@@ -26,14 +26,14 @@ export function WillItem({
         >
           Reset
         </button>
-        <button 
+        <button
           onClick={onLayoff}
           className="h-full w-[75px] bg-red-500 text-white flex items-center justify-center rounded-r-lg"
         >
           Lay off
         </button>
       </div>
-      
+
       <div className="bg-white relative z-10 p-2.5 rounded-lg shadow-sm">
         <div className="flex items-center justify-between mb-1.5">
           <h3 className="text-xl font-bold text-gray-800">Will</h3>
