@@ -40,6 +40,12 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react']
   },
+  // Adicionando configuração de build com rollupOptions para resolver o erro do Netlify
+  build: {
+    rollupOptions: {
+      external: ['@radix-ui/react-popover']
+    }
+  },
   // Adicionando as variáveis de ambiente diretamente na configuração
   define: {
     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(supabaseUrl),
