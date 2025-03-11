@@ -57,6 +57,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         const projectDescription = data.description as string || projectItem.description || '';
         const projectClient = data.client as string || projectItem.client || '';
         const projectLocation = data.location as string || projectItem.location || '';
+        const projectNumber = data.projectNumber as string || projectItem.projectNumber || '';
         
         // Tratar o valor como número, com fallback para o valor atual ou zero
         let projectValue = 0;
@@ -84,6 +85,9 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           ? data.status as 'completed' | 'in_progress' | 'pending'
           : (projectItem.status || 'pending');
         
+        // Verificar se o invoice está OK
+        const invoiceOk = data.invoiceOk === 'on';
+        
         // Criar um objeto limpo sem o spread operator (que pode causar problemas)
         itemData = {
           id: projectItem.id,
@@ -91,9 +95,11 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           description: projectDescription,
           client: projectClient,
           location: projectLocation,
+          projectNumber: projectNumber,
           value: projectValue,
           startDate: projectStartDate,
-          status: projectStatus
+          status: projectStatus,
+          invoiceOk: invoiceOk
         };
         
         console.log("Project data formatted - SAFE VERSION:", itemData);
@@ -244,18 +250,6 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                   />
                 </div>
                 <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    defaultValue={(item as Project).description}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
                   <label htmlFor="client" className="block text-sm font-medium text-gray-700">
                     Client
                   </label>
@@ -264,6 +258,42 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     id="client"
                     name="client"
                     defaultValue={(item as Project).client}
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="projectNumber" className="block text-sm font-medium text-gray-700">
+                    Project Number
+                  </label>
+                  <input
+                    type="text"
+                    id="projectNumber"
+                    name="projectNumber"
+                    defaultValue={(item as Project).projectNumber || ''}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    defaultValue={(item as Project).location || ''}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    defaultValue={(item as Project).description}
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
@@ -296,6 +326,18 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                   </select>
+                </div>
+                <div className="flex items-center mt-4">
+                  <input
+                    type="checkbox"
+                    id="invoiceOk"
+                    name="invoiceOk"
+                    defaultChecked={(item as Project).invoiceOk}
+                    className="h-4 w-4 text-[#5ABB37] focus:ring-[#5ABB37] border-gray-300 rounded"
+                  />
+                  <label htmlFor="invoiceOk" className="ml-2 block text-sm text-gray-700">
+                    Invoice OK
+                  </label>
                 </div>
               </>
             )}

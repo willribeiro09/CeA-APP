@@ -31,7 +31,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         amount: parseFloat(data.amount as string),
         date: new Date(data.dueDate as string).toISOString(),
         category: 'Expenses',
-        is_paid: false
+        paid: false
       };
       console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);
@@ -40,8 +40,11 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         name: data.name as string,
         description: data.description as string,
         client: data.client as string,
+        projectNumber: data.projectNumber as string,
+        location: data.location as string,
         startDate: new Date(data.startDate as string).toISOString(),
         status: 'pending',
+        invoiceOk: (data.invoiceOk === 'on'),
         category: 'Projects'
       };
       console.log("Dados de projeto formatados:", itemData);
@@ -189,6 +192,30 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                   />
                 </div>
                 <div>
+                  <label htmlFor="projectNumber" className="block text-sm font-medium text-gray-700">
+                    Project Number
+                  </label>
+                  <input
+                    type="text"
+                    id="projectNumber"
+                    name="projectNumber"
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
                   <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
                     Start Date
                   </label>
@@ -198,6 +225,17 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     name="startDate"
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="invoiceOk" className="block text-sm font-medium text-gray-700">
+                    Invoice OK
+                  </label>
+                  <input
+                    type="checkbox"
+                    id="invoiceOk"
+                    name="invoiceOk"
+                    className="mt-1"
                   />
                 </div>
               </>

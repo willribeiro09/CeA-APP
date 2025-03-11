@@ -884,6 +884,9 @@ export default function App() {
                     <div>
                       <h3 className="font-medium text-gray-900">{project.name}</h3>
                       <p className="text-gray-600 text-sm">Client: {project.client}</p>
+                      {project.projectNumber && (
+                        <p className="text-gray-600 text-sm">Project #: {project.projectNumber}</p>
+                      )}
                       <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
                     </div>
                     <div className="text-right">
@@ -895,15 +898,22 @@ export default function App() {
                   </div>
                   <div className="mt-2 flex justify-between items-center">
                     <p className="text-sm text-gray-500 line-clamp-1">{project.description}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded ${
-                      project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {project.status === 'completed' ? 'Completed' :
-                       project.status === 'in_progress' ? 'In Progress' :
-                       'Pending'}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      {project.invoiceOk && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
+                          Invoice OK
+                        </span>
+                      )}
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        project.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {project.status === 'completed' ? 'Completed' :
+                         project.status === 'in_progress' ? 'In Progress' :
+                         'Pending'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </SwipeableItem>

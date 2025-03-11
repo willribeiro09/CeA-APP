@@ -20,12 +20,14 @@ export interface Project {
   name: string;
   description: string;
   client: string;
+  projectNumber?: string;
   startDate: string;
   endDate?: string;
   status: 'completed' | 'in_progress' | 'pending';
   notes?: string;
   location?: string;
   value?: number;
+  invoiceOk?: boolean;
 }
 
 export interface StockItem {
