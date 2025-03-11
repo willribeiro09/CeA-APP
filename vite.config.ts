@@ -38,12 +38,13 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    exclude: ['lucide-react']
+    exclude: ['lucide-react'],
+    include: ['@radix-ui/react-popover']
   },
-  // Adicionando configuração de build com rollupOptions para resolver o erro do Netlify
   build: {
-    rollupOptions: {
-      external: ['@radix-ui/react-popover']
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true
     }
   },
   // Adicionando as variáveis de ambiente diretamente na configuração
