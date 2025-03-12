@@ -928,31 +928,14 @@ export default function App() {
               <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
                 <div className="flex items-center">
                   <span className="text-gray-700 font-medium mr-1">Week:</span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        className="h-8 pl-3 pr-2 py-0 border border-gray-300 flex items-center text-gray-900"
-                      >
-                        {formatDateRange(selectedWeekStart, selectedWeekEnd)}
-                        <CalendarIcon className="ml-2 h-4 w-4" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-4">
-                      <div className="flex flex-col gap-2">
-                        <label htmlFor="date-select" className="text-sm font-medium">
-                          Selecione uma data
-                        </label>
-                        <input
-                          id="date-select"
-                          type="date"
-                          value={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
-                          onChange={(e) => handleDateSelect(e.target.value ? new Date(e.target.value) : undefined)}
-                          className="border border-gray-300 rounded p-2"
-                        />
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                  <Button 
+                    variant="outline" 
+                    className="h-8 pl-3 pr-2 py-0 border border-gray-300 flex items-center text-gray-900"
+                    onClick={() => setIsCalendarOpen(true)}
+                  >
+                    {formatDateRange(selectedWeekStart, selectedWeekEnd)}
+                    <CalendarIcon className="ml-2 h-4 w-4" />
+                  </Button>
                 </div>
                 <div className="flex items-center">
                   <span className="text-gray-700 font-medium mr-2">Total:</span>
@@ -1003,9 +986,9 @@ export default function App() {
             <ul className="flex flex-col space-y-[8px] m-0 p-0">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
                 <li key={expense.id} className="list-none">
-                  <ExpenseItem
-                    expense={expense}
-                    onTogglePaid={handleTogglePaid}
+            <ExpenseItem
+              expense={expense}
+              onTogglePaid={handleTogglePaid}
                     onDelete={(id) => handleDeleteItem(id, 'Expenses')}
                     onEdit={(expense) => handleEditItem(expense)}
                   />
@@ -1246,6 +1229,13 @@ export default function App() {
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>
+
+  <Calendar
+    selectedDate={selectedDate}
+    onSelect={handleDateSelect}
+    isOpen={isCalendarOpen}
+    onOpenChange={setIsCalendarOpen}
+  />
 </>
   );
 }
