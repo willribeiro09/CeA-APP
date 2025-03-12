@@ -209,16 +209,51 @@ export const syncService = {
       console.log('Sincronizando dados com Supabase usando UUID compartilhado:', SHARED_UUID);
       console.log('Valores do Will a serem sincronizados:', willValues.willBaseRate, willValues.willBonus);
       
-      const dataToSave = {
-        id: SHARED_UUID,
-        expenses: data.expenses,
-        projects: data.projects,
-        stock: data.stock,
-        employees: data.employees,
-        willBaseRate: willValues.willBaseRate,
-        willBonus: willValues.willBonus,
-        updated_at: new Date().toISOString()
-      };
+      // Primeiro, carregamos os dados existentes para garantir que não sobrescrevemos nada
+      const { data: existingData, error: fetchError } = await supabase
+        .from('sync_data')
+        .select('*')
+        .eq('id', SHARED_UUID)
+        .limit(1);
+      
+      if (fetchError) {
+        console.error('Erro ao buscar dados existentes:', fetchError);
+        // Mesmo com erro, tentamos salvar no armazenamento local
+        storage.save(data);
+        return false;
+      }
+      
+      let dataToSave;
+      
+      if (existingData && existingData.length > 0) {
+        // Mesclamos os dados existentes com os novos dados
+        console.log('Dados existentes encontrados, mesclando com novos dados');
+        
+        dataToSave = {
+          id: SHARED_UUID,
+          expenses: { ...existingData[0].expenses, ...data.expenses },
+          projects: data.projects || existingData[0].projects || [],
+          stock: data.stock || existingData[0].stock || [],
+          employees: { ...existingData[0].employees, ...data.employees },
+          willBaseRate: willValues.willBaseRate,
+          willBonus: willValues.willBonus,
+          updated_at: new Date().toISOString()
+        };
+      } else {
+        // Não encontramos dados existentes, salvamos os novos dados
+        console.log('Nenhum dado existente encontrado, salvando novos dados');
+        
+        dataToSave = {
+          id: SHARED_UUID,
+          expenses: data.expenses || {},
+          projects: data.projects || [],
+          stock: data.stock || [],
+          employees: data.employees || {},
+          willBaseRate: willValues.willBaseRate,
+          willBonus: willValues.willBonus,
+          updated_at: new Date().toISOString()
+        };
+      }
       
       console.log('Dados a serem salvos:', dataToSave);
       
@@ -253,7 +288,7 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
   }
 
   try {
-    // Usar o UUID compartilhado para carregar dados iniciais
+    // Primeiro, verificar se existem dados no Supabase usando UUID compartilhado
     const { data, error } = await supabase
       .from('sync_data')
       .select('*')
@@ -267,7 +302,7 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
 
     // Verificar se o array contém dados
     if (data && data.length > 0) {
-      console.log('Dados carregados do Supabase:', data[0]);
+      console.log('Dados encontrados no Supabase com UUID compartilhado:', data[0]);
       
       // Garantir que os valores do Will estejam definidos
       const willValues = ensureWillValues(data[0]);
@@ -288,8 +323,88 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
       storage.save(storageData);
       return storageData;
     } else {
-      console.log('Registro não encontrado no Supabase, criando inicial');
-      const localData = storage.load() || {
+      console.log('Registro com UUID compartilhado não encontrado, procurando qualquer registro');
+      
+      // Se não encontrou com o UUID compartilhado, tentar encontrar qualquer registro
+      const { data: anyData, error: anyError } = await supabase
+        .from('sync_data')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      
+      if (anyError) {
+        console.warn('Erro ao procurar por qualquer registro no Supabase:', anyError);
+      } else if (anyData && anyData.length > 0) {
+        console.log('Encontrado outro registro no Supabase:', anyData[0]);
+        
+        // Garantir que os valores do Will estejam definidos
+        const willValues = ensureWillValues(anyData[0]);
+        
+        const storageData: StorageItems = {
+          expenses: anyData[0].expenses || {},
+          projects: anyData[0].projects || [],
+          stock: anyData[0].stock || [],
+          employees: anyData[0].employees || {},
+          willBaseRate: willValues.willBaseRate,
+          willBonus: willValues.willBonus,
+          lastSync: new Date().getTime()
+        };
+        
+        console.log('Dados de outro registro carregados. Salvando com UUID compartilhado.');
+        
+        // Salvar esses dados com o UUID compartilhado
+        const dataToSave = {
+          id: SHARED_UUID,
+          expenses: storageData.expenses,
+          projects: storageData.projects,
+          stock: storageData.stock,
+          employees: storageData.employees,
+          willBaseRate: willValues.willBaseRate,
+          willBonus: willValues.willBonus,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Salvar no Supabase com o UUID compartilhado
+        const { error: saveError } = await supabase
+          .from('sync_data')
+          .upsert(dataToSave);
+          
+        if (saveError) {
+          console.error('Erro ao salvar dados com UUID compartilhado:', saveError);
+        } else {
+          console.log('Dados salvos com sucesso usando UUID compartilhado');
+        }
+        
+        // Salvar no armazenamento local
+        storage.save(storageData);
+        return storageData;
+      }
+      
+      // Se ainda não encontrou dados, verificar armazenamento local
+      console.log('Nenhum registro encontrado no Supabase, verificando armazenamento local');
+      const localData = storage.load();
+      
+      if (localData && (
+        Object.keys(localData.expenses || {}).length > 0 || 
+        (localData.projects || []).length > 0 || 
+        (localData.stock || []).length > 0 || 
+        Object.keys(localData.employees || {}).length > 0
+      )) {
+        console.log('Dados encontrados no armazenamento local:', localData);
+        
+        // Garantir que os valores do Will estejam definidos no localData
+        const willValues = ensureWillValues(localData);
+        localData.willBaseRate = willValues.willBaseRate;
+        localData.willBonus = willValues.willBonus;
+        
+        // Sincronizar dados locais com Supabase
+        await syncService.sync(localData);
+        return localData;
+      }
+      
+      // Se não encontrou dados em lugar nenhum, criar estrutura vazia
+      console.log('Nenhum dado encontrado, inicializando com estrutura vazia');
+      const emptyData: StorageItems = {
         expenses: {},
         projects: [],
         stock: [],
@@ -299,15 +414,10 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
         lastSync: new Date().getTime()
       };
       
-      // Garantir que os valores do Will estejam definidos no localData
-      const willValues = ensureWillValues(localData);
-      localData.willBaseRate = willValues.willBaseRate;
-      localData.willBonus = willValues.willBonus;
-      
-      console.log('Valores do Will iniciais:', localData.willBaseRate, localData.willBonus);
-      
-      await syncService.sync(localData);
-      return localData;
+      // NÃO sincronizamos dados vazios com o Supabase para evitar sobrescrever dados existentes
+      // Apenas salvamos localmente
+      storage.save(emptyData);
+      return emptyData;
     }
   } catch (error) {
     console.error('Erro ao carregar dados iniciais:', error);
