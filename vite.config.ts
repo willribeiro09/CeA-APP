@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
         filename: 'dist/stats.html',
         gzipSize: true,
         brotliSize: true,
-      })
+      }) as any
     );
   }
 
@@ -54,8 +54,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     optimizeDeps: {
-      exclude: ['lucide-react'],
-      include: ['@radix-ui/react-popover']
+      exclude: ['lucide-react']
     },
     build: {
       commonjsOptions: {
@@ -69,21 +68,25 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 1000, // Aumenta o limite de aviso para chunks grandes
       rollupOptions: {
         output: {
-          manualChunks: {
-            // Separa as bibliotecas em chunks para melhor cache
-            vendor: [
-              'react', 
-              'react-dom', 
-              'react-router-dom',
-              '@radix-ui/react-dialog',
-              '@radix-ui/react-popover',
-              'date-fns'
-            ],
-            // Separa os componentes UI em um chunk separado
-            ui: [
-              'lucide-react',
-              './src/components/ui'
-            ]
+          manualChunks: (id) => {
+            // Abordagem mais segura para dividir chunks
+            if (id.includes('node_modules')) {
+              if (id.includes('react') || 
+                  id.includes('@radix-ui') || 
+                  id.includes('date-fns')) {
+                return 'vendor';
+              }
+              
+              if (id.includes('lucide-react')) {
+                return 'ui';
+              }
+            }
+            
+            if (id.includes('src/components/ui')) {
+              return 'ui';
+            }
+            
+            return undefined;
           }
         }
       }
