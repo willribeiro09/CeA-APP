@@ -1000,9 +1000,9 @@ export default function App() {
               paddingTop: '0'
             }}
           >
-            <ul className="flex flex-col space-y-[1px] m-0 p-0">
+            <ul className="flex flex-col m-0 p-0">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-                <li key={expense.id} className="list-none">
+                <li key={expense.id} className="list-none mt-[-4px] first:mt-0">
                   <ExpenseItem
                     expense={expense}
                     onTogglePaid={handleTogglePaid}
@@ -1020,7 +1020,7 @@ export default function App() {
                   return projectDate >= startTime && projectDate <= endTime;
                 })
                 .map(project => (
-                  <li key={project.id} className="list-none">
+                  <li key={project.id} className="list-none mt-[-4px] first:mt-0">
                     <SwipeableItem 
                       onDelete={() => handleDeleteItem(project.id, 'Projects')}
                       onEdit={() => handleEditItem(project)}
@@ -1063,7 +1063,7 @@ export default function App() {
                 ))}
               
               {activeCategory === 'Stock' && stockItems.map(item => (
-                <li key={item.id} className="list-none">
+                <li key={item.id} className="list-none mt-[-4px] first:mt-0">
                   <SwipeableItem 
                     onDelete={() => handleDeleteItem(item.id, 'Stock')}
                     onEdit={() => handleEditItem(item)}
@@ -1089,7 +1089,7 @@ export default function App() {
 
                     // Will - funcionário fixo
                     employeeElements.push(
-                      <li key="will-fixed" className="list-none">
+                      <li key="will-fixed" className="list-none mt-[-4px] first:mt-0">
                         <WillItemFixed
                           key="will-fixed"
                           willBaseRate={willBaseRate}
@@ -1105,7 +1105,7 @@ export default function App() {
                     // Outros funcionários
                     weekEmployees.forEach(employee => {
                       employeeElements.push(
-                        <li key={employee.id} className="list-none">
+                        <li key={employee.id} className="list-none mt-[-4px] first:mt-0">
                           <SwipeableItem 
                             onDelete={() => handleDeleteItem(employee.id, 'Employees')}
                             onEdit={() => handleEditItem(employee)}

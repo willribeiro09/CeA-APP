@@ -91,7 +91,7 @@ export function SwipeableItem({
   }, [isSwiped]);
   
   return (
-    <div className="mb-4" style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
+    <div style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
       <div className="relative overflow-hidden" style={{ borderRadius: '0.75rem' }}>
         {/* Ações de swipe */}
         <div className="absolute right-0 top-0 bottom-0 flex h-full">
