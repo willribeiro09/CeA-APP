@@ -29,3 +29,28 @@ dist-ssr
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Cache e arquivos temporários
+.cache
+.temp
+.tmp
+.eslintcache
+.stylelintcache
+tsconfig.tsbuildinfo
+.tsbuildinfo
+*.tsbuildinfo
+
+# Arquivos de cobertura de testes
+coverage
+.nyc_output
+
+# Arquivos de build
+build
+out
+.next
+.nuxt
+.output
+
+# Arquivos específicos do sistema
+Thumbs.db
+desktop.ini
