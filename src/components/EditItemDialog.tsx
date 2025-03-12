@@ -37,6 +37,15 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     };
   }, [isOpen]);
 
+  // Gerenciamento de foco para inputs de data
+  const handleInputFocus = () => {
+    document.body.classList.add('input-focused');
+  };
+
+  const handleInputBlur = () => {
+    document.body.classList.remove('input-focused');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Formulário de edição enviado");
@@ -245,6 +254,8 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     name="dueDate"
                     defaultValue={new Date((item as Expense).date).toISOString().split('T')[0]}
                     required
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
@@ -313,6 +324,8 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     name="startDate"
                     defaultValue={new Date((item as Project).startDate).toISOString().split('T')[0]}
                     required
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
@@ -331,7 +344,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     <option value="completed">Completed</option>
                   </select>
                 </div>
-                <div className="flex items-center mt-4">
+                <div className="flex items-center">
                   <input
                     type="checkbox"
                     id="invoiceOk"

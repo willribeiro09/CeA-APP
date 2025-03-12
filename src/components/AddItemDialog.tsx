@@ -27,6 +27,14 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
     };
   }, [isOpen]);
 
+  const handleInputFocus = () => {
+    document.body.classList.add('input-focused');
+  };
+
+  const handleInputBlur = () => {
+    document.body.classList.remove('input-focused');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Formulário enviado");
@@ -165,6 +173,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     id="dueDate"
                     name="dueDate"
                     required
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
@@ -229,6 +239,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     id="startDate"
                     name="startDate"
                     required
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
