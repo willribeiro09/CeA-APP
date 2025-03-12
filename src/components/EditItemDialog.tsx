@@ -23,6 +23,20 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     }
   }, [item]);
 
+  // Adicionar/remover classe ao body quando o diálogo estiver aberto/fechado
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('dialog-open');
+    } else {
+      document.body.classList.remove('dialog-open');
+    }
+    
+    // Cleanup ao desmontar o componente
+    return () => {
+      document.body.classList.remove('dialog-open');
+    };
+  }, [isOpen]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Formulário de edição enviado");
@@ -165,8 +179,14 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
   return (
     <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+        <Dialog.Content 
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
+          onOpenAutoFocus={(e: React.FocusEvent) => {
+            // Previne o foco automático que pode causar scroll
+            e.preventDefault();
+          }}
+        >
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-lg font-semibold">
               {itemCategory === 'Expenses' ? 'Editar Despesa' : 

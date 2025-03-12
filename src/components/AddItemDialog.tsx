@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Item, ValidationError, Expense, Project, StockItem, Employee } from '../types';
 import { validation } from '../lib/validation';
 
@@ -14,6 +14,18 @@ interface AddItemDialogProps {
 
 export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, selectedWeekStart }: AddItemDialogProps) {
   const [errors, setErrors] = useState<ValidationError[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('dialog-open');
+    } else {
+      document.body.classList.remove('dialog-open');
+    }
+    
+    return () => {
+      document.body.classList.remove('dialog-open');
+    };
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,8 +103,13 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
   return (
     <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+        <Dialog.Content 
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
+          onOpenAutoFocus={(e: React.FocusEvent) => {
+            e.preventDefault();
+          }}
+        >
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-lg font-semibold">
               {category === 'Expenses' ? 'New Expense' : 

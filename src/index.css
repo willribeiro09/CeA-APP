@@ -4,6 +4,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    scroll-behavior: smooth; /* Rolagem suave em todo o documento */
+  }
+  
+  /* Prevenir que o body role quando um modal estiver aberto */
+  body.dialog-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
   }
 }
 
@@ -20,9 +29,30 @@
 .hide-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;     /* Firefox */
+  overscroll-behavior: contain; /* Previne scroll chaining */
+  scroll-behavior: smooth; /* Rolagem suave */
+  -webkit-overflow-scrolling: touch; /* Melhora a rolagem em dispositivos touch */
 }
 .hide-scrollbar::-webkit-scrollbar {
   display: none;             /* Chrome, Safari and Opera */
+}
+
+/* Estilos para diálogos e modais */
+[data-radix-portal] {
+  position: fixed;
+  z-index: 100;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Permite clicar através do portal quando não há conteúdo */
+}
+
+[data-radix-portal] > * {
+  pointer-events: auto; /* Restaura eventos de ponteiro para o conteúdo do portal */
 }
 
 /* Estilos personalizados */

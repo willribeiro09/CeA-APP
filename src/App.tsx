@@ -891,6 +891,32 @@ export default function App() {
     }, 0);
   };
 
+  // Efeito para gerenciar a classe 'dialog-open' para o diálogo de alerta
+  useEffect(() => {
+    if (showLayoffAlert) {
+      document.body.classList.add('dialog-open');
+    } else {
+      document.body.classList.remove('dialog-open');
+    }
+    
+    return () => {
+      document.body.classList.remove('dialog-open');
+    };
+  }, [showLayoffAlert]);
+
+  // Efeito para gerenciar a classe 'dialog-open' para o diálogo de ajuste de salário
+  useEffect(() => {
+    if (isRateDialogOpen) {
+      document.body.classList.add('dialog-open');
+    } else {
+      document.body.classList.remove('dialog-open');
+    }
+    
+    return () => {
+      document.body.classList.remove('dialog-open');
+    };
+  }, [isRateDialogOpen]);
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
@@ -1012,7 +1038,12 @@ export default function App() {
               overflowY: 'auto',
               position: 'relative',
               marginTop: '0',
-              paddingTop: '0'
+              paddingTop: '0',
+              overscrollBehavior: 'contain', /* Previne scroll chaining */
+              scrollBehavior: 'smooth', /* Torna a rolagem mais suave */
+              WebkitOverflowScrolling: 'touch', /* Melhora a rolagem em dispositivos touch */
+              willChange: 'transform', /* Otimiza para animações */
+              isolation: 'isolate' /* Isola o contexto de empilhamento */
             }}
           >
             <ul className="flex flex-col space-y-[8px] m-0 p-0">
@@ -1200,8 +1231,11 @@ export default function App() {
 
   <Dialog.Root open={showLayoffAlert} onOpenChange={setShowLayoffAlert}>
     <Dialog.Portal>
-      <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-      <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-50">
+      <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+      <Dialog.Content 
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-50"
+        onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+      >
         <div className="flex flex-col items-center text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
             <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1216,8 +1250,11 @@ export default function App() {
 
   <Dialog.Root open={isRateDialogOpen} onOpenChange={setIsRateDialogOpen}>
     <Dialog.Portal>
-      <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-      <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
+      <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+      <Dialog.Content 
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
+        onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+      >
         <div className="flex justify-between items-center mb-4">
           <Dialog.Title className="text-lg font-semibold">
             Adjust New Salary
