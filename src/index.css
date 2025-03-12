@@ -16,6 +16,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Classe para ocultar a barra de rolagem */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari and Opera */
+}
+
 /* Estilos personalizados */
 :root {
   --primary-color: #5ABB37;

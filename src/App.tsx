@@ -991,7 +991,7 @@ export default function App() {
       
       <main className="px-4 pb-20">
           <div 
-            className="max-w-[800px] mx-auto relative z-0" 
+            className="max-w-[800px] mx-auto relative z-0 hide-scrollbar" 
             style={{ 
               height: 'calc(100vh - 250px)', 
               overflowY: 'auto',
