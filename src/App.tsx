@@ -87,11 +87,25 @@ export default function App() {
     const initializeData = async () => {
       console.log('Inicializando dados...');
       
+      // Inicializar tabela de sincronização se necessário
+      if (isSupabaseConfigured()) {
+        console.log('Supabase configurado, inicializando tabela de sincronização');
+        await initSyncTable();
+      } else {
+        console.warn('Supabase não configurado corretamente. Usando apenas armazenamento local.');
+      }
+      
       // Carregar dados iniciais
       const localData = await loadInitialData();
 
       if (localData) {
-        console.log('Dados carregados do armazenamento local');
+        console.log('Dados carregados com sucesso:', {
+          expenses: Object.keys(localData.expenses || {}).length + ' listas',
+          projects: (localData.projects || []).length + ' projetos',
+          stock: (localData.stock || []).length + ' itens',
+          employees: Object.keys(localData.employees || {}).length + ' listas'
+        });
+        
         setExpenses(localData.expenses || {});
         setProjects(localData.projects || []);
         setStockItems(localData.stock || []);
@@ -111,7 +125,13 @@ export default function App() {
       // Configurar sincronização em tempo real
       syncService.init();
       const cleanup = syncService.setupRealtimeUpdates((data) => {
-        console.log('Recebida atualização em tempo real:', data);
+        console.log('Recebida atualização em tempo real:', {
+          expenses: Object.keys(data.expenses || {}).length + ' listas',
+          projects: (data.projects || []).length + ' projetos',
+          stock: (data.stock || []).length + ' itens',
+          employees: Object.keys(data.employees || {}).length + ' listas'
+        });
+        
         if (data) {
           setExpenses(data.expenses || {});
           setProjects(data.projects || []);

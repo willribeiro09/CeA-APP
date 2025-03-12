@@ -7,26 +7,10 @@ import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supab
 const SESSION_ID = Math.random().toString(36).substring(2, 15);
 console.log('ID da sessão:', SESSION_ID);
 
-// Chave para armazenar o UUID no localStorage
-const UUID_STORAGE_KEY = 'expenses-app-uuid';
-
-// Função para obter um UUID válido
-const getUUID = (): string => {
-  // Verificar se já temos um UUID armazenado
-  const storedUUID = localStorage.getItem(UUID_STORAGE_KEY);
-  if (storedUUID) {
-    return storedUUID;
-  }
-  
-  // Gerar um novo UUID
-  const uuid = crypto.randomUUID();
-  localStorage.setItem(UUID_STORAGE_KEY, uuid);
-  return uuid;
-};
-
-// ID fixo para o registro único
-const FIXED_UUID = getUUID();
-console.log('UUID do registro:', FIXED_UUID);
+// ID FIXO compartilhado por todas as instalações do app
+// Usando um UUID fixo para garantir que todos os usuários vejam os mesmos dados
+const SHARED_UUID = "ce764a91-58e0-4c3d-a821-b52b16ca3e7c";
+console.log('UUID compartilhado para sincronização:', SHARED_UUID);
 
 // Intervalo de sincronização em milissegundos (5 segundos)
 const SYNC_INTERVAL = 5000;
@@ -174,11 +158,11 @@ export const syncService = {
     if (!supabase) return null;
     
     try {
-      // Modificado: Usar .limit(1) em vez de .single() para evitar erro 406
+      // Usar o UUID compartilhado para carregar dados
       const { data, error } = await supabase
         .from('sync_data')
         .select('*')
-        .eq('id', FIXED_UUID)
+        .eq('id', SHARED_UUID)
         .limit(1);
 
       if (error) {
@@ -186,7 +170,7 @@ export const syncService = {
         return null;
       }
 
-      // Modificado: Verificar se o array contém dados
+      // Verificar se o array contém dados
       if (data && data.length > 0) {
         console.log('Dados recebidos do Supabase:', data[0]);
         
@@ -222,11 +206,11 @@ export const syncService = {
       // Garantir que os valores do Will estejam definidos
       const willValues = ensureWillValues(data);
       
-      console.log('Sincronizando dados com Supabase usando UUID:', FIXED_UUID);
+      console.log('Sincronizando dados com Supabase usando UUID compartilhado:', SHARED_UUID);
       console.log('Valores do Will a serem sincronizados:', willValues.willBaseRate, willValues.willBonus);
       
       const dataToSave = {
-        id: FIXED_UUID,
+        id: SHARED_UUID,
         expenses: data.expenses,
         projects: data.projects,
         stock: data.stock,
@@ -269,11 +253,11 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
   }
 
   try {
-    // Modificado: Usar .limit(1) em vez de .single() para evitar erro 406
+    // Usar o UUID compartilhado para carregar dados iniciais
     const { data, error } = await supabase
       .from('sync_data')
       .select('*')
-      .eq('id', FIXED_UUID)
+      .eq('id', SHARED_UUID)
       .limit(1);
 
     if (error) {
@@ -281,7 +265,7 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
       return storage.load();
     }
 
-    // Modificado: Verificar se o array contém dados
+    // Verificar se o array contém dados
     if (data && data.length > 0) {
       console.log('Dados carregados do Supabase:', data[0]);
       
