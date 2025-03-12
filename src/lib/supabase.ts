@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// @ts-ignore
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
+// @ts-ignore
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
 
 console.log('Configuração do Supabase:');
 console.log('URL:', SUPABASE_URL);
