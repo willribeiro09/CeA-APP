@@ -1000,7 +1000,7 @@ export default function App() {
               paddingTop: '0'
             }}
           >
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
             <ExpenseItem
               key={expense.id}
