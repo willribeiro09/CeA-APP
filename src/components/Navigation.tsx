@@ -12,38 +12,57 @@ export function Navigation({ activeCategory, onCategoryChange }: NavigationProps
       <div className="flex justify-around">
         <button
           onClick={() => onCategoryChange('Expenses')}
-          className="flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center"
+          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 flex-1 justify-center relative rounded-lg ${
+            activeCategory === 'Expenses' 
+              ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
+              : ''
+          }`}
         >
-          <ReceiptText className={`w-6 h-6 ${activeCategory === 'Expenses' ? 'text-white' : 'text-white/70'} stroke-[2.5px]`} />
-          <span className={`text-sm ${activeCategory === 'Expenses' ? 'text-white font-medium' : 'text-white/70'}`}>
-            Expenses
+          <ReceiptText className={`w-[22px] h-[22px] ${activeCategory === 'Expenses' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
+          <span className={`text-sm ${activeCategory === 'Expenses' ? 'text-white font-medium' : 'text-white'}`}>
+            Despesas
           </span>
         </button>
+        <div className="w-px bg-white/20 my-1.5"></div>
         <button
           onClick={() => onCategoryChange('Projects')}
-          className="flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center"
+          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 flex-1 justify-center relative rounded-lg ${
+            activeCategory === 'Projects' 
+              ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
+              : ''
+          }`}
         >
-          <Briefcase className={`w-6 h-6 ${activeCategory === 'Projects' ? 'text-white' : 'text-white/70'} stroke-[2.5px]`} />
-          <span className={`text-sm ${activeCategory === 'Projects' ? 'text-white font-medium' : 'text-white/70'}`}>
-            Projects
+          <Briefcase className={`w-[22px] h-[22px] ${activeCategory === 'Projects' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
+          <span className={`text-sm ${activeCategory === 'Projects' ? 'text-white font-medium' : 'text-white'}`}>
+            Projetos
           </span>
         </button>
+        <div className="w-px bg-white/20 my-1.5"></div>
         <button
           onClick={() => onCategoryChange('Stock')}
-          className="flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center"
+          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 flex-1 justify-center relative rounded-lg ${
+            activeCategory === 'Stock' 
+              ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
+              : ''
+          }`}
         >
-          <Package className={`w-6 h-6 ${activeCategory === 'Stock' ? 'text-white' : 'text-white/70'} stroke-[2.5px]`} />
-          <span className={`text-sm ${activeCategory === 'Stock' ? 'text-white font-medium' : 'text-white/70'}`}>
-            Inventory
+          <Package className={`w-[22px] h-[22px] ${activeCategory === 'Stock' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
+          <span className={`text-sm ${activeCategory === 'Stock' ? 'text-white font-medium' : 'text-white'}`}>
+            Estoque
           </span>
         </button>
+        <div className="w-px bg-white/20 my-1.5"></div>
         <button
           onClick={() => onCategoryChange('Employees')}
-          className="flex flex-col items-center gap-1 px-4 py-2 flex-1 justify-center"
+          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 flex-1 justify-center relative rounded-lg ${
+            activeCategory === 'Employees' 
+              ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
+              : ''
+          }`}
         >
-          <Users className={`w-6 h-6 ${activeCategory === 'Employees' ? 'text-white' : 'text-white/70'} stroke-[2.5px]`} />
-          <span className={`text-sm ${activeCategory === 'Employees' ? 'text-white font-medium' : 'text-white/70'}`}>
-            Employees
+          <Users className={`w-[22px] h-[22px] ${activeCategory === 'Employees' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
+          <span className={`text-sm ${activeCategory === 'Employees' ? 'text-white font-medium' : 'text-white'}`}>
+            Funcionários
           </span>
         </button>
       </div>
