@@ -38,7 +38,7 @@ const initialEmployees: Record<string, Employee[]> = {};
 const getProjectWeekStart = (date: Date): Date => {
   const result = new Date(date);
   const day = result.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
-  // 3 = quarta-feira
+  // 3 = quarta-feira (já é um dia válido da semana)
   const diff = day >= 3 ? day - 3 : day + 4;
   result.setDate(result.getDate() - diff);
   result.setHours(0, 0, 0, 0);
@@ -48,7 +48,7 @@ const getProjectWeekStart = (date: Date): Date => {
 const getProjectWeekEnd = (date: Date): Date => {
   const weekStart = getProjectWeekStart(date);
   const result = new Date(weekStart);
-  result.setDate(result.getDate() + 6); // 6 dias após quarta = terça
+  result.setDate(result.getDate() + 6); // 6 dias após quarta = terça (terça também é um dia válido)
   result.setHours(23, 59, 59, 999);
   return result;
 };
@@ -57,7 +57,7 @@ const getProjectWeekEnd = (date: Date): Date => {
 const getEmployeeWeekStart = (date: Date): Date => {
   const result = new Date(date);
   const day = result.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
-  // 1 = segunda-feira
+  // 1 = segunda-feira (já é um dia válido da semana)
   const diff = day === 0 ? 6 : day - 1;
   result.setDate(result.getDate() - diff);
   result.setHours(0, 0, 0, 0);
@@ -67,7 +67,7 @@ const getEmployeeWeekStart = (date: Date): Date => {
 const getEmployeeWeekEnd = (date: Date): Date => {
   const weekStart = getEmployeeWeekStart(date);
   const result = new Date(weekStart);
-  result.setDate(result.getDate() + 5); // 5 dias após segunda = sábado
+  result.setDate(result.getDate() + 5); // 5 dias após segunda = sábado (sábado também é um dia válido)
   result.setHours(23, 59, 59, 999);
   return result;
 };
@@ -1032,6 +1032,7 @@ export default function App() {
                   const projectDate = new Date(project.startDate).getTime();
                   const startTime = selectedWeekStart.getTime();
                   const endTime = selectedWeekEnd.getTime();
+                  // Incluir projetos que começam na quarta-feira (startTime) até a terça-feira (endTime)
                   return projectDate >= startTime && projectDate <= endTime;
                 })
                 .map(project => (
