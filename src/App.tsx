@@ -1000,7 +1000,7 @@ export default function App() {
               paddingTop: '0'
             }}
           >
-            <ul className="flex flex-col space-y-[4px] m-0 p-0">
+            <ul className="flex flex-col space-y-[8px] m-0 p-0">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
                 <li key={expense.id} className="list-none">
                   <ExpenseItem
