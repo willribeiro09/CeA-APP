@@ -1000,16 +1000,17 @@ export default function App() {
               paddingTop: '0'
             }}
           >
-            <div className="flex flex-col gap-1">
+            <ul className="flex flex-col space-y-[1px] m-0 p-0">
               {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
-            <ExpenseItem
-              key={expense.id}
-              expense={expense}
-              onTogglePaid={handleTogglePaid}
-                  onDelete={(id) => handleDeleteItem(id, 'Expenses')}
-                  onEdit={(expense) => handleEditItem(expense)}
-            />
-          ))}
+                <li key={expense.id} className="list-none">
+                  <ExpenseItem
+                    expense={expense}
+                    onTogglePaid={handleTogglePaid}
+                    onDelete={(id) => handleDeleteItem(id, 'Expenses')}
+                    onEdit={(expense) => handleEditItem(expense)}
+                  />
+                </li>
+              ))}
               
               {activeCategory === 'Projects' && projects
                 .filter(project => {
@@ -1019,62 +1020,64 @@ export default function App() {
                   return projectDate >= startTime && projectDate <= endTime;
                 })
                 .map(project => (
-                  <SwipeableItem 
-                    key={project.id}
-                    onDelete={() => handleDeleteItem(project.id, 'Projects')}
-                    onEdit={() => handleEditItem(project)}
-                  >
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium text-gray-900">{project.client}</h3>
-                          {project.projectNumber && (
-                            <p className="text-gray-600 text-sm">Number: {project.projectNumber}</p>
-                          )}
-                          <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
+                  <li key={project.id} className="list-none">
+                    <SwipeableItem 
+                      onDelete={() => handleDeleteItem(project.id, 'Projects')}
+                      onEdit={() => handleEditItem(project)}
+                    >
+                      <div className="bg-white p-4 rounded-lg shadow-sm">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-medium text-gray-900">{project.client}</h3>
+                            {project.projectNumber && (
+                              <p className="text-gray-600 text-sm">Number: {project.projectNumber}</p>
+                            )}
+                            <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-[#5ABB37]">$ {(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(project.startDate).toLocaleDateString('en-US')}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-[#5ABB37]">$ {(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(project.startDate).toLocaleDateString('en-US')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex justify-between items-center">
-                        <div></div>
-                        <div className="flex items-center space-x-2">
-                          {project.invoiceOk && (
-                            <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
-                              Invoice OK
+                        <div className="mt-2 flex justify-between items-center">
+                          <div></div>
+                          <div className="flex items-center space-x-2">
+                            {project.invoiceOk && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
+                                Invoice OK
+                              </span>
+                            )}
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              project.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {project.status === 'completed' ? 'Completed' : 'In Progress'}
                             </span>
-                          )}
-                          <span className={`text-xs px-2 py-0.5 rounded ${
-                            project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {project.status === 'completed' ? 'Completed' : 'In Progress'}
-                          </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </SwipeableItem>
+                    </SwipeableItem>
+                  </li>
                 ))}
               
               {activeCategory === 'Stock' && stockItems.map(item => (
-                <SwipeableItem 
-                  key={item.id}
-                  onDelete={() => handleDeleteItem(item.id, 'Stock')}
-                  onEdit={() => handleEditItem(item)}
-                >
-                  <div className="bg-white p-4 rounded-lg shadow-sm">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-medium">{item.name}</h3>
-                      <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                        {item.quantity} {item.unit}
-                      </span>
+                <li key={item.id} className="list-none">
+                  <SwipeableItem 
+                    onDelete={() => handleDeleteItem(item.id, 'Stock')}
+                    onEdit={() => handleEditItem(item)}
+                  >
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-medium">{item.name}</h3>
+                        <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                          {item.quantity} {item.unit}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </SwipeableItem>
+                  </SwipeableItem>
+                </li>
               ))}
               
               {activeCategory === 'Employees' && (
@@ -1086,63 +1089,66 @@ export default function App() {
 
                     // Will - funcionário fixo
                     employeeElements.push(
-                      <WillItemFixed
-                        key="will-fixed"
-                        willBaseRate={willBaseRate}
-                        willBonus={willBonus}
-                        onReset={resetWillValues}
-                        onLayoff={() => setShowLayoffAlert(true)}
-                        onIncreaseRate={() => setIsRateDialogOpen(true)}
-                        onAddBonus={handleAddBonus}
-                      />
+                      <li key="will-fixed" className="list-none">
+                        <WillItemFixed
+                          key="will-fixed"
+                          willBaseRate={willBaseRate}
+                          willBonus={willBonus}
+                          onReset={resetWillValues}
+                          onLayoff={() => setShowLayoffAlert(true)}
+                          onIncreaseRate={() => setIsRateDialogOpen(true)}
+                          onAddBonus={handleAddBonus}
+                        />
+                      </li>
                     );
 
                     // Outros funcionários
                     weekEmployees.forEach(employee => {
                       employeeElements.push(
-                        <SwipeableItem 
-                          key={employee.id}
-                          onDelete={() => handleDeleteItem(employee.id, 'Employees')}
-                          onEdit={() => handleEditItem(employee)}
-                        >
-                          <div className="bg-white p-2.5 rounded-lg shadow-sm">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
-                                  className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
-                                >
-                                  +1 Day
-                                </button>
-                                <button
-                                  onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
-                                  className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
-                                >
-                                  Reset
-                                </button>
+                        <li key={employee.id} className="list-none">
+                          <SwipeableItem 
+                            onDelete={() => handleDeleteItem(employee.id, 'Employees')}
+                            onEdit={() => handleEditItem(employee)}
+                          >
+                            <div className="bg-white p-2.5 rounded-lg shadow-sm">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
+                                    className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
+                                  >
+                                    +1 Day
+                                  </button>
+                                  <button
+                                    onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
+                                    className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
+                                  >
+                                    Reset
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-700 text-sm">Days Worked:</span>
+                                  <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-700 text-sm">Amount to Receive:</span>
+                                  <span className="text-xl font-bold text-[#5ABB37]">
+                                    $ {((employee.daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-700 text-sm">Daily Rate:</span>
+                                  <span className="text-sm text-gray-600">
+                                    $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                            <div className="space-y-0.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Days Worked:</span>
-                                <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Amount to Receive:</span>
-                                <span className="text-xl font-bold text-[#5ABB37]">
-                                  $ {((employee.daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-gray-700 text-sm">Daily Rate:</span>
-                                <span className="text-sm text-gray-600">
-                                  $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </SwipeableItem>
+                          </SwipeableItem>
+                        </li>
                       );
                     });
 
@@ -1150,7 +1156,7 @@ export default function App() {
                   })()}
                 </>
               )}
-            </div>
+            </ul>
         </div>
       </main>
       </div>
