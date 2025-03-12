@@ -1,3 +1,6 @@
+/* Importação do arquivo de otimização de fontes */
+@import './styles/font-optimization.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
