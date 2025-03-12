@@ -928,14 +928,12 @@ export default function App() {
               <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
                 <div className="flex items-center">
                   <span className="text-gray-700 font-medium mr-1">Week:</span>
-                  <Button 
-                    variant="outline" 
-                    className="h-8 pl-3 pr-2 py-0 border border-gray-300 flex items-center text-gray-900"
-                    onClick={() => setIsCalendarOpen(true)}
-                  >
-                    {formatDateRange(selectedWeekStart, selectedWeekEnd)}
-                    <CalendarIcon className="ml-2 h-4 w-4" />
-                  </Button>
+                  <input
+                    type="date"
+                    value={selectedDate ? selectedDate.toISOString().split('T')[0] : selectedWeekStart.toISOString().split('T')[0]}
+                    onChange={(e) => handleDateSelect(e.target.value ? new Date(e.target.value) : undefined)}
+                    className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
                 </div>
                 <div className="flex items-center">
                   <span className="text-gray-700 font-medium mr-2">Total:</span>
