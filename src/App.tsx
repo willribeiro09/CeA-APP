@@ -34,21 +34,40 @@ const initialExpenses: Record<ListName, Expense[]> = {
 
 const initialEmployees: Record<string, Employee[]> = {};
 
-// Após as importações no topo do arquivo, adicione estas funções auxiliares para cálculo de datas
-const getWeekStart = (date: Date): Date => {
+// Funções para cálculo de datas para Projects (quarta a terça)
+const getProjectWeekStart = (date: Date): Date => {
   const result = new Date(date);
-  const day = result.getDay();
-  // 3 = quarta-feira (0 é domingo, 1 é segunda, etc.)
+  const day = result.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+  // 3 = quarta-feira
   const diff = day >= 3 ? day - 3 : day + 4;
   result.setDate(result.getDate() - diff);
   result.setHours(0, 0, 0, 0);
   return result;
 };
 
-const getWeekEnd = (date: Date): Date => {
-  const weekStart = getWeekStart(date);
+const getProjectWeekEnd = (date: Date): Date => {
+  const weekStart = getProjectWeekStart(date);
   const result = new Date(weekStart);
   result.setDate(result.getDate() + 6); // 6 dias após quarta = terça
+  result.setHours(23, 59, 59, 999);
+  return result;
+};
+
+// Funções para cálculo de datas para Employees (segunda a sábado)
+const getEmployeeWeekStart = (date: Date): Date => {
+  const result = new Date(date);
+  const day = result.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+  // 1 = segunda-feira
+  const diff = day === 0 ? 6 : day - 1;
+  result.setDate(result.getDate() - diff);
+  result.setHours(0, 0, 0, 0);
+  return result;
+};
+
+const getEmployeeWeekEnd = (date: Date): Date => {
+  const weekStart = getEmployeeWeekStart(date);
+  const result = new Date(weekStart);
+  result.setDate(result.getDate() + 5); // 5 dias após segunda = sábado
   result.setHours(23, 59, 59, 999);
   return result;
 };
@@ -56,6 +75,15 @@ const getWeekEnd = (date: Date): Date => {
 const formatDateRange = (start: Date, end: Date): string => {
   // Mostrar apenas dia e mês para economizar espaço
   return `${format(start, 'dd/MM')} - ${format(end, 'dd/MM')}`;
+};
+
+// Função auxiliar para determinar a função correta com base na categoria
+const getWeekStart = (date: Date, category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' = 'Projects'): Date => {
+  return category === 'Employees' ? getEmployeeWeekStart(date) : getProjectWeekStart(date);
+};
+
+const getWeekEnd = (date: Date, category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' = 'Projects'): Date => {
+  return category === 'Employees' ? getEmployeeWeekEnd(date) : getProjectWeekEnd(date);
 };
 
 export default function App() {
@@ -73,8 +101,8 @@ export default function App() {
   const [selectedList, setSelectedList] = useState<ListName>('C&A');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeName>('Matheus');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(getWeekStart(new Date()));
-  const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(getWeekEnd(new Date()));
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(getProjectWeekStart(new Date()));
+  const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(getProjectWeekEnd(new Date()));
   const [weekTotalValue, setWeekTotalValue] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
@@ -508,8 +536,8 @@ export default function App() {
     setSelectedDate(date);
     
     if (date) {
-      const weekStart = getWeekStart(date);
-      const weekEnd = getWeekEnd(date);
+      const weekStart = getWeekStart(date, activeCategory);
+      const weekEnd = getWeekEnd(date, activeCategory);
       setSelectedWeekStart(weekStart);
       setSelectedWeekEnd(weekEnd);
     }
@@ -962,7 +990,13 @@ export default function App() {
                 <input
                   type="date"
                   value={selectedWeekStart.toISOString().split('T')[0]}
-                  onChange={(e) => setSelectedWeekStart(new Date(e.target.value))}
+                  onChange={(e) => {
+                    const date = new Date(e.target.value);
+                    const weekStart = getEmployeeWeekStart(date);
+                    const weekEnd = getEmployeeWeekEnd(date);
+                    setSelectedWeekStart(weekStart);
+                    setSelectedWeekEnd(weekEnd);
+                  }}
                   className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                 />
               </div>
