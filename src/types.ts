@@ -51,6 +51,7 @@ export interface Employee {
   phone?: string;
   email?: string;
   notes?: string;
+  workedDates?: string[];
 }
 
 export type Item = Expense | Project | StockItem | Employee;

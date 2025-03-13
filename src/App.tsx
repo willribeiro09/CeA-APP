@@ -736,52 +736,43 @@ export default function App() {
   };
 
   const handleAddDay = (employeeId: string, weekStartDate: string) => {
-    console.log(`Adicionando dia para funcionário ${employeeId} na semana ${weekStartDate}`);
+    const updatedEmployees = { ...employees };
+    const weekEmployees = updatedEmployees[weekStartDate] || [];
+    const employeeIndex = weekEmployees.findIndex((e: Employee) => e.id === employeeId);
+    const today = format(new Date(), 'yyyy-MM-dd');
+
+    if (employeeIndex >= 0) {
+      weekEmployees[employeeIndex] = {
+        ...weekEmployees[employeeIndex],
+        daysWorked: weekEmployees[employeeIndex].daysWorked + 1,
+        workedDates: [...(weekEmployees[employeeIndex].workedDates || []), today]
+      };
+    } else {
+      const employeeFromWeek = weekEmployees.find((e: Employee) => e.id === employeeId);
+      if (employeeFromWeek) {
+        weekEmployees.push({
+          ...employeeFromWeek,
+          weekStartDate,
+          daysWorked: 1,
+          workedDates: [today]
+        });
+      }
+    }
+
+    updatedEmployees[weekStartDate] = weekEmployees;
+    setEmployees(updatedEmployees);
     
-    setEmployees(prevEmployees => {
-      const newEmployees = { ...prevEmployees };
-      
-      // Verificar se a semana existe
-      if (!newEmployees[weekStartDate]) {
-        console.error(`Semana ${weekStartDate} não encontrada`);
-        return prevEmployees;
-      }
-      
-      // Encontrar o funcionário na semana
-      const employeeIndex = newEmployees[weekStartDate].findIndex(e => e.id === employeeId);
-      
-      if (employeeIndex === -1) {
-        console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${weekStartDate}`);
-        return prevEmployees;
-      }
-      
-      // Atualizar os dias trabalhados
-      const updatedEmployee = { ...newEmployees[weekStartDate][employeeIndex] };
-      updatedEmployee.daysWorked += 1;
-      
-      // Atualizar a lista de funcionários
-      newEmployees[weekStartDate] = [
-        ...newEmployees[weekStartDate].slice(0, employeeIndex),
-        updatedEmployee,
-        ...newEmployees[weekStartDate].slice(employeeIndex + 1)
-      ];
-      
-      console.log(`Funcionário ${updatedEmployee.name} atualizado: ${updatedEmployee.daysWorked} dias trabalhados`);
-      
-      // Salvar as alterações preservando os valores do Will
-      const storageData = getData();
-      if (storageData) {
-        const updatedStorageData = {
-          ...storageData,
-          employees: newEmployees,
-          willBaseRate: storageData.willBaseRate,  // Preservar o valor original
-          willBonus: storageData.willBonus  // Preservar o valor original
-        };
-        saveChanges(updatedStorageData);
-      }
-      
-      return newEmployees;
-    });
+    const storageData: StorageItems = {
+      expenses,
+      projects,
+      stock: stockItems,
+      employees: updatedEmployees,
+      willBaseRate,
+      willBonus,
+      lastSync: Date.now()
+    };
+    
+    saveChanges(storageData);
   };
 
   const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
@@ -1079,8 +1070,16 @@ export default function App() {
 
   // Função para verificar se um item está relacionado à data selecionada
   const isItemFromSelectedDate = (item: any): boolean => {
+    // Se não houver filtro de data, mostrar todos
     if (!filterDate) return true;
 
+    // Para projetos, ignorar o filtro do calendário
+    if ('client' in item) {
+      const projectDate = new Date(item.startDate);
+      return projectDate >= selectedWeekStart && projectDate <= selectedWeekEnd;
+    }
+
+    // Para outros itens, manter a lógica do filtro por data
     const itemDate = new Date(
       'date' in item ? item.date : 
       'startDate' in item ? item.startDate : 
@@ -1092,11 +1091,15 @@ export default function App() {
 
   // Função para verificar se um funcionário trabalhou na data selecionada
   const didEmployeeWorkOnDate = (employee: Employee): boolean => {
+    // Will deve sempre aparecer
+    if (employee.name === 'Will') return true;
+    
+    // Se não houver filtro de data, mostrar todos
     if (!filterDate) return true;
     
-    const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
-    const weekEmployee = employees[weekStartDate]?.find(e => e.id === employee.id);
-    return Boolean(weekEmployee?.daysWorked);
+    // Verificar se o funcionário trabalhou na data selecionada
+    const formattedDate = format(filterDate, 'yyyy-MM-dd');
+    return employee.workedDates?.includes(formattedDate) || false;
   };
 
   // Função para abrir o calendário
@@ -1236,9 +1239,9 @@ export default function App() {
                 .filter(isItemFromSelectedDate)
                 .map(expense => (
                   <li key={expense.id} className="list-none">
-                    <ExpenseItem
-                      expense={expense}
-                      onTogglePaid={handleTogglePaid}
+            <ExpenseItem
+              expense={expense}
+              onTogglePaid={handleTogglePaid}
                       onDelete={(id) => handleDeleteItem(id, 'Expenses')}
                       onEdit={(expense) => handleEditItem(expense)}
                     />
@@ -1246,7 +1249,10 @@ export default function App() {
                 ))}
               
               {activeCategory === 'Projects' && projects
-                .filter(isItemFromSelectedDate)
+                .filter(project => {
+                  const projectDate = new Date(project.startDate);
+                  return projectDate >= selectedWeekStart && projectDate <= selectedWeekEnd;
+                })
                 .map(project => (
                   <li key={project.id} className="list-none">
                     <SwipeableItem 
@@ -1261,7 +1267,7 @@ export default function App() {
                               <p className="text-gray-600 text-sm">Number: {project.projectNumber}</p>
                             )}
                             <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
-                          </div>
+        </div>
                           <div className="text-right">
                             <p className="font-semibold text-[#5ABB37]">$ {(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                             <p className="text-xs text-gray-500">
@@ -1326,7 +1332,8 @@ export default function App() {
                     
                     // Filtrar funcionários que devem ser exibidos na semana selecionada
                     const filteredEmployees = allEmployees.filter(employee => 
-                      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd)
+                      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd) && 
+                      didEmployeeWorkOnDate(employee)
                     );
                     
                     // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
@@ -1424,6 +1431,10 @@ export default function App() {
       </div>
     </div>
 
+      {/* Mostrar o CalendarButton apenas nos menus relevantes */}
+      {activeCategory !== 'Stock' && (
+        <CalendarButton onClick={handleOpenCalendar} />
+      )}
       <AddButton onClick={() => setIsAddDialogOpen(true)} />
 
       <AddItemDialog
@@ -1456,7 +1467,7 @@ export default function App() {
                 <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-              </div>
+    </div>
               <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
             </div>
           </Dialog.Content>

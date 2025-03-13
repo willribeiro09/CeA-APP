@@ -13,15 +13,14 @@ interface CalendarProps {
 }
 
 export function Calendar({ selectedDate, onSelect, isOpen, onOpenChange }: CalendarProps) {
+  const today = new Date();
+  
   return (
     <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl">
-          <div className="flex justify-between items-center mb-4">
-            <Dialog.Title className="text-lg font-semibold">
-              Select Date
-            </Dialog.Title>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl z-50">
+          <div className="flex justify-end">
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
             </Dialog.Close>
@@ -29,9 +28,10 @@ export function Calendar({ selectedDate, onSelect, isOpen, onOpenChange }: Calen
           
           <DayPicker
             mode="single"
-            selected={selectedDate}
+            selected={selectedDate || today}
+            defaultMonth={today}
             onSelect={onSelect}
-            className="p-3"
+            className="p-2"
             classNames={{
               months: "flex flex-col",
               month: "space-y-4",
