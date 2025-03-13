@@ -23,6 +23,7 @@ import { Button } from './components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import 'react-day-picker/dist/style.css';
+import { WeekSelector } from './components/WeekSelector';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -929,6 +930,12 @@ export default function App() {
     };
   }, [isRateDialogOpen]);
 
+  // Função para lidar com a mudança de semana
+  const handleWeekChange = (startDate: Date, endDate: Date) => {
+    setSelectedWeekStart(startDate);
+    setSelectedWeekEnd(endDate);
+  };
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
@@ -1023,28 +1030,13 @@ export default function App() {
         {(activeCategory === 'Employees') && (
           <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
             <div className="relative max-w-[800px] mx-auto pb-4">
-              <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                <span className="text-gray-700 font-medium">
-                  Week Starting:
-                </span>
-                <input
-                  type="date"
-                  value={selectedWeekStart.toISOString().split('T')[0]}
-                  onChange={(e) => {
-                    const date = new Date(e.target.value);
-                    const weekStart = getEmployeeWeekStart(date);
-                    const weekEnd = getEmployeeWeekEnd(date);
-                    setSelectedWeekStart(weekStart);
-                    setSelectedWeekEnd(weekEnd);
-                  }}
-                  onFocus={handleInputFocus}
-                  onBlur={handleInputBlur}
-                  className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                />
-              </div>
+              <WeekSelector 
+                selectedWeekStart={selectedWeekStart}
+                onWeekChange={handleWeekChange}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
       
       <main className="px-4 pb-20">
           <div 
@@ -1305,7 +1297,7 @@ export default function App() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-      
+
       <Calendar
         selectedDate={selectedDate}
         onSelect={handleDateSelect}
