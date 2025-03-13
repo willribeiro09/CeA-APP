@@ -1003,8 +1003,9 @@ export default function App() {
       total += (employee.dailyRate || 250) * daysWorked;
     });
     
-    // Adicionar o valor do Will (diária base * 6 dias + bônus)
-    total += (willBaseRate * 6) + willBonus;
+    // Adicionar o valor do Will (valor fixo semanal + bônus)
+    // Will recebe 200 pela semana toda (não é por dia)
+    total += willBaseRate + willBonus;
     
     return total;
   };
@@ -1115,9 +1116,9 @@ export default function App() {
                   </span>
                 </div>
               </div>
-            </div>
           </div>
-        )}
+        </div>
+      )}
       
       <main className="px-4 pb-20">
           <div 
