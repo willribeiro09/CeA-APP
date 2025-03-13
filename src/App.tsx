@@ -970,6 +970,42 @@ export default function App() {
     return isInWeek;
   };
 
+  const calculateEmployeesTotal = () => {
+    let total = 0;
+    
+    // Obter todos os funcionários de todas as semanas
+    const allEmployees: Employee[] = [];
+    Object.keys(employees).forEach(weekKey => {
+      employees[weekKey].forEach(employee => {
+        // Verificar se o funcionário já está na lista (evitar duplicatas)
+        if (!allEmployees.some(e => e.id === employee.id)) {
+          allEmployees.push(employee);
+        }
+      });
+    });
+    
+    // Filtrar funcionários que devem ser exibidos na semana selecionada
+    const filteredEmployees = allEmployees.filter(employee => 
+      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd)
+    );
+    
+    // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
+    const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+    const weekEmployees = employees[formattedSelectedWeekStart] || [];
+    
+    // Calcular o total
+    filteredEmployees.forEach(employee => {
+      // Encontrar o registro específico do funcionário para a semana selecionada
+      const weekEmployee = weekEmployees.find(e => e.id === employee.id);
+      const daysWorked = weekEmployee ? weekEmployee.daysWorked : 0;
+      
+      // Adicionar ao total
+      total += (employee.dailyRate || 250) * daysWorked;
+    });
+    
+    return total;
+  };
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
@@ -1064,13 +1100,24 @@ export default function App() {
         {(activeCategory === 'Employees') && (
           <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
             <div className="relative max-w-[800px] mx-auto pb-4">
-              <WeekSelector 
-                selectedWeekStart={selectedWeekStart}
-                onWeekChange={handleWeekChange}
-              />
+              <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="text-gray-700 font-medium mr-2">Week:</span>
+                  <WeekSelector 
+                    selectedWeekStart={selectedWeekStart}
+                    onWeekChange={handleWeekChange}
+                  />
+                </div>
+                <div className="flex items-center">
+                  <span className="text-gray-700 font-medium mr-2">Total:</span>
+                  <span className="text-[#5ABB37] text-xl font-bold">
+                    ${calculateEmployeesTotal().toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       
       <main className="px-4 pb-20">
           <div 
