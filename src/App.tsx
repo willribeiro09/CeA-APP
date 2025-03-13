@@ -1003,6 +1003,9 @@ export default function App() {
       total += (employee.dailyRate || 250) * daysWorked;
     });
     
+    // Adicionar o valor do Will (diária base * 6 dias + bônus)
+    total += (willBaseRate * 6) + willBonus;
+    
     return total;
   };
 
@@ -1101,13 +1104,10 @@ export default function App() {
           <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
             <div className="relative max-w-[800px] mx-auto pb-4">
               <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                <div className="flex items-center">
-                  <span className="text-gray-700 font-medium mr-2">Week:</span>
-                  <WeekSelector 
-                    selectedWeekStart={selectedWeekStart}
-                    onWeekChange={handleWeekChange}
-                  />
-                </div>
+                <WeekSelector 
+                  selectedWeekStart={selectedWeekStart}
+                  onWeekChange={handleWeekChange}
+                />
                 <div className="flex items-center">
                   <span className="text-gray-700 font-medium mr-2">Total:</span>
                   <span className="text-[#5ABB37] text-xl font-bold">
