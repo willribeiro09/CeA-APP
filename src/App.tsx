@@ -952,6 +952,12 @@ export default function App() {
     const weekEndCopy = new Date(weekEnd);
     weekEndCopy.setHours(23, 59, 59, 999);
     
+    console.log(`Verificando funcionário: ${employee.name}`);
+    console.log(`Data de início do funcionário: ${employeeStartDate.toISOString()}`);
+    console.log(`Início da semana: ${weekStartCopy.toISOString()}`);
+    console.log(`Fim da semana: ${weekEndCopy.toISOString()}`);
+    console.log(`Resultado da comparação: ${employeeStartDate >= weekStartCopy && employeeStartDate <= weekEndCopy}`);
+    
     // Verificar se a data de início do funcionário está dentro do intervalo da semana selecionada
     // (entre segunda e sábado daquela semana)
     return employeeStartDate >= weekStartCopy && employeeStartDate <= weekEndCopy;
@@ -1055,9 +1061,9 @@ export default function App() {
                 selectedWeekStart={selectedWeekStart}
                 onWeekChange={handleWeekChange}
               />
-            </div>
           </div>
-        )}
+        </div>
+      )}
       
       <main className="px-4 pb-20">
           <div 
@@ -1358,7 +1364,7 @@ export default function App() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-
+      
       <Calendar
         selectedDate={selectedDate}
         onSelect={handleDateSelect}

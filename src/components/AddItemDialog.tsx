@@ -79,9 +79,17 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       console.log("Dados de estoque formatados:", itemData);
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else {
-      const startDate = data.startDate ? new Date(data.startDate as string) : new Date();
+      // Capturar a data de início do formulário
+      const startDateString = data.startDate as string;
+      console.log("Data de início selecionada:", startDateString);
+      
+      // Criar um objeto Date a partir da string da data
+      const startDate = startDateString ? new Date(startDateString) : new Date();
+      
       // Resetar o horário para evitar problemas de comparação
       startDate.setHours(0, 0, 0, 0);
+      
+      console.log("Data de início processada:", startDate.toISOString());
       
       itemData = {
         name: data.name as string,
