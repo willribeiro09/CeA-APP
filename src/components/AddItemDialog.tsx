@@ -80,6 +80,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else {
       const startDate = data.startDate ? new Date(data.startDate as string) : new Date();
+      // Resetar o horário para evitar problemas de comparação
+      startDate.setHours(0, 0, 0, 0);
       
       itemData = {
         name: data.name as string,
@@ -117,6 +119,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         <Dialog.Content 
           className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
           onOpenAutoFocus={(e: React.FocusEvent) => {
+            // Previne o foco automático que pode causar scroll
             e.preventDefault();
           }}
         >

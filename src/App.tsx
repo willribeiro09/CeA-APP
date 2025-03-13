@@ -941,11 +941,20 @@ export default function App() {
     // Se o funcionário não tem data de início, sempre mostrar
     if (!employee.startDate) return true;
     
-    // Converter a data de início do funcionário para um objeto Date
+    // Converter a data de início do funcionário para um objeto Date e resetar o horário
     const employeeStartDate = new Date(employee.startDate);
+    employeeStartDate.setHours(0, 0, 0, 0);
     
-    // Verificar se a data de início do funcionário é anterior ou igual ao fim da semana selecionada
-    return employeeStartDate <= weekEnd;
+    // Criar cópias das datas de início e fim da semana com horário resetado para comparação justa
+    const weekStartCopy = new Date(weekStart);
+    weekStartCopy.setHours(0, 0, 0, 0);
+    
+    const weekEndCopy = new Date(weekEnd);
+    weekEndCopy.setHours(23, 59, 59, 999);
+    
+    // Verificar se a data de início do funcionário está dentro do intervalo da semana selecionada
+    // (entre segunda e sábado daquela semana)
+    return employeeStartDate >= weekStartCopy && employeeStartDate <= weekEndCopy;
   };
 
   return (
@@ -1176,65 +1185,76 @@ export default function App() {
                       </li>
                     );
 
-                    // Outros funcionários
-                    filteredEmployees.forEach(employee => {
-                      // Encontrar o registro específico do funcionário para a semana selecionada
-                      const weekEmployee = weekEmployees.find(e => e.id === employee.id);
-                      const daysWorked = weekEmployee ? weekEmployee.daysWorked : 0;
-                      
+                    // Verificar se há funcionários filtrados (excluindo Will)
+                    if (filteredEmployees.length === 0) {
                       employeeElements.push(
-                        <li key={employee.id} className="list-none">
-                          <SwipeableItem 
-                            onDelete={() => handleDeleteItem(employee.id, 'Employees')}
-                            onEdit={() => handleEditItem(employee)}
-                          >
-                            <div className="bg-white p-2.5 rounded-lg shadow-sm">
-                              <div className="flex items-center justify-between mb-1.5">
-                                <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
-                                    className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
-                                  >
-                                    +1 Day
-                                  </button>
-                                  <button
-                                    onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
-                                    className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
-                                  >
-                                    Reset
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="space-y-0.5">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-700 text-sm">Days Worked:</span>
-                                  <span className="text-xl font-bold text-gray-900">{daysWorked}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-700 text-sm">Amount to Receive:</span>
-                                  <span className="text-xl font-bold text-[#5ABB37]">
-                                    $ {((daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-700 text-sm">Daily Rate:</span>
-                                  <span className="text-sm text-gray-600">
-                                    $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-700 text-sm">Start Date:</span>
-                                  <span className="text-sm text-gray-600">
-                                    {new Date(employee.startDate).toLocaleDateString('en-US')}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </SwipeableItem>
+                        <li key="no-employees" className="list-none">
+                          <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+                            <p className="text-gray-500">No employees started this week.</p>
+                          </div>
                         </li>
                       );
-                    });
+                    } else {
+                      // Outros funcionários
+                      filteredEmployees.forEach(employee => {
+                        // Encontrar o registro específico do funcionário para a semana selecionada
+                        const weekEmployee = weekEmployees.find(e => e.id === employee.id);
+                        const daysWorked = weekEmployee ? weekEmployee.daysWorked : 0;
+                        
+                        employeeElements.push(
+                          <li key={employee.id} className="list-none">
+                            <SwipeableItem 
+                              onDelete={() => handleDeleteItem(employee.id, 'Employees')}
+                              onEdit={() => handleEditItem(employee)}
+                            >
+                              <div className="bg-white p-2.5 rounded-lg shadow-sm">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
+                                      className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
+                                    >
+                                      +1 Day
+                                    </button>
+                                    <button
+                                      onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
+                                      className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
+                                    >
+                                      Reset
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-gray-700 text-sm">Days Worked:</span>
+                                    <span className="text-xl font-bold text-gray-900">{daysWorked}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-gray-700 text-sm">Amount to Receive:</span>
+                                    <span className="text-xl font-bold text-[#5ABB37]">
+                                      $ {((daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-gray-700 text-sm">Daily Rate:</span>
+                                    <span className="text-sm text-gray-600">
+                                      $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-gray-700 text-sm">Start Date:</span>
+                                    <span className="text-sm text-gray-600">
+                                      {new Date(employee.startDate).toLocaleDateString('en-US')}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </SwipeableItem>
+                          </li>
+                        );
+                      });
+                    }
 
                     return employeeElements;
                   })()}
