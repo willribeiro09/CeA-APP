@@ -936,6 +936,18 @@ export default function App() {
     setSelectedWeekEnd(endDate);
   };
 
+  // Função para verificar se um funcionário deve ser exibido na semana selecionada
+  const shouldShowEmployeeInWeek = (employee: Employee, weekStart: Date, weekEnd: Date) => {
+    // Se o funcionário não tem data de início, sempre mostrar
+    if (!employee.startDate) return true;
+    
+    // Converter a data de início do funcionário para um objeto Date
+    const employeeStartDate = new Date(employee.startDate);
+    
+    // Verificar se a data de início do funcionário é anterior ou igual ao fim da semana selecionada
+    return employeeStartDate <= weekEnd;
+  };
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
@@ -1127,7 +1139,26 @@ export default function App() {
                 <>
                   {(() => {
                     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+                    
+                    // Obter todos os funcionários de todas as semanas
+                    const allEmployees: Employee[] = [];
+                    Object.keys(employees).forEach(weekKey => {
+                      employees[weekKey].forEach(employee => {
+                        // Verificar se o funcionário já está na lista (evitar duplicatas)
+                        if (!allEmployees.some(e => e.id === employee.id)) {
+                          allEmployees.push(employee);
+                        }
+                      });
+                    });
+                    
+                    // Filtrar funcionários que devem ser exibidos na semana selecionada
+                    const filteredEmployees = allEmployees.filter(employee => 
+                      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd)
+                    );
+                    
+                    // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
                     const weekEmployees = employees[formattedSelectedWeekStart] || [];
+                    
                     const employeeElements = [];
 
                     // Will - funcionário fixo
@@ -1146,7 +1177,11 @@ export default function App() {
                     );
 
                     // Outros funcionários
-                    weekEmployees.forEach(employee => {
+                    filteredEmployees.forEach(employee => {
+                      // Encontrar o registro específico do funcionário para a semana selecionada
+                      const weekEmployee = weekEmployees.find(e => e.id === employee.id);
+                      const daysWorked = weekEmployee ? weekEmployee.daysWorked : 0;
+                      
                       employeeElements.push(
                         <li key={employee.id} className="list-none">
                           <SwipeableItem 
@@ -1174,18 +1209,24 @@ export default function App() {
                               <div className="space-y-0.5">
                                 <div className="flex items-center justify-between">
                                   <span className="text-gray-700 text-sm">Days Worked:</span>
-                                  <span className="text-xl font-bold text-gray-900">{employee.daysWorked}</span>
+                                  <span className="text-xl font-bold text-gray-900">{daysWorked}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-gray-700 text-sm">Amount to Receive:</span>
                                   <span className="text-xl font-bold text-[#5ABB37]">
-                                    $ {((employee.daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    $ {((daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-gray-700 text-sm">Daily Rate:</span>
                                   <span className="text-sm text-gray-600">
                                     $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-700 text-sm">Start Date:</span>
+                                  <span className="text-sm text-gray-600">
+                                    {new Date(employee.startDate).toLocaleDateString('en-US')}
                                   </span>
                                 </div>
                               </div>

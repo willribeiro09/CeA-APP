@@ -37,9 +37,9 @@ export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorPr
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
         className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
       >
-        <div className="flex flex-col items-start">
-          <span className="text-sm text-gray-500 font-medium">Week Select</span>
-          <span className="text-gray-700 font-medium">
+        <div className="flex items-center">
+          <span className="text-gray-700 font-medium mr-2">Week Select:</span>
+          <span className="text-[#5ABB37] font-medium">
             {selectedWeek.label}
           </span>
         </div>
@@ -63,10 +63,10 @@ export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorPr
               <div className="flex flex-col">
                 <span className="font-medium">{week.label}</span>
                 {index === 0 && (
-                  <span className="text-xs text-gray-500">Semana atual</span>
+                  <span className="text-xs text-gray-500">Current week</span>
                 )}
                 {index === 1 && (
-                  <span className="text-xs text-gray-500">Próxima semana</span>
+                  <span className="text-xs text-gray-500">Next week</span>
                 )}
               </div>
             </button>
