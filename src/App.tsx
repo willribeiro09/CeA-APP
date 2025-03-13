@@ -24,6 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover
 import { Calendar as CalendarIcon } from 'lucide-react';
 import 'react-day-picker/dist/style.css';
 import { WeekSelector } from './components/WeekSelector';
+import { ProjectWeekSelector } from './components/ProjectWeekSelector';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -35,21 +36,22 @@ const initialExpenses: Record<ListName, Expense[]> = {
 
 const initialEmployees: Record<string, Employee[]> = {};
 
-// Funções para cálculo de datas para Projects (quarta a terça)
+// Função para obter a terça-feira atual ou anterior mais próxima
 const getProjectWeekStart = (date: Date): Date => {
   const result = new Date(date);
-  const day = result.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
-  // 3 = quarta-feira (já é um dia válido da semana)
-  const diff = day >= 3 ? day - 3 : day + 4;
-  result.setDate(result.getDate() - diff);
+  const day = result.getDay(); // 0 = domingo, 1 = segunda, 2 = terça, ...
+  const daysToSubtract = day === 2 ? 0 : day < 2 ? day + 5 : day - 2;
+  
+  result.setDate(result.getDate() - daysToSubtract);
   result.setHours(0, 0, 0, 0);
   return result;
 };
 
+// Função para obter a segunda-feira seguinte
 const getProjectWeekEnd = (date: Date): Date => {
   const weekStart = getProjectWeekStart(date);
   const result = new Date(weekStart);
-  result.setDate(result.getDate() + 6); // 6 dias após quarta = terça (terça também é um dia válido)
+  result.setDate(result.getDate() + 6); // 6 dias após terça = segunda
   result.setHours(23, 59, 59, 999);
   return result;
 };
@@ -199,6 +201,7 @@ export default function App() {
     
     projects.forEach(project => {
       const projectDate = new Date(project.startDate).getTime();
+      // Incluir projetos que começam na terça-feira (startTime) até a segunda-feira (endTime)
       if (projectDate >= startTime && projectDate <= endTime) {
         total += project.value || 0;
       }
@@ -1010,6 +1013,12 @@ export default function App() {
     return total;
   };
 
+  // Função para lidar com a mudança de semana para projetos
+  const handleProjectWeekChange = (startDate: Date, endDate: Date) => {
+    setSelectedWeekStart(startDate);
+    setSelectedWeekEnd(endDate);
+  };
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
@@ -1073,17 +1082,10 @@ export default function App() {
           <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
             <div className="relative max-w-[800px] mx-auto pb-4">
               <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                <div className="flex items-center">
-                  <span className="text-gray-700 font-medium mr-1">Week:</span>
-                  <input
-                    type="date"
-                    value={selectedDate ? selectedDate.toISOString().split('T')[0] : selectedWeekStart.toISOString().split('T')[0]}
-                    onChange={(e) => handleDateSelect(e.target.value ? new Date(e.target.value) : undefined)}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
-                    className="border-gray-300 rounded-md shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
+                <ProjectWeekSelector 
+                  selectedWeekStart={selectedWeekStart}
+                  onWeekChange={handleProjectWeekChange}
+                />
                 <div className="flex items-center">
                   <span className="text-gray-700 font-medium mr-2">Total:</span>
                   <span className="text-[#5ABB37] text-xl font-bold">
