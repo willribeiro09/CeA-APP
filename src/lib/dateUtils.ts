@@ -4,13 +4,33 @@ import { enUS } from 'date-fns/locale';
 // Função para obter o início da semana (segunda-feira)
 export function getEmployeeWeekStart(date: Date): Date {
   const currentDate = startOfDay(date);
-  return isMonday(currentDate) ? currentDate : previousMonday(currentDate);
+  // Garantir que retornamos a segunda-feira da semana atual
+  // isMonday verifica se a data é segunda-feira
+  // previousMonday retorna a segunda-feira anterior (ou a própria data se já for segunda)
+  const result = isMonday(currentDate) ? currentDate : previousMonday(currentDate);
+  
+  // Garantir que o horário seja zerado
+  result.setHours(0, 0, 0, 0);
+  
+  console.log(`Data original: ${date.toISOString()}`);
+  console.log(`Início da semana calculado: ${result.toISOString()}`);
+  
+  return result;
 }
 
 // Função para obter o fim da semana (sábado)
 export function getEmployeeWeekEnd(date: Date): Date {
   const weekStart = getEmployeeWeekStart(date);
-  return nextSaturday(weekStart);
+  // nextSaturday retorna o próximo sábado (ou a própria data se já for sábado)
+  const result = nextSaturday(weekStart);
+  
+  // Garantir que o horário seja definido para o final do dia
+  result.setHours(23, 59, 59, 999);
+  
+  console.log(`Início da semana: ${weekStart.toISOString()}`);
+  console.log(`Fim da semana calculado: ${result.toISOString()}`);
+  
+  return result;
 }
 
 // Função para obter o início da semana para projetos (quarta-feira)

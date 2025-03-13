@@ -952,15 +952,22 @@ export default function App() {
     const weekEndCopy = new Date(weekEnd);
     weekEndCopy.setHours(23, 59, 59, 999);
     
-    console.log(`Verificando funcionário: ${employee.name}`);
-    console.log(`Data de início do funcionário: ${employeeStartDate.toISOString()}`);
-    console.log(`Início da semana: ${weekStartCopy.toISOString()}`);
-    console.log(`Fim da semana: ${weekEndCopy.toISOString()}`);
-    console.log(`Resultado da comparação: ${employeeStartDate >= weekStartCopy && employeeStartDate <= weekEndCopy}`);
+    // Ajustar a data de início da semana para garantir que a segunda-feira seja incluída
+    // Isso é necessário porque pode haver problemas de fuso horário ou arredondamento
+    const adjustedWeekStart = new Date(weekStartCopy);
+    adjustedWeekStart.setHours(0, 0, 0, 0);
     
     // Verificar se a data de início do funcionário está dentro do intervalo da semana selecionada
     // (entre segunda e sábado daquela semana)
-    return employeeStartDate >= weekStartCopy && employeeStartDate <= weekEndCopy;
+    const isInWeek = employeeStartDate >= adjustedWeekStart && employeeStartDate <= weekEndCopy;
+    
+    console.log(`Verificando funcionário: ${employee.name}`);
+    console.log(`Data de início do funcionário: ${employeeStartDate.toISOString()}`);
+    console.log(`Início da semana ajustado: ${adjustedWeekStart.toISOString()}`);
+    console.log(`Fim da semana: ${weekEndCopy.toISOString()}`);
+    console.log(`Está na semana? ${isInWeek}`);
+    
+    return isInWeek;
   };
 
   return (
