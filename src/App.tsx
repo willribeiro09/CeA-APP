@@ -114,6 +114,7 @@ export default function App() {
   const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
   const [showLayoffAlert, setShowLayoffAlert] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [filterDate, setFilterDate] = useState<Date | null>(null);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -538,15 +539,9 @@ export default function App() {
   };
 
   const handleDateSelect = (date: Date | undefined) => {
-    setSelectedDate(date);
-    
     if (date) {
-      const weekStart = getWeekStart(date, activeCategory);
-      const weekEnd = getWeekEnd(date, activeCategory);
-      setSelectedWeekStart(weekStart);
-      setSelectedWeekEnd(weekEnd);
+      setFilterDate(date);
     }
-    
     setIsCalendarOpen(false);
   };
 
@@ -1082,6 +1077,38 @@ export default function App() {
     });
   };
 
+  // Função para verificar se um item está relacionado à data selecionada
+  const isItemFromSelectedDate = (item: any): boolean => {
+    if (!filterDate) return true;
+
+    const itemDate = new Date(
+      'date' in item ? item.date : 
+      'startDate' in item ? item.startDate : 
+      new Date()
+    );
+
+    return itemDate.toDateString() === filterDate.toDateString();
+  };
+
+  // Função para verificar se um funcionário trabalhou na data selecionada
+  const didEmployeeWorkOnDate = (employee: Employee): boolean => {
+    if (!filterDate) return true;
+    
+    const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
+    const weekEmployee = employees[weekStartDate]?.find(e => e.id === employee.id);
+    return Boolean(weekEmployee?.daysWorked);
+  };
+
+  // Função para abrir o calendário
+  const handleOpenCalendar = () => {
+    setIsCalendarOpen(true);
+  };
+
+  // Função para limpar o filtro
+  const clearDateFilter = () => {
+    setFilterDate(null);
+  };
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
@@ -1189,26 +1216,37 @@ export default function App() {
           <div 
             className="max-w-[800px] mx-auto relative z-0 hide-scrollbar main-list-container" 
           >
+            {/* Indicador de filtro ativo */}
+            {filterDate && (
+              <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg mb-4 flex items-center justify-between">
+                <span className="text-sm">
+                  Filtrando por: {filterDate.toLocaleDateString('pt-BR')}
+                </span>
+                <button 
+                  onClick={clearDateFilter}
+                  className="text-blue-700 hover:text-blue-900"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             <ul className="flex flex-col space-y-[8px] m-0 p-0">
-              {activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || []).map(expense => (
-                <li key={expense.id} className="list-none">
-                  <ExpenseItem
-                    expense={expense}
-                    onTogglePaid={handleTogglePaid}
-                    onDelete={(id) => handleDeleteItem(id, 'Expenses')}
-                    onEdit={(expense) => handleEditItem(expense)}
-                  />
-                </li>
-              ))}
+              {activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || [])
+                .filter(isItemFromSelectedDate)
+                .map(expense => (
+                  <li key={expense.id} className="list-none">
+                    <ExpenseItem
+                      expense={expense}
+                      onTogglePaid={handleTogglePaid}
+                      onDelete={(id) => handleDeleteItem(id, 'Expenses')}
+                      onEdit={(expense) => handleEditItem(expense)}
+                    />
+                  </li>
+                ))}
               
               {activeCategory === 'Projects' && projects
-                .filter(project => {
-                  const projectDate = new Date(project.startDate).getTime();
-                  const startTime = selectedWeekStart.getTime();
-                  const endTime = selectedWeekEnd.getTime();
-                  // Incluir projetos que começam na quarta-feira (startTime) até a terça-feira (endTime)
-                  return projectDate >= startTime && projectDate <= endTime;
-                })
+                .filter(isItemFromSelectedDate)
                 .map(project => (
                   <li key={project.id} className="list-none">
                     <SwipeableItem 
@@ -1480,7 +1518,7 @@ export default function App() {
       </Dialog.Root>
       
       <Calendar
-        selectedDate={selectedDate}
+        selectedDate={filterDate || undefined}
         onSelect={handleDateSelect}
         isOpen={isCalendarOpen}
         onOpenChange={setIsCalendarOpen}
