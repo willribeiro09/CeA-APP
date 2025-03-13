@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Calendar } from 'lucide-react';
 import { format, addWeeks } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 
 interface ProjectWeekSelectorProps {
   selectedWeekStart: Date;
@@ -32,12 +32,14 @@ const getNext5ProjectWeeks = () => {
     endDate.setDate(startDate.getDate() + 6); // 6 dias depois da terça = segunda
     endDate.setHours(23, 59, 59, 999);
     
-    const formattedStartDate = format(startDate, 'dd/MM');
-    const formattedEndDate = format(endDate, 'dd/MM');
+    // Formatar as datas no estilo "March 11 to 17"
+    const formattedStartDate = format(startDate, 'MMMM d', { locale: enUS });
+    const formattedEndDate = format(endDate, 'd');
+    const label = `${formattedStartDate} to ${formattedEndDate}`;
     
     weeks.push({
       value: startDate.toISOString().split('T')[0],
-      label: `${formattedStartDate} - ${formattedEndDate}`,
+      label: label,
       startDate,
       endDate
     });

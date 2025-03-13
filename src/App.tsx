@@ -1019,6 +1019,25 @@ export default function App() {
     setSelectedWeekEnd(endDate);
   };
 
+  // Função para atualizar as datas da semana com base na categoria
+  const updateWeekDatesForCategory = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
+    const today = new Date();
+    const weekStart = getWeekStart(today, category);
+    const weekEnd = getWeekEnd(today, category);
+    setSelectedWeekStart(weekStart);
+    setSelectedWeekEnd(weekEnd);
+  };
+
+  // Atualizar as datas da semana quando a categoria mudar
+  useEffect(() => {
+    updateWeekDatesForCategory(activeCategory);
+  }, [activeCategory]);
+
+  // Atualizar as datas da semana na inicialização
+  useEffect(() => {
+    updateWeekDatesForCategory(activeCategory);
+  }, []);
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
