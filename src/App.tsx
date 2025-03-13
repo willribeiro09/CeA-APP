@@ -1324,12 +1324,6 @@ export default function App() {
                                       $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                     </span>
                                   </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-gray-700 text-sm">Start Date:</span>
-                                    <span className="text-sm text-gray-600">
-                                      {new Date(employee.startDate).toLocaleDateString('en-US')}
-                                    </span>
-                                  </div>
                                 </div>
                               </div>
                             </SwipeableItem>
