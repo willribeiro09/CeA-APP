@@ -1038,6 +1038,29 @@ export default function App() {
     updateWeekDatesForCategory(activeCategory);
   }, []);
 
+  // Função para ordenar despesas por data de vencimento (mais atrasadas primeiro)
+  const sortExpensesByDueDate = (expenseList: Expense[]) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return [...expenseList].sort((a, b) => {
+      const dueDateA = new Date(a.date);
+      const dueDateB = new Date(b.date);
+      
+      // Verificar se as datas estão atrasadas (antes de hoje)
+      const isOverdueA = dueDateA < today;
+      const isOverdueB = dueDateB < today;
+      
+      // Se ambas estão atrasadas ou ambas não estão, ordenar por data (mais próxima primeiro)
+      if (isOverdueA === isOverdueB) {
+        return dueDateA.getTime() - dueDateB.getTime();
+      }
+      
+      // Se apenas uma está atrasada, ela vem primeiro
+      return isOverdueA ? -1 : 1;
+    });
+  };
+
   return (
     <>
     <div className="min-h-screen bg-gray-50">
@@ -1146,11 +1169,11 @@ export default function App() {
             className="max-w-[800px] mx-auto relative z-0 hide-scrollbar main-list-container" 
           >
             <ul className="flex flex-col space-y-[8px] m-0 p-0">
-              {activeCategory === 'Expenses' && expenses[selectedList]?.map(expense => (
+              {activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || []).map(expense => (
                 <li key={expense.id} className="list-none">
-            <ExpenseItem
-              expense={expense}
-              onTogglePaid={handleTogglePaid}
+                  <ExpenseItem
+                    expense={expense}
+                    onTogglePaid={handleTogglePaid}
                     onDelete={(id) => handleDeleteItem(id, 'Expenses')}
                     onEdit={(expense) => handleEditItem(expense)}
                   />
