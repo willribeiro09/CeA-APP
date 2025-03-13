@@ -1043,21 +1043,42 @@ export default function App() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Definir o limite para "próximo do vencimento" (7 dias)
+    const upcomingLimit = new Date(today);
+    upcomingLimit.setDate(today.getDate() + 7);
+    
     return [...expenseList].sort((a, b) => {
+      // Primeiro critério: status de pagamento (pagas primeiro)
+      if (a.paid !== b.paid) {
+        return a.paid ? -1 : 1;
+      }
+      
+      // Se ambas estão pagas ou ambas não estão pagas, continuar com os outros critérios
       const dueDateA = new Date(a.date);
       const dueDateB = new Date(b.date);
       
-      // Verificar se as datas estão atrasadas (antes de hoje)
-      const isOverdueA = dueDateA < today;
-      const isOverdueB = dueDateB < today;
-      
-      // Se ambas estão atrasadas ou ambas não estão, ordenar por data (mais próxima primeiro)
-      if (isOverdueA === isOverdueB) {
-        return dueDateA.getTime() - dueDateB.getTime();
+      // Para itens não pagos, verificar status de vencimento
+      if (!a.paid) {
+        // Verificar se as datas estão atrasadas (antes de hoje)
+        const isOverdueA = dueDateA < today;
+        const isOverdueB = dueDateB < today;
+        
+        // Verificar se as datas estão próximas do vencimento (entre hoje e o limite)
+        const isUpcomingA = !isOverdueA && dueDateA <= upcomingLimit;
+        const isUpcomingB = !isOverdueB && dueDateB <= upcomingLimit;
+        
+        // Categorizar por status de vencimento
+        const categoryA = isOverdueA ? 1 : (isUpcomingA ? 2 : 3); // 1=atrasada, 2=próxima, 3=futura
+        const categoryB = isOverdueB ? 1 : (isUpcomingB ? 2 : 3);
+        
+        // Se estão em categorias diferentes, ordenar por categoria
+        if (categoryA !== categoryB) {
+          return categoryA - categoryB;
+        }
       }
       
-      // Se apenas uma está atrasada, ela vem primeiro
-      return isOverdueA ? -1 : 1;
+      // Se estão na mesma categoria ou ambas pagas, ordenar por data
+      return dueDateA.getTime() - dueDateB.getTime();
     });
   };
 
