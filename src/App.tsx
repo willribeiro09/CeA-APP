@@ -1534,116 +1534,113 @@ export default function App() {
             </ul>
         </div>
       </main>
-      </div>
     </div>
 
-      {/* Mostrar o CalendarButton apenas nos menus relevantes */}
-      {activeCategory !== 'Stock' && (
-        <CalendarButton onClick={handleOpenCalendar} />
-      )}
-      <AddButton onClick={() => setIsAddDialogOpen(true)} />
+    {/* Mostrar o CalendarButton apenas nos menus relevantes */}
+    {activeCategory !== 'Stock' && (
+      <CalendarButton onClick={handleOpenCalendar} />
+    )}
+    <AddButton onClick={() => setIsAddDialogOpen(true)} />
 
       <AddItemDialog
         isOpen={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         category={activeCategory}
         onSubmit={handleAddItem}
-        selectedWeekStart={selectedWeekStart}
-      />
-  
-      <EditItemDialog
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        item={itemToEdit}
-        onSubmit={handleUpdateItem}
-        selectedWeekStart={selectedWeekStart}
-      />
+      selectedWeekStart={selectedWeekStart}
+    />
 
-      {isSupabaseConfigured() && <ConnectionStatus />}
+    <EditItemDialog
+      isOpen={isEditDialogOpen}
+      onOpenChange={setIsEditDialogOpen}
+      item={itemToEdit}
+      onSubmit={handleUpdateItem}
+      selectedWeekStart={selectedWeekStart}
+    />
 
-      <Dialog.Root open={showLayoffAlert} onOpenChange={setShowLayoffAlert}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
-          <Dialog.Content 
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-50"
-            onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
-          >
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+    {isSupabaseConfigured() && <ConnectionStatus />}
+
+    <Dialog.Root open={showLayoffAlert} onOpenChange={setShowLayoffAlert}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+        <Dialog.Content 
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-50"
+          onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+        >
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
     </div>
-              <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+            <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
 
-      <Dialog.Root open={isRateDialogOpen} onOpenChange={setIsRateDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
-          <Dialog.Content 
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
-            onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+    <Dialog.Root open={isRateDialogOpen} onOpenChange={setIsRateDialogOpen}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+        <Dialog.Content 
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
+          onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+        >
+          <div className="flex justify-between items-center mb-4">
+            <Dialog.Title className="text-lg font-semibold">
+              Adjust New Salary
+            </Dialog.Title>
+            <Dialog.Close className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </Dialog.Close>
+          </div>
+          
+          <form 
+            onSubmit={handleWillRateChange} 
+            className="space-y-4"
           >
-            <div className="flex justify-between items-center mb-4">
-              <Dialog.Title className="text-lg font-semibold">
-                Adjust New Salary
-              </Dialog.Title>
-              <Dialog.Close className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </Dialog.Close>
+            <div>
+              <label htmlFor="baseRate" className="block text-sm font-medium text-gray-700">
+                New Salary
+              </label>
+              <input
+                type="number"
+                id="baseRate"
+                name="baseRate"
+                defaultValue={willBaseRate}
+                min="200"
+                step="1"
+                required
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+              />
             </div>
             
-            <form 
-              onSubmit={handleWillRateChange} 
-              className="space-y-4"
-            >
-              <div>
-                <label htmlFor="baseRate" className="block text-sm font-medium text-gray-700">
-                  New Salary
-                </label>
-                <input
-                  type="number"
-                  id="baseRate"
-                  name="baseRate"
-                  defaultValue={willBaseRate}
-                  min="200"
-                  step="1"
-                  required
-                  onFocus={handleInputFocus}
-                  onBlur={handleInputBlur}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                />
-              </div>
-              
-              <div className="flex justify-end gap-3 mt-6">
-                <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
-                  Cancel
-                </Dialog.Close>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
-                >
-                  Confirm
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-      
-      <Calendar
-        selectedDate={filterDate || undefined}
-        onSelect={handleDateSelect}
-        isOpen={isCalendarOpen}
-        onOpenChange={setIsCalendarOpen}
-      />
+            <div className="flex justify-end gap-3 mt-6">
+              <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
+                Cancel
+              </Dialog.Close>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+    
+    <Calendar
+      selectedDate={filterDate || undefined}
+      onSelect={handleDateSelect}
+      isOpen={isCalendarOpen}
+      onOpenChange={setIsCalendarOpen}
+    />
     </>
   );
 }
 
 // Branch Deploy: main@7cc2f34
-
-// ... existing code ...
