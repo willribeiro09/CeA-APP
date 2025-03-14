@@ -62,6 +62,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         projectNumber: data.projectNumber as string,
         location: data.location as string,
         startDate: new Date(data.startDate as string).toISOString(),
+        endDate: data.endDate ? new Date(data.endDate as string).toISOString() : undefined,
         status: data.status as 'completed' | 'in_progress',
         value: parseFloat(data.value as string) || 0,
         invoiceOk: (data.invoiceOk === 'on'),
