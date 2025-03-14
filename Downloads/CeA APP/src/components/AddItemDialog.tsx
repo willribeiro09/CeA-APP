@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { Item, ValidationError, Expense, Project, StockItem, Employee } from '../types';
+import { X } from 'lucide-react';
+import { validation } from '../lib/validation';
+import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
 
 interface AddItemDialogProps {
   isOpen: boolean;
@@ -14,12 +17,15 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted");
-    const formData = new FormData(e.target as HTMLFormElement);
-    const data = Object.fromEntries(formData);
-    console.log("Form data:", data);
+    console.log("Formulário enviado");
     
-    let itemData: Partial<Item>;
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    let itemData: Partial<Item> = {};
+    
+    let validationError: string | null = null;
     
     if (category === 'Expenses') {
       itemData = {
@@ -82,7 +88,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
             onClick={() => onOpenChange(false)}
             className="text-gray-400 hover:text-gray-600"
           >
-            X
+            <X className="w-5 h-5" />
           </button>
         </div>
         
@@ -131,6 +137,86 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                   required
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                 />
+              </div>
+            </>
+          )}
+          
+          {category === 'Projects' && (
+            <>
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                />
+              </div>
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  id="description"
+                  name="description"
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                />
+              </div>
+              <div>
+                <label htmlFor="client" className="block text-sm font-medium text-gray-700">
+                  Client
+                </label>
+                <input
+                  type="text"
+                  id="client"
+                  name="client"
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                />
+              </div>
+              <div>
+                <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  id="startDate"
+                  name="startDate"
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                />
+              </div>
+              <div>
+                <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  id="endDate"
+                  name="endDate"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                />
+              </div>
+              <div>
+                <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                  Status
+                </label>
+                <select
+                  id="status"
+                  name="status"
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
               </div>
             </>
           )}

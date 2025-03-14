@@ -17,12 +17,21 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
 import { format } from 'date-fns';
 import { SwipeableItem } from './components/SwipeableItem';
-import * as Dialog from '@radix-ui/react-dialog';
+import { 
+  DialogRoot, 
+  DialogPortal, 
+  DialogOverlay, 
+  DialogContent, 
+  DialogClose, 
+  DialogTitle, 
+  DialogDescription 
+} from './components/DialogWrapper';
 import { WillItemFixed } from './components/WillItemFixed';
 import { Button } from './components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import 'react-day-picker/dist/style.css';
+import { normalizeDate, formatDateToISO } from './lib/dateUtils';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -54,6 +63,21 @@ const getWeekEnd = (date: Date): Date => {
   return result;
 };
 
+// Função para salvar alterações
+const saveChanges = async (newData: StorageItems) => {
+  console.log('Salvando alterações...', JSON.stringify(newData));
+  try {
+    // Salvar dados no localStorage
+    localStorage.setItem('expenses-app-data', JSON.stringify(newData));
+    console.log('Dados salvos com sucesso');
+  } catch (error) {
+    console.error('Erro ao salvar alterações:', error);
+    
+    // Mesmo com erro, tentar atualizar o estado local para evitar perda de dados
+    localStorage.setItem('expenses-app-data', JSON.stringify(newData));
+  }
+};
+
 export default function App() {
   console.log('Iniciando renderização do App');
   const [expenses, setExpenses] = useState<Record<ListName, Expense[]>>(initialExpenses);
@@ -78,6 +102,59 @@ export default function App() {
   const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
   const [willBaseRate, setWillBaseRate] = useState<number>(200);
   const [willBonus, setWillBonus] = useState<number>(0);
+
+  const handleAddDay = (employeeId: string, weekStartDate: string) => {
+    const updatedEmployees = { ...employees };
+    const weekEmployees = updatedEmployees[weekStartDate] || [];
+    const employeeIndex = weekEmployees.findIndex((e: Employee) => e.id === employeeId);
+    
+    // Usar a função formatDateToISO para garantir consistência no formato da data
+    const today = formatDateToISO(normalizeDate(new Date()));
+    
+    console.log(`Adicionando dia trabalhado: ${today} para funcionário ${employeeId}`);
+
+    if (employeeIndex >= 0) {
+      // Verificar se a data já existe para evitar duplicatas
+      const existingDates = weekEmployees[employeeIndex].workedDates || [];
+      if (!existingDates.includes(today)) {
+        weekEmployees[employeeIndex] = {
+          ...weekEmployees[employeeIndex],
+          daysWorked: weekEmployees[employeeIndex].daysWorked + 1,
+          workedDates: [...existingDates, today]
+        };
+        console.log(`Dia adicionado com sucesso. Total de dias: ${weekEmployees[employeeIndex].daysWorked}`);
+      } else {
+        console.log(`Data ${today} já registrada para este funcionário.`);
+        return; // Não fazer nada se a data já existir
+      }
+    } else {
+      const employeeFromWeek = weekEmployees.find((e: Employee) => e.id === employeeId);
+      if (employeeFromWeek) {
+        weekEmployees.push({
+          ...employeeFromWeek,
+          weekStartDate,
+          daysWorked: 1,
+          workedDates: [today]
+        });
+        console.log(`Funcionário adicionado à semana com 1 dia trabalhado.`);
+      }
+    }
+
+    updatedEmployees[weekStartDate] = weekEmployees;
+    setEmployees(updatedEmployees);
+    
+    const storageData: StorageItems = {
+      expenses,
+      projects,
+      stock: stockItems,
+      employees: updatedEmployees,
+      willBaseRate,
+      willBonus,
+      lastSync: Date.now()
+    };
+    
+    saveChanges(storageData);
+  };
 
   // Resto do código do App.tsx...
 } 
