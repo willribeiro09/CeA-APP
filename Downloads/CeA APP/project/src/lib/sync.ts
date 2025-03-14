@@ -2,7 +2,6 @@ import { supabase } from './supabase';
 import { StorageItems, Expense, Project, StockItem, Employee } from '../types';
 import { storage } from './storage';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { setupEventBasedSync, isReady, setAppReady, publishChangeEvent, CHANGE_TYPE } from './sync/index';
 
 // Identificador único para esta sessão do navegador
 const SESSION_ID = Math.random().toString(36).substring(2, 15);
@@ -34,6 +33,7 @@ const SYNC_INTERVAL = 5000;
 
 // Variável para controlar se a sincronização está em andamento
 let isSyncInProgress = false;
+let isAppReady = false;
 
 // Canais de sincronização para cada tipo de dados
 type SyncChannels = {
@@ -86,6 +86,15 @@ interface DBStockItem {
   project?: string;
 }
 
+// Função para marcar o app como pronto para interação
+const setAppReady = () => {
+  if (!isAppReady) {
+    isAppReady = true;
+    window.dispatchEvent(new CustomEvent('appReady'));
+    console.log('App marcado como pronto para interação');
+  }
+};
+
 export const syncService = {
   channel: null as RealtimeChannel | null,
   isInitialized: false,
@@ -134,9 +143,6 @@ export const syncService = {
       .subscribe((status: string) => {
         console.log('Status da inscrição do canal:', status);
       });
-      
-    // Configurar sincronização baseada em eventos
-    setupEventBasedSync();
   },
 
   setupRealtimeUpdates(callback: (data: StorageItems) => void) {
@@ -322,9 +328,6 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
       // Salvar no armazenamento local
       storage.save(storageData);
       
-      // Configurar sincronização baseada em eventos
-      setupEventBasedSync();
-      
       return storageData;
     } else {
       console.log('Registro não encontrado no Supabase, criando inicial');
@@ -339,9 +342,6 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
       };
       
       await syncService.sync(localData);
-      
-      // Configurar sincronização baseada em eventos
-      setupEventBasedSync();
       
       return localData;
     }
@@ -364,5 +364,5 @@ export const saveData = (data: StorageItems) => {
   }
 };
 
-// Exportar funções do sistema de sincronização baseado em eventos
-export { isReady, publishChangeEvent, CHANGE_TYPE }; 
+// Função para verificar se o app está pronto para interação
+export const isReady = () => isAppReady; 
