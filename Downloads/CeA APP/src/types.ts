@@ -13,6 +13,7 @@ export interface Expense {
   notes?: string;
   is_paid?: boolean;
   paid?: boolean;
+  value?: number;
 }
 
 export interface Project {
@@ -22,8 +23,13 @@ export interface Project {
   client: string;
   startDate: string;
   endDate?: string;
-  status: 'completed' | 'in_progress' | 'pending';
+  status: 'completed' | 'in_progress' | 'pending' | 'in-progress';
   notes?: string;
+  value: number;
+  invoiced: boolean;
+  location?: string;
+  projectNumber?: string;
+  invoiceOk?: boolean;
 }
 
 export interface StockItem {
@@ -33,6 +39,9 @@ export interface StockItem {
   unit: string;
   minimumQuantity?: number;
   notes?: string;
+  description: string;
+  price: number;
+  category: string;
 }
 
 export interface Employee {
@@ -40,13 +49,15 @@ export interface Employee {
   name: string;
   employeeName: string;
   role?: string;
-  startDate: string;
+  startDate?: string;
   weekStartDate: string;
   daysWorked: number;
   dailyRate: number;
+  rate: number;
   phone?: string;
   email?: string;
   notes?: string;
+  workedDates?: string[];
 }
 
 export type Item = Expense | Project | StockItem | Employee;
@@ -62,6 +73,7 @@ export interface StorageItems {
 }
 
 export type SyncData = StorageItems;
+export type StorageData = StorageItems;
 
 export interface ValidationError {
   field: string;
@@ -79,4 +91,10 @@ export interface NavItem {
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
 }
 
-export type EmployeeName = 'Matheus' | 'João' | 'Pedro' | 'Lucas'; 
+export type EmployeeName = 'Matheus' | 'João' | 'Pedro' | 'Lucas' | 'Will' | 'Carlos' | 'Diego' | string;
+
+export type Category = 'expenses' | 'projects' | 'stock' | 'employees' | 'will' | 'Expenses' | 'Projects' | 'Stock' | 'Employees';
+export type ListName = 'expenses' | 'projects' | 'employees' | 'stock' | 'Carlos' | 'Diego' | 'C&A';
+export type FeedbackType = 'success' | 'error' | 'warning' | 'info';
+
+export type SyncStatus = 'connected' | 'disconnected' | 'syncing'; 
