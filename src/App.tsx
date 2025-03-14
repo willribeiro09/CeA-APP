@@ -191,6 +191,87 @@ export default function App() {
     initializeData();
   }, []);
 
+  // Adicionar um efeito para detectar quando o aplicativo volta do segundo plano
+  useEffect(() => {
+    // Função para sincronizar dados quando o aplicativo volta do segundo plano
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Aplicativo voltou para o primeiro plano, sincronizando dados...');
+        
+        // Mostrar indicador de sincronização
+        setIsSaving(true);
+        
+        try {
+          // Forçar sincronização com o servidor
+          if (isSupabaseConfigured()) {
+            // Usar a função forceSyncNow do syncService
+            const updatedData = await syncService.forceSyncNow();
+            
+            if (updatedData) {
+              console.log('Dados atualizados recebidos do servidor:', {
+                expenses: Object.keys(updatedData.expenses || {}).length + ' listas',
+                projects: (updatedData.projects || []).length + ' projetos',
+                stock: (updatedData.stock || []).length + ' itens',
+                employees: Object.keys(updatedData.employees || {}).length + ' listas'
+              });
+              
+              // Atualizar o estado com os dados mais recentes
+              setExpenses(updatedData.expenses || {});
+              setProjects(updatedData.projects || []);
+              setStockItems(updatedData.stock || []);
+              setEmployees(updatedData.employees || {});
+              
+              // Atualizar dados do Will se existirem
+              if (updatedData.willBaseRate !== undefined) {
+                setWillBaseRate(updatedData.willBaseRate);
+              }
+              if (updatedData.willBonus !== undefined) {
+                setWillBonus(updatedData.willBonus);
+              }
+              
+              // Mostrar feedback de sucesso
+              setShowFeedback({
+                show: true,
+                message: 'Dados sincronizados com sucesso',
+                type: 'success'
+              });
+              
+              // Esconder feedback após 3 segundos
+              setTimeout(() => {
+                setShowFeedback({ show: false, message: '', type: 'success' });
+              }, 3000);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao sincronizar dados:', error);
+          
+          // Mostrar feedback de erro
+          setShowFeedback({
+            show: true,
+            message: 'Erro ao sincronizar dados',
+            type: 'error'
+          });
+          
+          // Esconder feedback após 3 segundos
+          setTimeout(() => {
+            setShowFeedback({ show: false, message: '', type: 'success' });
+          }, 3000);
+        } finally {
+          // Esconder indicador de sincronização
+          setIsSaving(false);
+        }
+      }
+    };
+    
+    // Adicionar listener para detectar mudanças de visibilidade
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Limpar listener quando o componente for desmontado
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   // Adicione este useEffect para calcular o total dos projetos na semana selecionada
   useEffect(() => {
     if (projects.length === 0) return;
@@ -1116,6 +1197,34 @@ export default function App() {
     <>
     <div className="min-h-screen bg-gray-50">
       <Header activeCategory={activeCategory} />
+      <ConnectionStatus />
+      
+      {/* Overlay de sincronização */}
+      {isSaving && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-white rounded-xl p-8 max-w-[300px] w-full flex flex-col items-center">
+            <div className="w-16 h-16 mb-4">
+              <div className="w-full h-full border-4 border-[#5ABB37] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2 text-center">
+              Sincronizando Dados
+            </h2>
+            <p className="text-gray-600 text-center text-sm mb-4">
+              Aguarde enquanto sincronizamos os dados mais recentes...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback de sucesso ou erro */}
+      {showFeedback.show && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+          showFeedback.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}>
+          <p className="font-medium">{showFeedback.message}</p>
+        </div>
+      )}
+      
       <Navigation
         activeCategory={activeCategory}
         onCategoryChange={setActiveCategory}
@@ -1175,10 +1284,6 @@ export default function App() {
           <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
             <div className="relative max-w-[800px] mx-auto pb-4">
               <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                <ProjectWeekSelector 
-                  selectedWeekStart={selectedWeekStart}
-                  onWeekChange={handleProjectWeekChange}
-                />
                 <div className="flex items-center">
                   <span className="text-gray-700 font-medium mr-2">Total:</span>
                   <span className="text-[#5ABB37] text-xl font-bold">
@@ -1200,9 +1305,9 @@ export default function App() {
           <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
             <div className="relative max-w-[800px] mx-auto pb-4">
               <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                <WeekSelector 
+                <ProjectWeekSelector 
                   selectedWeekStart={selectedWeekStart}
-                  onWeekChange={handleWeekChange}
+                  onWeekChange={handleProjectWeekChange}
                 />
                 <div className="flex items-center">
                   <span className="text-gray-700 font-medium mr-2">Total:</span>
@@ -1211,9 +1316,10 @@ export default function App() {
                   </span>
                 </div>
               </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       
       <main className="px-4 pb-20">
           <div 

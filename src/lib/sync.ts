@@ -84,6 +84,9 @@ export const syncService = {
     console.log('Inicializando serviço de sincronização com ID:', SESSION_ID);
     this.isInitialized = true;
 
+    // Forçar sincronização imediata ao inicializar
+    this.forceSyncNow();
+
     // Limpar inscrição anterior se existir
     if (this.channel) {
       this.channel.unsubscribe();
@@ -197,86 +200,237 @@ export const syncService = {
 
   async sync(data: StorageItems): Promise<boolean> {
     if (!supabase) {
-      console.log('Supabase não configurado, salvando apenas localmente');
-      storage.save(data);
-      return true;
+      console.warn('Supabase não configurado, não é possível sincronizar');
+      return false;
     }
-
+    
     try {
-      // Garantir que os valores do Will estejam definidos
-      const willValues = ensureWillValues(data);
+      console.log('Sincronizando dados com Supabase...');
       
-      console.log('Sincronizando dados com Supabase usando UUID compartilhado:', SHARED_UUID);
-      console.log('Valores do Will a serem sincronizados:', willValues.willBaseRate, willValues.willBonus);
-      
-      // Primeiro, carregamos os dados existentes para garantir que não sobrescrevemos nada
+      // Verificar se existem dados mais recentes no servidor antes de sincronizar
       const { data: existingData, error: fetchError } = await supabase
         .from('sync_data')
-        .select('*')
+        .select('updated_at')
         .eq('id', SHARED_UUID)
-        .limit(1);
+        .single();
       
-      if (fetchError) {
-        console.error('Erro ao buscar dados existentes:', fetchError);
-        // Mesmo com erro, tentamos salvar no armazenamento local
-        storage.save(data);
-        return false;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 significa que o registro não foi encontrado, o que é esperado na primeira sincronização
+        console.error('Erro ao verificar dados existentes:', fetchError);
       }
       
-      let dataToSave;
-      
-      if (existingData && existingData.length > 0) {
-        // Mesclamos os dados existentes com os novos dados
-        console.log('Dados existentes encontrados, mesclando com novos dados');
+      // Se existirem dados no servidor, verificar se são mais recentes
+      if (existingData && existingData.updated_at) {
+        const serverTimestamp = new Date(existingData.updated_at).getTime();
+        const localTimestamp = typeof data.lastSync === 'string' 
+          ? parseInt(data.lastSync, 10) 
+          : data.lastSync;
         
-        dataToSave = {
-          id: SHARED_UUID,
-          expenses: { ...existingData[0].expenses, ...data.expenses },
-          projects: data.projects || existingData[0].projects || [],
-          stock: data.stock || existingData[0].stock || [],
-          employees: { ...existingData[0].employees, ...data.employees },
-          willBaseRate: willValues.willBaseRate,
-          willBonus: willValues.willBonus,
-          updated_at: new Date().toISOString()
-        };
-      } else {
-        // Não encontramos dados existentes, salvamos os novos dados
-        console.log('Nenhum dado existente encontrado, salvando novos dados');
+        console.log('Timestamp do servidor:', serverTimestamp);
+        console.log('Timestamp local:', localTimestamp);
         
-        dataToSave = {
-          id: SHARED_UUID,
-          expenses: data.expenses || {},
-          projects: data.projects || [],
-          stock: data.stock || [],
-          employees: data.employees || {},
-          willBaseRate: willValues.willBaseRate,
-          willBonus: willValues.willBonus,
-          updated_at: new Date().toISOString()
-        };
+        // Se os dados do servidor forem mais recentes, carregar esses dados primeiro
+        if (serverTimestamp > localTimestamp) {
+          console.log('Dados do servidor são mais recentes, carregando antes de sincronizar...');
+          
+          // Carregar dados mais recentes do servidor
+          const serverData = await this.loadLatestData();
+          
+          if (serverData) {
+            console.log('Dados mais recentes carregados do servidor');
+            
+            // Mesclar dados locais com dados do servidor
+            const mergedData = this.mergeData(serverData, data);
+            
+            // Atualizar dados locais
+            storage.save(mergedData);
+            
+            // Atualizar dados para sincronização
+            data = mergedData;
+          }
+        }
       }
       
-      console.log('Dados a serem salvos:', dataToSave);
+      // Preparar dados para sincronização
+      const syncData = {
+        id: SHARED_UUID,
+        expenses: data.expenses,
+        projects: data.projects,
+        stock: data.stock,
+        employees: data.employees,
+        willBaseRate: data.willBaseRate,
+        willBonus: data.willBonus,
+        updated_at: new Date().toISOString()
+      };
       
-      // Salvar no Supabase
+      // Sincronizar com Supabase
       const { error } = await supabase
         .from('sync_data')
-        .upsert(dataToSave);
-
+        .upsert(syncData);
+      
       if (error) {
-        console.error('Erro ao sincronizar com Supabase:', error);
+        console.error('Erro ao sincronizar dados:', error);
         return false;
       }
-
-      // Atualizar os valores do Will nos dados originais
-      data.willBaseRate = willValues.willBaseRate;
-      data.willBonus = willValues.willBonus;
       
-      // Salvar localmente
-      storage.save(data);
+      console.log('Dados sincronizados com sucesso');
       return true;
     } catch (error) {
-      console.error('Erro na sincronização:', error);
+      console.error('Erro ao sincronizar dados:', error);
       return false;
+    }
+  },
+
+  // Função para mesclar dados locais com dados do servidor
+  mergeData(serverData: StorageItems, localData: StorageItems): StorageItems {
+    console.log('Mesclando dados do servidor com dados locais...');
+    
+    // Mesclar despesas
+    const mergedExpenses = { ...serverData.expenses };
+    Object.keys(localData.expenses || {}).forEach(key => {
+      if (!mergedExpenses[key]) {
+        mergedExpenses[key] = localData.expenses[key];
+      } else {
+        // Mesclar arrays de despesas por ID
+        const serverExpenses = mergedExpenses[key] || [];
+        const localExpenses = localData.expenses[key] || [];
+        
+        // Criar um mapa de despesas do servidor por ID
+        const serverExpensesMap = new Map();
+        serverExpenses.forEach(expense => {
+          serverExpensesMap.set(expense.id, expense);
+        });
+        
+        // Adicionar despesas locais que não existem no servidor
+        localExpenses.forEach(expense => {
+          if (!serverExpensesMap.has(expense.id)) {
+            serverExpenses.push(expense);
+          }
+        });
+        
+        mergedExpenses[key] = serverExpenses;
+      }
+    });
+    
+    // Mesclar projetos por ID
+    const projectsMap = new Map();
+    serverData.projects.forEach(project => {
+      projectsMap.set(project.id, project);
+    });
+    
+    localData.projects.forEach(project => {
+      if (!projectsMap.has(project.id)) {
+        projectsMap.set(project.id, project);
+      }
+    });
+    
+    const mergedProjects = Array.from(projectsMap.values());
+    
+    // Mesclar itens de estoque por ID
+    const stockMap = new Map();
+    serverData.stock.forEach(item => {
+      stockMap.set(item.id, item);
+    });
+    
+    localData.stock.forEach(item => {
+      if (!stockMap.has(item.id)) {
+        stockMap.set(item.id, item);
+      }
+    });
+    
+    const mergedStock = Array.from(stockMap.values());
+    
+    // Mesclar funcionários
+    const mergedEmployees = { ...serverData.employees };
+    Object.keys(localData.employees || {}).forEach(key => {
+      if (!mergedEmployees[key]) {
+        mergedEmployees[key] = localData.employees[key];
+      } else {
+        // Mesclar arrays de funcionários por ID
+        const serverEmployees = mergedEmployees[key] || [];
+        const localEmployees = localData.employees[key] || [];
+        
+        // Criar um mapa de funcionários do servidor por ID
+        const serverEmployeesMap = new Map();
+        serverEmployees.forEach(employee => {
+          serverEmployeesMap.set(employee.id, employee);
+        });
+        
+        // Adicionar funcionários locais que não existem no servidor
+        localEmployees.forEach(employee => {
+          if (!serverEmployeesMap.has(employee.id)) {
+            serverEmployees.push(employee);
+          }
+        });
+        
+        mergedEmployees[key] = serverEmployees;
+      }
+    });
+    
+    // Usar o valor mais recente para willBaseRate e willBonus
+    const willBaseRate = localData.willBaseRate !== undefined ? localData.willBaseRate : serverData.willBaseRate;
+    const willBonus = localData.willBonus !== undefined ? localData.willBonus : serverData.willBonus;
+    
+    return {
+      expenses: mergedExpenses,
+      projects: mergedProjects,
+      stock: mergedStock,
+      employees: mergedEmployees,
+      willBaseRate,
+      willBonus,
+      lastSync: new Date().getTime()
+    };
+  },
+
+  // Função para forçar sincronização imediata
+  async forceSyncNow(): Promise<StorageItems | null> {
+    console.log('Forçando sincronização imediata...');
+    
+    if (!supabase) {
+      console.warn('Supabase não configurado, não é possível forçar sincronização');
+      return null;
+    }
+    
+    try {
+      // Carregar dados mais recentes do servidor
+      const serverData = await this.loadLatestData();
+      
+      if (serverData) {
+        console.log('Dados atualizados recebidos do servidor');
+        
+        // Carregar dados locais
+        const localData = storage.load();
+        
+        if (localData) {
+          // Mesclar dados locais com dados do servidor
+          const mergedData = this.mergeData(serverData, localData);
+          
+          // Salvar dados mesclados localmente
+          storage.save(mergedData);
+          
+          // Disparar evento para atualizar a UI
+          window.dispatchEvent(new CustomEvent('dataUpdated', { 
+            detail: mergedData 
+          }));
+          
+          return mergedData;
+        }
+        
+        // Se não há dados locais, simplesmente salvar os dados do servidor
+        storage.save(serverData);
+        
+        // Disparar evento para atualizar a UI
+        window.dispatchEvent(new CustomEvent('dataUpdated', { 
+          detail: serverData 
+        }));
+        
+        return serverData;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Erro ao forçar sincronização:', error);
+      return null;
     }
   },
 };
