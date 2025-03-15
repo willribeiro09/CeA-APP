@@ -1,5 +1,5 @@
 import React from 'react';
-import { ReceiptText, Briefcase, Package, Users } from 'lucide-react';
+import { ReceiptText, Briefcase, Package, Users, Bell } from 'lucide-react';
 
 interface NavigationProps {
   activeCategory: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
@@ -9,7 +9,17 @@ interface NavigationProps {
 export function Navigation({ activeCategory, onCategoryChange }: NavigationProps) {
   return (
     <nav className="fixed top-[100px] left-0 right-0 bg-[#5ABB37] rounded-b-xl z-40">
-      <div className="flex justify-around">
+      <div className="flex justify-around relative">
+        {/* Test Button - Blue button in the right corner */}
+        {activeCategory === 'Expenses' && (
+          <button 
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-md"
+            onClick={() => alert('Test button clicked!')}
+          >
+            <Bell size={16} />
+          </button>
+        )}
+        
         <button
           onClick={() => onCategoryChange('Expenses')}
           className={`flex flex-col items-center gap-0.5 px-4 py-1.5 flex-1 justify-center relative rounded-lg ${
