@@ -25,6 +25,8 @@ import 'react-day-picker/dist/style.css';
 import { WeekSelector } from './components/WeekSelector';
 import { ProjectWeekSelector } from './components/ProjectWeekSelector';
 import { normalizeDate, formatDateToISO } from './lib/dateUtils';
+import { WorkedDaysCalendar } from './components/WorkedDaysCalendar';
+import { EmployeeReceipt } from './components/EmployeeReceipt';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -115,6 +117,9 @@ export default function App() {
   const [showLayoffAlert, setShowLayoffAlert] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [filterDate, setFilterDate] = useState<Date | null>(null);
+  const [isWorkedDaysCalendarOpen, setIsWorkedDaysCalendarOpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -707,12 +712,11 @@ export default function App() {
     // Não é necessário salvar nada aqui, apenas atualizar o estado local
   };
 
-  const handleAddDay = (employeeId: string, weekStartDate: string) => {
+  const handleWorkedDatesChange = (employeeId: string, weekStartDate: string, dates: string[]) => {
     setEmployees(prevEmployees => {
       const updatedEmployees = { ...prevEmployees };
       const weekEmployees = updatedEmployees[weekStartDate] || [];
       const employeeIndex = weekEmployees.findIndex((e: Employee) => e.id === employeeId);
-      const today = format(new Date(), 'yyyy-MM-dd');
       
       let updatedEmployee: Employee;
 
@@ -720,8 +724,8 @@ export default function App() {
         // Atualizar funcionário existente
         updatedEmployee = {
           ...weekEmployees[employeeIndex],
-          daysWorked: weekEmployees[employeeIndex].daysWorked + 1,
-          workedDates: [...(weekEmployees[employeeIndex].workedDates || []), today]
+          daysWorked: dates.length,
+          workedDates: dates
         };
         
         // Atualizar a lista de funcionários
@@ -740,8 +744,8 @@ export default function App() {
           updatedEmployee = {
             ...employeeFromOtherWeek,
             weekStartDate,
-            daysWorked: 1,
-            workedDates: [today]
+            daysWorked: dates.length,
+            workedDates: dates
           };
           
           // Adicionar à lista da semana
@@ -762,56 +766,21 @@ export default function App() {
         CHANGE_TYPE.UPDATE,
         weekStartDate
       ).catch(error => {
-        console.error('Erro ao sincronizar adição de dia para funcionário:', error);
+        console.error('Erro ao sincronizar dias trabalhados para funcionário:', error);
       });
       
       return updatedEmployees;
     });
   };
 
-  const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
-    console.log(`Resetando dias para funcionário ${employeeId} na semana ${weekStartDate}`);
-    
-    setEmployees(prevEmployees => {
-      const newEmployees = { ...prevEmployees };
-      
-      // Verificar se a semana existe
-      if (!newEmployees[weekStartDate]) {
-        console.error(`Semana ${weekStartDate} não encontrada`);
-        return prevEmployees;
-      }
-      
-      // Encontrar o funcionário na semana
-      const employeeIndex = newEmployees[weekStartDate].findIndex(e => e.id === employeeId);
-      
-      if (employeeIndex === -1) {
-        console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${weekStartDate}`);
-        return prevEmployees;
-      }
-      
-      // Resetar os dias trabalhados
-      const updatedEmployee = { ...newEmployees[weekStartDate][employeeIndex] };
-      updatedEmployee.daysWorked = 0;
-      
-      // Atualizar a lista de funcionários
-      newEmployees[weekStartDate] = [
-        ...newEmployees[weekStartDate].slice(0, employeeIndex),
-        updatedEmployee,
-        ...newEmployees[weekStartDate].slice(employeeIndex + 1)
-      ];
-      
-      // Sincronizar a alteração usando o novo sistema
-      saveItem(
-        'employee',
-        updatedEmployee,
-        CHANGE_TYPE.UPDATE,
-        weekStartDate
-      ).catch(error => {
-        console.error('Erro ao sincronizar reset de funcionário:', error);
-      });
-      
-      return newEmployees;
-    });
+  const handleOpenWorkedDaysCalendar = (employeeId: string) => {
+    setCurrentEmployeeId(employeeId);
+    setIsWorkedDaysCalendarOpen(true);
+  };
+
+  const handleOpenReceipt = (employeeId: string) => {
+    setCurrentEmployeeId(employeeId);
+    setIsReceiptOpen(true);
   };
 
   const resetWillValues = () => {
@@ -990,7 +959,8 @@ export default function App() {
     
     // Filtrar funcionários que devem ser exibidos na semana selecionada
     const filteredEmployees = allEmployees.filter(employee => 
-      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd)
+      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd) && 
+      didEmployeeWorkOnDate(employee)
     );
     
     // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
@@ -1387,6 +1357,7 @@ export default function App() {
                         // Encontrar o registro específico do funcionário para a semana selecionada
                         const weekEmployee = weekEmployees.find(e => e.id === employee.id);
                         const daysWorked = weekEmployee ? weekEmployee.daysWorked : 0;
+                        const workedDates = weekEmployee ? weekEmployee.workedDates || [] : [];
                         
                         employeeElements.push(
                           <li key={employee.id} className="list-none">
@@ -1399,16 +1370,16 @@ export default function App() {
                                   <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
                                   <div className="flex items-center gap-1.5">
                                     <button
-                                      onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
+                                      onClick={() => handleOpenWorkedDaysCalendar(employee.id)}
                                       className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
                                     >
-                                      +1 Day
+                                      Days Worked
                                     </button>
                                     <button
-                                      onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
-                                      className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
+                                      onClick={() => handleOpenReceipt(employee.id)}
+                                      className="px-2.5 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 transition-colors h-8"
                                     >
-                                      Reset
+                                      Receipt
                                     </button>
                                   </div>
                                 </div>
@@ -1550,6 +1521,62 @@ export default function App() {
         isOpen={isCalendarOpen}
         onOpenChange={setIsCalendarOpen}
       />
+
+      {currentEmployeeId && (
+        <>
+          <WorkedDaysCalendar
+            isOpen={isWorkedDaysCalendarOpen}
+            onOpenChange={setIsWorkedDaysCalendarOpen}
+            workedDates={
+              (() => {
+                const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+                const weekEmployees = employees[formattedSelectedWeekStart] || [];
+                const employee = weekEmployees.find(e => e.id === currentEmployeeId);
+                return employee?.workedDates || [];
+              })()
+            }
+            onDatesChange={(dates) => {
+              const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+              handleWorkedDatesChange(currentEmployeeId, formattedSelectedWeekStart, dates);
+            }}
+            employeeName={
+              (() => {
+                const allEmployees = Object.values(employees).flat();
+                const employee = allEmployees.find(e => e.id === currentEmployeeId);
+                return employee?.name || '';
+              })()
+            }
+          />
+
+          <EmployeeReceipt
+            isOpen={isReceiptOpen}
+            onOpenChange={setIsReceiptOpen}
+            employeeName={
+              (() => {
+                const allEmployees = Object.values(employees).flat();
+                const employee = allEmployees.find(e => e.id === currentEmployeeId);
+                return employee?.name || '';
+              })()
+            }
+            dailyRate={
+              (() => {
+                const allEmployees = Object.values(employees).flat();
+                const employee = allEmployees.find(e => e.id === currentEmployeeId);
+                return employee?.dailyRate || 250;
+              })()
+            }
+            workedDates={
+              (() => {
+                const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+                const weekEmployees = employees[formattedSelectedWeekStart] || [];
+                const employee = weekEmployees.find(e => e.id === currentEmployeeId);
+                return employee?.workedDates || [];
+              })()
+            }
+            weekStartDate={selectedWeekStart}
+          />
+        </>
+      )}
     </>
   );
 }
