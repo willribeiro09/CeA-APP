@@ -11,7 +11,7 @@ import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems
 import { ChevronDown, X, Calendar as CalendarIcon } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
-import { syncService, loadInitialData, saveData, saveItem, CHANGE_TYPE } from './lib/sync';
+import { syncService, loadInitialData, saveData, saveItem, isReady, CHANGE_TYPE } from './lib/sync';
 import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
@@ -418,9 +418,9 @@ export default function App() {
               
               // Sincronizar a alteração
               saveItem(
-                'expense',
-                updatedItem as Expense,
-                CHANGE_TYPE.UPDATE,
+                'expense', 
+                updatedItem as Expense, 
+                CHANGE_TYPE.UPDATE, 
                 listName as ListName
               ).catch(error => {
                 console.error('Erro ao sincronizar atualização da despesa:', error);
@@ -583,7 +583,7 @@ export default function App() {
           'expense',
           expense,
           CHANGE_TYPE.ADD,
-          selectedList
+          selectedList as ListName
         ).catch(error => {
           console.error('Erro ao sincronizar adição de despesa:', error);
         });

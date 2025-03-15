@@ -364,5 +364,143 @@ export const saveData = (data: StorageItems) => {
   }
 };
 
+// Função para salvar um item específico (para compatibilidade com o código existente)
+export const saveItem = async (
+  itemType: 'expense' | 'project' | 'stock' | 'employee' | 'willSettings',
+  data: any,
+  changeType: string,
+  listName?: string
+): Promise<boolean> => {
+  console.log(`Salvando item do tipo ${itemType}:`, data);
+  
+  // Carregar dados atuais
+  const currentData = storage.load() || {
+    expenses: {},
+    projects: [],
+    stock: [],
+    employees: {},
+    willBaseRate: 200,
+    willBonus: 0,
+    lastSync: Date.now()
+  };
+  
+  // Atualizar os dados com base no tipo de item
+  switch (itemType) {
+    case 'expense':
+      if (!listName) {
+        console.error('ListName é obrigatório para despesas');
+        return false;
+      }
+      
+      if (!currentData.expenses[listName]) {
+        currentData.expenses[listName] = [];
+      }
+      
+      if (changeType === 'add' || changeType === 'update') {
+        const existingIndex = currentData.expenses[listName].findIndex(e => e.id === data.id);
+        
+        if (existingIndex >= 0) {
+          currentData.expenses[listName][existingIndex] = data;
+        } else {
+          currentData.expenses[listName].push(data);
+        }
+      } else if (changeType === 'delete') {
+        const deleteIndex = currentData.expenses[listName].findIndex(e => e.id === data.id);
+        
+        if (deleteIndex >= 0) {
+          currentData.expenses[listName].splice(deleteIndex, 1);
+        }
+      }
+      break;
+      
+    case 'project':
+      if (changeType === 'add' || changeType === 'update') {
+        const existingIndex = currentData.projects.findIndex(p => p.id === data.id);
+        
+        if (existingIndex >= 0) {
+          currentData.projects[existingIndex] = data;
+        } else {
+          currentData.projects.push(data);
+        }
+      } else if (changeType === 'delete') {
+        const deleteIndex = currentData.projects.findIndex(p => p.id === data.id);
+        
+        if (deleteIndex >= 0) {
+          currentData.projects.splice(deleteIndex, 1);
+        }
+      }
+      break;
+      
+    case 'stock':
+      if (changeType === 'add' || changeType === 'update') {
+        const existingIndex = currentData.stock.findIndex(s => s.id === data.id);
+        
+        if (existingIndex >= 0) {
+          currentData.stock[existingIndex] = data;
+        } else {
+          currentData.stock.push(data);
+        }
+      } else if (changeType === 'delete') {
+        const deleteIndex = currentData.stock.findIndex(s => s.id === data.id);
+        
+        if (deleteIndex >= 0) {
+          currentData.stock.splice(deleteIndex, 1);
+        }
+      }
+      break;
+      
+    case 'employee':
+      if (!listName) {
+        console.error('ListName é obrigatório para funcionários');
+        return false;
+      }
+      
+      if (!currentData.employees[listName]) {
+        currentData.employees[listName] = [];
+      }
+      
+      if (changeType === 'add' || changeType === 'update') {
+        const existingIndex = currentData.employees[listName].findIndex(e => e.id === data.id);
+        
+        if (existingIndex >= 0) {
+          currentData.employees[listName][existingIndex] = data;
+        } else {
+          currentData.employees[listName].push(data);
+        }
+      } else if (changeType === 'delete') {
+        const deleteIndex = currentData.employees[listName].findIndex(e => e.id === data.id);
+        
+        if (deleteIndex >= 0) {
+          currentData.employees[listName].splice(deleteIndex, 1);
+        }
+      }
+      break;
+      
+    case 'willSettings':
+      if (changeType === 'update') {
+        if (typeof data.willBaseRate === 'number') {
+          currentData.willBaseRate = data.willBaseRate;
+        }
+        
+        if (typeof data.willBonus === 'number') {
+          currentData.willBonus = data.willBonus;
+        }
+      }
+      break;
+  }
+  
+  // Salvar os dados atualizados
+  saveData(currentData);
+  
+  return true;
+};
+
+// Constantes para tipos de alteração (para compatibilidade)
+export const CHANGE_TYPE = {
+  ADD: 'add',
+  UPDATE: 'update',
+  DELETE: 'delete'
+};
+
 // Função para verificar se o app está pronto para interação
 export const isReady = () => isAppReady; 
