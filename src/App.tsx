@@ -1556,6 +1556,7 @@ export default function App() {
                       : [...(selectedEmployee.workedDates || []), date]
                   );
                 }}
+                onClose={() => setIsCalendarDialogOpen(false)}
               />
             </Dialog.Content>
           </Dialog.Portal>

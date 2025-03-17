@@ -6,12 +6,14 @@ interface WorkDaysCalendarProps {
   employeeId: string;
   initialWorkedDates: string[];
   onDateToggle: (date: string) => void;
+  onClose?: () => void;
 }
 
 const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   employeeId,
   initialWorkedDates,
-  onDateToggle
+  onDateToggle,
+  onClose
 }) => {
   // Sempre iniciar com o mês atual
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -35,9 +37,10 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
 
   // Função para confirmar todas as datas selecionadas
   const handleConfirm = () => {
-    // Já está confirmado automaticamente pelo onDateToggle
-    // Esta função é para feedback visual ao usuário
-    alert('Worked days confirmed!');
+    // Fechar o calendário automaticamente
+    if (onClose) {
+      onClose();
+    }
   };
 
   // Função para resetar todas as datas
