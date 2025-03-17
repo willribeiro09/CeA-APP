@@ -151,3 +151,42 @@ body {
     @apply outline-none border-primary ring-1 ring-primary ring-opacity-10;
   }
 }
+
+/* Estilos para impressão */
+@media print {
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+  
+  body {
+    background-color: white;
+    font-size: 12pt;
+  }
+  
+  /* Esconder elementos que não devem ser impressos */
+  header, nav, footer, .print-hidden, button {
+    display: none !important;
+  }
+  
+  /* Garantir que o recibo ocupe toda a página */
+  .print-receipt {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+  }
+  
+  /* Ajustar cores para impressão */
+  .text-green-600 {
+    color: #000 !important;
+    font-weight: bold;
+  }
+  
+  /* Forçar quebra de página onde necessário */
+  .page-break {
+    page-break-after: always;
+  }
+}

@@ -130,6 +130,8 @@ export default function App() {
   const [filterDate, setFilterDate] = useState<Date | null>(null);
   const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false);
   const [selectedEmployeeName, setSelectedEmployeeName] = useState<EmployeeName>('Matheus');
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+  const [receiptEmployee, setReceiptEmployee] = useState<Employee | null>(null);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -1084,6 +1086,12 @@ export default function App() {
     setIsCalendarDialogOpen(true);
   };
 
+  // Função para abrir o recibo
+  const openReceipt = (employee: Employee) => {
+    setReceiptEmployee(employee);
+    setIsReceiptDialogOpen(true);
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gray-50">
@@ -1368,10 +1376,17 @@ export default function App() {
                                       Days Worked
                                     </button>
                                     <button
-                                      onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
-                                      className="px-2.5 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors h-8"
+                                      onClick={() => {
+                                        // Abrir o recibo do funcionário
+                                        const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+                                        const weekEmployee = weekEmployees.find(e => e.id === employee.id) || employee;
+                                        
+                                        // Usar a função para abrir o recibo
+                                        openReceipt(weekEmployee);
+                                      }}
+                                      className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors h-8"
                                     >
-                                      Reset
+                                      Receipt
                                     </button>
                                   </div>
                                 </div>
@@ -1540,6 +1555,35 @@ export default function App() {
                       ? (selectedEmployee.workedDates || []).filter(d => d !== date)
                       : [...(selectedEmployee.workedDates || []), date]
                   );
+                }}
+              />
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      )}
+
+      {/* Adicionar modal para o recibo */}
+      {receiptEmployee && (
+        <Dialog.Root open={isReceiptDialogOpen} onOpenChange={setIsReceiptDialogOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+            <Dialog.Content 
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl w-[95%] max-w-2xl max-h-[90vh] overflow-y-auto z-50"
+              onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+            >
+              <div className="flex justify-between items-center mb-2 sticky top-0 bg-white z-10 pb-2 border-b">
+                <Dialog.Title className="text-lg font-semibold">
+                  Recibo - {receiptEmployee.name}
+                </Dialog.Title>
+                <Dialog.Close className="text-gray-400 hover:text-gray-600">
+                  <X className="w-5 h-5" />
+                </Dialog.Close>
+              </div>
+              
+              <EmployeeReceipt
+                employee={{
+                  ...receiptEmployee,
+                  workedDates: receiptEmployee.workedDates || []
                 }}
               />
             </Dialog.Content>
