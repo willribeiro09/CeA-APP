@@ -1,7 +1,15 @@
+// Declaração de tipo para o módulo html2pdf.js
+declare module 'html2pdf.js' {
+  const html2pdf: any;
+  export default html2pdf;
+}
+
 import React, { useRef } from 'react';
 import { format } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import html2pdf from 'html2pdf.js';
 
 interface Employee {
   id: string;
@@ -47,7 +55,7 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
     printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt - ${employee.name}</title>
+          <title>Receipt - ${employee.name} (${weekRange})</title>
           <style>
             body {
               font-family: 'Segoe UI', Arial, sans-serif;
@@ -141,88 +149,147 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
     printWindow.onafterprint = () => printWindow.close();
   };
 
-  // Function to share receipt
+  // Function to share receipt as PDF
   const handleShare = async () => {
     if (!receiptRef.current) return;
     
     try {
-      // Create a canvas from the receipt element
-      const canvas = await html2canvas(receiptRef.current, {
-        backgroundColor: "white",
-        scale: 2, // Higher resolution
-        logging: false,
-        onclone: (clonedDoc: Document, element: HTMLElement) => {
-          // Make sure the element has the right styling in the cloned document
-          if (element instanceof HTMLElement) {
-            element.style.padding = '20px';
-            element.style.boxShadow = 'none';
-            element.style.width = 'auto';
-            element.style.height = 'auto';
-            
-            // Hide print buttons in the screenshot
-            const buttons = element.querySelector('.print-hidden');
-            if (buttons instanceof HTMLElement) {
-              buttons.style.display = 'none';
-            }
-          }
-        }
-      });
+      // Temporarily hide the buttons for PDF generation
+      const buttons = receiptRef.current.querySelector('.print-hidden');
+      if (buttons instanceof HTMLElement) {
+        buttons.style.display = 'none';
+      }
       
-      // Convert canvas to blob
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((b: Blob | null) => {
-          if (b) resolve(b);
-          else alert('Failed to create image');
-        }, 'image/png');
-      });
+      // Generate PDF using html2pdf
+      const opt = {
+        margin: 10,
+        filename: `Receipt-${employee.name}-${weekRange}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          logging: false
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait' 
+        }
+      };
+      
+      const pdfDoc = await html2pdf().set(opt).from(receiptRef.current).outputPdf();
+      const pdfBlob = new Blob([pdfDoc], { type: 'application/pdf' });
+      
+      // Show buttons again
+      if (buttons instanceof HTMLElement) {
+        buttons.style.display = 'flex';
+      }
       
       // Try to use Web Share API if available
       if (navigator.share) {
-        const file = new File([blob], `receipt-${employee.name}.png`, { type: 'image/png' });
+        const file = new File([pdfBlob], `Receipt-${employee.name}-${weekRange}.pdf`, { type: 'application/pdf' });
         
         await navigator.share({
-          title: `Receipt - ${employee.name}`,
-          text: `Payment receipt for ${employee.name} in the amount of $ ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+          title: `Receipt - ${employee.name} (${weekRange})`,
+          text: `Payment receipt for ${employee.name} for week ${weekRange} in the amount of $ ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
           files: [file]
         });
       } else {
-        // Fallback: Open the image in a new tab
-        const imageUrl = URL.createObjectURL(blob);
-        const tab = window.open();
-        if (tab) {
-          tab.document.write(`
-            <html>
-              <head>
-                <title>Receipt - ${employee.name}</title>
-                <style>
-                  body { 
-                    margin: 0; 
-                    display: flex; 
-                    justify-content: center; 
-                    align-items: center; 
-                    height: 100vh; 
-                    background-color: #f3f4f6;
-                  }
-                  img { 
-                    max-width: 100%; 
-                    max-height: 100vh; 
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                  }
-                </style>
-              </head>
-              <body>
-                <img src="${imageUrl}" alt="Receipt for ${employee.name}">
-              </body>
-            </html>
-          `);
-          tab.document.close();
-        } else {
+        // Fallback: Open the PDF in a new tab
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        const tab = window.open(pdfUrl, '_blank');
+        if (!tab) {
           alert('Unable to open the receipt. Please check your browser settings.');
+          // Alternative: Force download
+          const link = document.createElement('a');
+          link.href = pdfUrl;
+          link.download = `Receipt-${employee.name}-${weekRange}.pdf`;
+          link.click();
         }
       }
     } catch (error) {
       console.error('Error sharing:', error);
-      alert('Error sharing the receipt: ' + error);
+      
+      // Fallback to image sharing if PDF doesn't work
+      try {
+        // Create a canvas from the receipt element
+        const canvas = await html2canvas(receiptRef.current, {
+          backgroundColor: "white",
+          scale: 2, // Higher resolution
+          logging: false,
+          onclone: (clonedDoc: Document, element: HTMLElement) => {
+            // Make sure the element has the right styling in the cloned document
+            if (element instanceof HTMLElement) {
+              element.style.padding = '20px';
+              element.style.boxShadow = 'none';
+              element.style.width = 'auto';
+              element.style.height = 'auto';
+              
+              // Hide print buttons in the screenshot
+              const buttons = element.querySelector('.print-hidden');
+              if (buttons instanceof HTMLElement) {
+                buttons.style.display = 'none';
+              }
+            }
+          }
+        });
+        
+        // Convert canvas to blob
+        const blob = await new Promise<Blob>((resolve) => {
+          canvas.toBlob((b: Blob | null) => {
+            if (b) resolve(b);
+            else alert('Failed to create image');
+          }, 'image/png');
+        });
+        
+        // Try to use Web Share API if available
+        if (navigator.share) {
+          const file = new File([blob], `Receipt-${employee.name}-${weekRange}.png`, { type: 'image/png' });
+          
+          await navigator.share({
+            title: `Receipt - ${employee.name} (${weekRange})`,
+            text: `Payment receipt for ${employee.name} for week ${weekRange} in the amount of $ ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+            files: [file]
+          });
+        } else {
+          // Fallback: Open the image in a new tab
+          const imageUrl = URL.createObjectURL(blob);
+          const tab = window.open();
+          if (tab) {
+            tab.document.write(`
+              <html>
+                <head>
+                  <title>Receipt - ${employee.name} (${weekRange})</title>
+                  <style>
+                    body { 
+                      margin: 0; 
+                      display: flex; 
+                      justify-content: center; 
+                      align-items: center; 
+                      height: 100vh; 
+                      background-color: #f3f4f6;
+                    }
+                    img { 
+                      max-width: 100%; 
+                      max-height: 100vh; 
+                      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    }
+                  </style>
+                </head>
+                <body>
+                  <img src="${imageUrl}" alt="Receipt for ${employee.name}">
+                </body>
+              </html>
+            `);
+            tab.document.close();
+          } else {
+            alert('Unable to open the receipt. Please check your browser settings.');
+          }
+        }
+      } catch (fallbackError) {
+        console.error('Error in fallback sharing:', fallbackError);
+        alert('Error sharing the receipt: ' + error);
+      }
     }
   };
 

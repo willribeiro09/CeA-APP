@@ -1059,6 +1059,13 @@ export default function App() {
     setIsReceiptDialogOpen(true);
   };
 
+  // Adicionar esta função para formatar a data no formato MM/DD
+  const formatWeekRangeMMDD = (startDate: Date, endDate: Date) => {
+    const start = format(startDate, 'MM/dd');
+    const end = format(endDate, 'MM/dd');
+    return `${start} - ${end}`;
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gray-50">
@@ -1553,7 +1560,7 @@ export default function App() {
                   ...receiptEmployee,
                   workedDates: receiptEmployee.workedDates || []
                 }}
-                weekRange={formatDateRange(selectedWeekStart, selectedWeekEnd)}
+                weekRange={formatWeekRangeMMDD(selectedWeekStart, selectedWeekEnd)}
               />
             </Dialog.Content>
           </Dialog.Portal>
