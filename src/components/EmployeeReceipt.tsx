@@ -51,8 +51,7 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
     <div className="bg-white rounded-lg p-4 print:p-0 print:shadow-none print-receipt">
       {/* Receipt header */}
       <div className="flex flex-col items-center mb-4 print:mb-3">
-        <h1 className="text-xl font-bold text-center mb-2">RECEIPT</h1>
-        <div className="w-40 h-20 mb-2 flex items-center justify-center">
+        <div className="w-48 h-24 mb-2 flex items-center justify-center">
           <img 
             src="/dist/cealogo.png" 
             alt="C&A Logo" 
@@ -61,11 +60,11 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
               const target = e.target as HTMLImageElement;
               target.onerror = null;
               target.src = '';
-              target.parentElement!.innerHTML = '<h1 class="text-3xl font-bold text-[#5ABB37]">C&A</h1>';
+              target.parentElement!.innerHTML = '<h1 class="text-4xl font-bold text-[#5ABB37]">C&A</h1>';
             }}
           />
         </div>
-        <p className="text-sm font-medium text-gray-700 tracking-wide" style={{ fontFamily: "'Segoe UI', Arial, sans-serif", letterSpacing: '0.05em' }}>
+        <p className="text-base font-medium text-gray-700 tracking-wide" style={{ fontFamily: "'Segoe UI', Arial, sans-serif", letterSpacing: '0.05em' }}>
           C&A Gutters Inc.
         </p>
       </div>
