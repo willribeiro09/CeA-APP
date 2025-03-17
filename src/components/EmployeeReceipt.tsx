@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { format } from 'date-fns';
 import { enUS } from 'date-fns/locale';
+import html2canvas from 'html2canvas';
 
 interface Employee {
   id: string;
@@ -21,6 +22,8 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
   employee,
   weekRange
 }) => {
+  const receiptRef = useRef<HTMLDivElement>(null);
+
   // Sort worked dates
   const sortedDates = [...(employee.workedDates || [])].sort((a, b) => {
     return new Date(a).getTime() - new Date(b).getTime();
@@ -31,27 +34,203 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
 
   // Function to print receipt
   const handlePrint = () => {
-    window.print();
+    // Use a print-specific stylesheet that hides everything except the receipt
+    const originalContents = document.body.innerHTML;
+    const printContents = receiptRef.current?.outerHTML || '';
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow pop-ups to print the receipt');
+      return;
+    }
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt - ${employee.name}</title>
+          <style>
+            body {
+              font-family: 'Segoe UI', Arial, sans-serif;
+              padding: 0;
+              margin: 0;
+              background-color: white;
+            }
+            .print-receipt {
+              max-width: 100%;
+              margin: 0 auto;
+              padding: 20px;
+              box-sizing: border-box;
+            }
+            @media print {
+              body {
+                margin: 0;
+                padding: 0;
+              }
+              .print-receipt {
+                width: 100%;
+                box-shadow: none;
+              }
+              .print-hidden {
+                display: none !important;
+              }
+            }
+            /* Copy all the styles from the original receipt */
+            .bg-white { background-color: white; }
+            .rounded-lg { border-radius: 0.5rem; }
+            .p-4 { padding: 1rem; }
+            .mb-4 { margin-bottom: 1rem; }
+            .mb-3 { margin-bottom: 0.75rem; }
+            .mb-2 { margin-bottom: 0.5rem; }
+            .mb-1 { margin-bottom: 0.25rem; }
+            .mt-4 { margin-top: 1rem; }
+            .mt-1 { margin-top: 0.25rem; }
+            .flex { display: flex; }
+            .flex-col { flex-direction: column; }
+            .items-center { align-items: center; }
+            .justify-center { justify-content: center; }
+            .justify-between { justify-content: space-between; }
+            .w-56 { width: 14rem; }
+            .h-28 { height: 7rem; }
+            .h-full { height: 100%; }
+            .object-contain { object-fit: contain; }
+            .text-5xl { font-size: 3rem; }
+            .text-lg { font-size: 1.125rem; }
+            .text-md { font-size: 1rem; }
+            .text-sm { font-size: 0.875rem; }
+            .text-xs { font-size: 0.75rem; }
+            .font-bold { font-weight: 700; }
+            .font-semibold { font-weight: 600; }
+            .font-medium { font-weight: 500; }
+            .text-gray-700 { color: #4a5568; }
+            .text-gray-600 { color: #718096; }
+            .text-gray-500 { color: #a0aec0; }
+            .text-green-600 { color: #38a169; }
+            .text-[#5ABB37] { color: #5ABB37; }
+            .tracking-wide { letter-spacing: 0.025em; }
+            .border-t { border-top-width: 1px; }
+            .border-b { border-bottom-width: 1px; }
+            .border-gray-200 { border-color: #edf2f7; }
+            .border-gray-300 { border-color: #e2e8f0; }
+            .grid { display: grid; }
+            .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .gap-2 { gap: 0.5rem; }
+            .gap-4 { gap: 1rem; }
+            .gap-1 { gap: 0.25rem; }
+            .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+            .p-2 { padding: 0.5rem; }
+            .p-3 { padding: 0.75rem; }
+            .bg-gray-50 { background-color: #f9fafb; }
+            .bg-gray-100 { background-color: #f3f4f6; }
+            .rounded-md { border-radius: 0.375rem; }
+            .mb-8 { margin-bottom: 2rem; }
+            .mb-6 { margin-bottom: 1.5rem; }
+            .text-center { text-align: center; }
+            .w-full { width: 100%; }
+          </style>
+        </head>
+        <body>
+          ${printContents}
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.onafterprint = () => printWindow.close();
   };
 
   // Function to share receipt
   const handleShare = async () => {
+    if (!receiptRef.current) return;
+    
     try {
+      // Create a canvas from the receipt element
+      const canvas = await html2canvas(receiptRef.current, {
+        backgroundColor: "white",
+        scale: 2, // Higher resolution
+        logging: false,
+        onclone: (clonedDoc: Document, element: HTMLElement) => {
+          // Make sure the element has the right styling in the cloned document
+          if (element instanceof HTMLElement) {
+            element.style.padding = '20px';
+            element.style.boxShadow = 'none';
+            element.style.width = 'auto';
+            element.style.height = 'auto';
+            
+            // Hide print buttons in the screenshot
+            const buttons = element.querySelector('.print-hidden');
+            if (buttons instanceof HTMLElement) {
+              buttons.style.display = 'none';
+            }
+          }
+        }
+      });
+      
+      // Convert canvas to blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b: Blob | null) => {
+          if (b) resolve(b);
+          else alert('Failed to create image');
+        }, 'image/png');
+      });
+      
+      // Try to use Web Share API if available
       if (navigator.share) {
+        const file = new File([blob], `receipt-${employee.name}.png`, { type: 'image/png' });
+        
         await navigator.share({
           title: `Receipt - ${employee.name}`,
-          text: `Payment receipt for ${employee.name} in the amount of $ ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+          text: `Payment receipt for ${employee.name} in the amount of $ ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+          files: [file]
         });
       } else {
-        alert('Sharing not supported in this browser');
+        // Fallback: Open the image in a new tab
+        const imageUrl = URL.createObjectURL(blob);
+        const tab = window.open();
+        if (tab) {
+          tab.document.write(`
+            <html>
+              <head>
+                <title>Receipt - ${employee.name}</title>
+                <style>
+                  body { 
+                    margin: 0; 
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    height: 100vh; 
+                    background-color: #f3f4f6;
+                  }
+                  img { 
+                    max-width: 100%; 
+                    max-height: 100vh; 
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                  }
+                </style>
+              </head>
+              <body>
+                <img src="${imageUrl}" alt="Receipt for ${employee.name}">
+              </body>
+            </html>
+          `);
+          tab.document.close();
+        } else {
+          alert('Unable to open the receipt. Please check your browser settings.');
+        }
       }
     } catch (error) {
       console.error('Error sharing:', error);
+      alert('Error sharing the receipt: ' + error);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg p-4 print:p-0 print:shadow-none print-receipt">
+    <div 
+      ref={receiptRef} 
+      className="bg-white rounded-lg p-4 print:p-0 print:shadow-none print-receipt"
+    >
       {/* Receipt header */}
       <div className="flex flex-col items-center mb-4 print:mb-3">
         <div className="w-56 h-28 mb-2 flex items-center justify-center">
@@ -100,7 +279,7 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
                 const dateObj = new Date(date);
                 return (
                   <div key={date} className="text-sm flex justify-between">
-                    <span>{format(dateObj, 'MM/dd/yyyy', { locale: enUS })}</span>
+                    <span>{format(dateObj, 'MM/dd', { locale: enUS })}</span>
                     <span className="text-gray-600">{format(dateObj, 'EEEE', { locale: enUS })}</span>
                   </div>
                 );
@@ -136,11 +315,11 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
 
       {/* Date */}
       <div className="text-center text-xs text-gray-500 mb-3 print:mb-2">
-        <p>Document issued on {format(new Date(), 'MM/dd/yyyy', { locale: enUS })}</p>
+        <p>Document issued on {format(new Date(), 'MM/dd', { locale: enUS })}</p>
       </div>
 
       {/* Action buttons (hidden when printing) */}
-      <div className="flex justify-center gap-4 print:hidden">
+      <div className="flex justify-center gap-4 print:hidden print-hidden">
         <button
           onClick={handlePrint}
           className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors flex items-center"
