@@ -35,16 +35,16 @@ export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorPr
     <div className="relative">
       <button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className="flex items-center space-x-1"
+        className="flex items-center"
       >
-        <span className="text-gray-700 font-medium text-sm">Week:</span>
-        <div className="flex items-center px-2 py-1 bg-gradient-to-r from-white to-[#f9fcf7] border border-[#e0f0d8] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <Calendar className="w-3 h-3 text-[#5ABB37] mr-1" />
+        <span className="text-gray-700 font-medium text-sm mr-1">Week:</span>
+        <div className="flex items-center px-1.5 py-0.5 bg-gradient-to-r from-white to-[#f9fcf7] border border-[#e0f0d8] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
+          <Calendar className="w-3 h-3 text-[#5ABB37] mr-0.5" />
           <span className="text-[#5ABB37] font-medium text-sm">
             {selectedWeek.label}
           </span>
           <ChevronDown
-            className={`w-3.5 h-3.5 text-[#5ABB37] ml-1 transition-transform ${
+            className={`w-3 h-3 text-[#5ABB37] ml-0.5 transition-transform ${
               isDropdownOpen ? 'transform rotate-180' : ''
             }`}
           />

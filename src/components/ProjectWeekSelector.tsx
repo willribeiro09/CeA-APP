@@ -80,16 +80,16 @@ export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: Project
     <div className="relative">
       <button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className="flex items-center space-x-1"
+        className="flex items-center"
       >
-        <span className="text-gray-700 font-medium text-sm">Week:</span>
-        <div className="flex items-center px-2 py-1 bg-gradient-to-r from-white to-[#f9fcf7] border border-[#e0f0d8] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <Calendar className="w-3 h-3 text-[#5ABB37] mr-1" />
+        <span className="text-gray-700 font-medium text-sm mr-1">Week:</span>
+        <div className="flex items-center px-1.5 py-0.5 bg-gradient-to-r from-white to-[#f9fcf7] border border-[#e0f0d8] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
+          <Calendar className="w-3 h-3 text-[#5ABB37] mr-0.5" />
           <span className="text-[#5ABB37] font-medium text-sm">
             {selectedWeek.label}
           </span>
           <ChevronDown
-            className={`w-3.5 h-3.5 text-[#5ABB37] ml-1 transition-transform ${
+            className={`w-3 h-3 text-[#5ABB37] ml-0.5 transition-transform ${
               isDropdownOpen ? 'transform rotate-180' : ''
             }`}
           />
@@ -97,17 +97,17 @@ export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: Project
       </button>
       
       {isDropdownOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40 min-w-[200px]">
+        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40 min-w-[180px]">
           {weeks.map((week, index) => (
             <button
               key={week.value}
               onClick={() => handleWeekSelect(week)}
-              className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
+              className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors ${
                 selectedWeek.value === week.value ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
               }`}
             >
               <div className="flex flex-col">
-                <span className="font-medium text-sm">{week.label}</span>
+                <span className="font-medium text-xs">{week.label}</span>
                 {index === 0 && (
                   <span className="text-xs text-gray-500">Current week</span>
                 )}
