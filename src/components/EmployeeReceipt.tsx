@@ -1,15 +1,8 @@
-// Declaração de tipo para o módulo html2pdf.js
-declare module 'html2pdf.js' {
-  const html2pdf: any;
-  export default html2pdf;
-}
-
 import React, { useRef } from 'react';
 import { format } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import html2pdf from 'html2pdf.js';
 
 interface Employee {
   id: string;
@@ -160,25 +153,46 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
         buttons.style.display = 'none';
       }
       
-      // Generate PDF using html2pdf
-      const opt = {
-        margin: 10,
-        filename: `Receipt-${employee.name}-${weekRange}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          logging: false
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait' 
+      // Capture receipt as canvas
+      const canvas = await html2canvas(receiptRef.current, {
+        scale: 2, // Higher resolution
+        useCORS: true,
+        backgroundColor: 'white',
+        logging: false,
+        onclone: (clonedDoc: Document, element: HTMLElement) => {
+          if (element instanceof HTMLElement) {
+            element.style.width = 'auto';
+            element.style.height = 'auto';
+            element.style.padding = '20px';
+            element.style.boxShadow = 'none';
+          }
         }
-      };
+      });
       
-      const pdfDoc = await html2pdf().set(opt).from(receiptRef.current).outputPdf();
-      const pdfBlob = new Blob([pdfDoc], { type: 'application/pdf' });
+      // Create PDF from canvas
+      const pdf = new jsPDF({
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait'
+      });
+      
+      // Calculate the width and height to maintain aspect ratio
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      
+      // Calculate aspect ratio to fit the PDF page
+      const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+      const imgX = (pageWidth - imgWidth * ratio) / 2;
+      const imgY = 10; // Add some margin at top
+      
+      // Add the image to the PDF
+      pdf.addImage(imgData, 'JPEG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      
+      // Convert to blob for sharing
+      const pdfBlob = pdf.output('blob');
       
       // Show buttons again
       if (buttons instanceof HTMLElement) {
