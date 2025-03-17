@@ -9,14 +9,17 @@ interface Employee {
   dailyRate: number;
   daysWorked: number;
   workedDates: string[];
+  weekStartDate?: string;
 }
 
 interface EmployeeReceiptProps {
   employee: Employee;
+  weekRange?: string;
 }
 
 const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({ 
-  employee
+  employee,
+  weekRange
 }) => {
   // Sort worked dates
   const sortedDates = [...(employee.workedDates || [])].sort((a, b) => {
@@ -71,7 +74,7 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
 
       {/* Employee information */}
       <div className="border-t border-b border-gray-200 py-2 mb-3">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <div>
             <p className="text-gray-500 text-sm">Name:</p>
             <p className="font-semibold">{employee.name}</p>
@@ -79,6 +82,10 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
           <div>
             <p className="text-gray-500 text-sm">Daily Rate:</p>
             <p className="font-semibold">$ {employee.dailyRate.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div>
+            <p className="text-gray-500 text-sm">Week:</p>
+            <p className="font-semibold">{weekRange || 'Current Week'}</p>
           </div>
         </div>
       </div>

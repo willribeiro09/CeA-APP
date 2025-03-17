@@ -648,39 +648,6 @@ export default function App() {
     saveChanges(createStorageData(storageData));
   };
 
-  const handleAddDay = (employeeId: string, weekStartDate: string) => {
-    const updatedEmployees = { ...employees };
-    const weekEmployees = updatedEmployees[weekStartDate] || [];
-    const employeeIndex = weekEmployees.findIndex((e: Employee) => e.id === employeeId);
-    const today = format(new Date(), 'yyyy-MM-dd');
-
-    if (employeeIndex >= 0) {
-      weekEmployees[employeeIndex] = {
-        ...weekEmployees[employeeIndex],
-        daysWorked: weekEmployees[employeeIndex].daysWorked + 1
-      };
-    } else {
-      const employeeFromWeek = weekEmployees.find((e: Employee) => e.id === employeeId);
-      if (employeeFromWeek) {
-        weekEmployees.push({
-          ...employeeFromWeek,
-          weekStartDate,
-          daysWorked: 1
-        });
-      }
-    }
-
-    updatedEmployees[weekStartDate] = weekEmployees;
-    setEmployees(updatedEmployees);
-    
-    saveChanges(createStorageData({
-      expenses,
-      projects,
-      stock: stockItems,
-      employees: updatedEmployees
-    }));
-  };
-
   const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
     console.log(`Resetando dias para funcionário ${employeeId} na semana ${weekStartDate}`);
     
@@ -1586,6 +1553,7 @@ export default function App() {
                   ...receiptEmployee,
                   workedDates: receiptEmployee.workedDates || []
                 }}
+                weekRange={formatDateRange(selectedWeekStart, selectedWeekEnd)}
               />
             </Dialog.Content>
           </Dialog.Portal>
