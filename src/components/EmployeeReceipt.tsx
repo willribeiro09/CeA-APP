@@ -50,47 +50,42 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
   return (
     <div className="bg-white rounded-lg p-4 print:p-0 print:shadow-none print-receipt">
       {/* Receipt header */}
-      <div className="flex flex-col items-center mb-6 print:mb-4">
-        <div className="w-32 h-16 mb-2 flex items-center justify-center">
+      <div className="flex flex-col items-center mb-3 print:mb-2">
+        <h1 className="text-xl font-bold text-center">RECEIPT - {employee.name}</h1>
+        <div className="w-24 h-12 my-2 flex items-center justify-center">
           <h1 className="text-2xl font-bold text-[#5ABB37]">C&A</h1>
         </div>
-        <h1 className="text-xl font-bold text-center">PAYMENT RECEIPT</h1>
-        <p className="text-gray-500 text-sm">Non-fiscal document</p>
       </div>
 
       {/* Employee information */}
-      <div className="border-t border-b border-gray-200 py-4 mb-4 print:py-2">
+      <div className="border-t border-b border-gray-200 py-2 mb-3">
         <div className="grid grid-cols-2 gap-2">
           <div>
             <p className="text-gray-500 text-sm">Name:</p>
             <p className="font-semibold">{employee.name}</p>
           </div>
           <div>
-            <p className="text-gray-500 text-sm">Role:</p>
-            <p className="font-semibold">{employee.role || 'Not specified'}</p>
-          </div>
-          <div>
             <p className="text-gray-500 text-sm">Daily Rate:</p>
             <p className="font-semibold">$ {employee.dailyRate.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 text-sm">Days Worked:</p>
-            <p className="font-semibold">{employee.daysWorked}</p>
           </div>
         </div>
       </div>
 
       {/* Worked days details */}
-      <div className="mb-6 print:mb-4">
-        <h2 className="text-lg font-semibold mb-2">Worked Days</h2>
-        <div className="bg-gray-50 rounded-md p-3 print:bg-white print:p-0">
+      <div className="mb-3">
+        <h2 className="text-md font-semibold mb-1">Worked Days</h2>
+        <div className="bg-gray-50 rounded-md p-2 print:bg-white print:p-0">
           {sortedDates.length > 0 ? (
-            <div className="grid grid-cols-3 gap-2">
-              {sortedDates.map(date => (
-                <div key={date} className="text-sm">
-                  {format(new Date(date), 'MM/dd/yyyy', { locale: enUS })}
-                </div>
-              ))}
+            <div className="flex flex-col gap-1">
+              {sortedDates.map(date => {
+                const dateObj = new Date(date);
+                return (
+                  <div key={date} className="text-sm flex justify-between">
+                    <span>{format(dateObj, 'MM/dd/yyyy', { locale: enUS })}</span>
+                    <span className="text-gray-600">{format(dateObj, 'EEEE', { locale: enUS })}</span>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-gray-500 text-sm">No days recorded</p>
@@ -99,29 +94,29 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
       </div>
 
       {/* Total amount */}
-      <div className="bg-gray-100 rounded-md p-4 mb-6 print:bg-white print:p-0 print:mb-4">
+      <div className="bg-gray-100 rounded-md p-3 mb-3 print:bg-white print:p-0 print:mb-2">
         <div className="flex justify-between items-center">
-          <span className="text-lg font-semibold">Total Amount:</span>
-          <span className="text-xl font-bold text-green-600">
+          <span className="text-md font-semibold">Total Amount:</span>
+          <span className="text-lg font-bold text-green-600">
             $ {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </span>
         </div>
       </div>
 
       {/* Signatures */}
-      <div className="grid grid-cols-2 gap-8 mb-6 print:mb-4">
+      <div className="grid grid-cols-2 gap-4 mb-3 print:mb-2">
         <div className="flex flex-col items-center">
-          <div className="border-t border-gray-300 w-full mt-8"></div>
-          <p className="text-sm text-gray-500 mt-1">Employee Signature</p>
+          <div className="border-t border-gray-300 w-full mt-4"></div>
+          <p className="text-xs text-gray-500 mt-1">Employee Signature</p>
         </div>
         <div className="flex flex-col items-center">
-          <div className="border-t border-gray-300 w-full mt-8"></div>
-          <p className="text-sm text-gray-500 mt-1">Company Signature</p>
+          <div className="border-t border-gray-300 w-full mt-4"></div>
+          <p className="text-xs text-gray-500 mt-1">Company Signature</p>
         </div>
       </div>
 
-      {/* Date and additional information */}
-      <div className="text-center text-sm text-gray-500 mb-6 print:mb-4">
+      {/* Date */}
+      <div className="text-center text-xs text-gray-500 mb-3 print:mb-2">
         <p>Document issued on {format(new Date(), 'MM/dd/yyyy', { locale: enUS })}</p>
       </div>
 
