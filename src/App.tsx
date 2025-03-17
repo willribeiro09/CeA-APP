@@ -1573,7 +1573,7 @@ export default function App() {
             >
               <div className="flex justify-between items-center mb-2 sticky top-0 bg-white z-10 pb-2 border-b">
                 <Dialog.Title className="text-lg font-semibold">
-                  Recibo - {receiptEmployee.name}
+                  Receipt - {receiptEmployee.name}
                 </Dialog.Title>
                 <Dialog.Close className="text-gray-400 hover:text-gray-600">
                   <X className="w-5 h-5" />
