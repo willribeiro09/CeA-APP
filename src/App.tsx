@@ -1395,10 +1395,10 @@ export default function App() {
                                     <span className="text-gray-700 text-sm">Days Worked:</span>
                                     <span className="text-xl font-bold text-gray-900">{daysWorked}</span>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-gray-700 text-sm">Valor a Receber:</span>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-gray-700 text-sm">Amount to Receive:</span>
                                     <span className="text-xl font-bold text-[#5ABB37]">
-                                      R$ {(daysWorked * (employee.dailyRate || 250)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                      $ {(daysWorked * (employee.dailyRate || 250)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-between">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 
 interface WorkDaysCalendarProps {
   employeeId: string;
@@ -33,20 +33,52 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
     onDateToggle(formattedDate);
   };
 
+  // Função para confirmar todas as datas selecionadas
+  const handleConfirm = () => {
+    // Já está confirmado automaticamente pelo onDateToggle
+    // Esta função é para feedback visual ao usuário
+    alert('Worked days confirmed!');
+  };
+
+  // Função para resetar todas as datas
+  const handleReset = () => {
+    // Para cada data trabalhada, chamar onDateToggle para removê-la
+    [...workedDates].forEach(date => {
+      onDateToggle(date);
+    });
+    
+    // Limpar o estado local
+    setWorkedDates([]);
+  };
+
   // Gerar os dias do mês atual
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-  // Nomes dos dias da semana
-  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  // Nomes dos dias da semana em inglês
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-gray-800 capitalize">
-          {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+          {format(currentMonth, 'MMMM yyyy', { locale: enUS })}
         </h2>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+            className="p-2 rounded-md hover:bg-gray-100"
+          >
+            &lt;
+          </button>
+          <button
+            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+            className="p-2 rounded-md hover:bg-gray-100"
+          >
+            &gt;
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-2">
@@ -80,6 +112,22 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
             </button>
           );
         })}
+      </div>
+
+      {/* Botões de Confirm e Reset */}
+      <div className="flex justify-center gap-4 mt-4">
+        <button
+          onClick={handleConfirm}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
+        >
+          Confirm
+        </button>
+        <button
+          onClick={handleReset}
+          className="px-4 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-colors"
+        >
+          Reset
+        </button>
       </div>
     </div>
   );
