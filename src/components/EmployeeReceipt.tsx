@@ -53,7 +53,7 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
       <div className="flex flex-col items-center mb-4 print:mb-3">
         <div className="w-56 h-28 mb-2 flex items-center justify-center">
           <img 
-            src="/dist/cealogo.png" 
+            src="./cealogo.png" 
             alt="C&A Logo" 
             className="h-full object-contain"
             onError={(e) => {
