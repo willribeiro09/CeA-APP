@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Item, ValidationError, Expense, Project, StockItem, Employee } from '../types';
 import { validation } from '../lib/validation';
 
@@ -14,6 +14,26 @@ interface AddItemDialogProps {
 
 export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, selectedWeekStart }: AddItemDialogProps) {
   const [errors, setErrors] = useState<ValidationError[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('dialog-open');
+    } else {
+      document.body.classList.remove('dialog-open');
+    }
+    
+    return () => {
+      document.body.classList.remove('dialog-open');
+    };
+  }, [isOpen]);
+
+  const handleInputFocus = () => {
+    document.body.classList.add('input-focused');
+  };
+
+  const handleInputBlur = () => {
+    document.body.classList.remove('input-focused');
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,17 +51,21 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         amount: parseFloat(data.amount as string),
         date: new Date(data.dueDate as string).toISOString(),
         category: 'Expenses',
-        is_paid: false
+        paid: false
       };
       console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
       itemData = {
-        name: data.name as string,
-        description: data.description as string,
+        name: data.client as string,
         client: data.client as string,
+        projectNumber: data.projectNumber as string,
+        location: data.location as string,
         startDate: new Date(data.startDate as string).toISOString(),
-        status: 'pending',
+        endDate: data.endDate ? new Date(data.endDate as string).toISOString() : undefined,
+        status: data.status as 'completed' | 'in_progress',
+        value: parseFloat(data.value as string) || 0,
+        invoiceOk: (data.invoiceOk === 'on'),
         category: 'Projects'
       };
       console.log("Dados de projeto formatados:", itemData);
@@ -56,10 +80,22 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       console.log("Dados de estoque formatados:", itemData);
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else {
+      // Capturar a data de início do formulário
+      const startDateString = data.startDate as string;
+      console.log("Data de início selecionada:", startDateString);
+      
+      // Criar um objeto Date a partir da string da data
+      const startDate = startDateString ? new Date(startDateString) : new Date();
+      
+      // Resetar o horário para evitar problemas de comparação
+      startDate.setHours(0, 0, 0, 0);
+      
+      console.log("Data de início processada:", startDate.toISOString());
+      
       itemData = {
         name: data.name as string,
         employeeName: data.name as string,
-        startDate: new Date().toISOString(),
+        startDate: startDate.toISOString(),
         weekStartDate: selectedWeekStart?.toISOString() || new Date().toISOString(),
         daysWorked: 0,
         dailyRate: parseFloat(data.dailyRate as string) || 250,
@@ -88,8 +124,14 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
   return (
     <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50">
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+        <Dialog.Content 
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
+          onOpenAutoFocus={(e: React.FocusEvent) => {
+            // Previne o foco automático que pode causar scroll
+            e.preventDefault();
+          }}
+        >
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-lg font-semibold">
               {category === 'Expenses' ? 'New Expense' : 
@@ -145,6 +187,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     id="dueDate"
                     name="dueDate"
                     required
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
@@ -153,29 +197,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
             
             {category === 'Projects' && (
               <>
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Project Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
                 <div>
                   <label htmlFor="client" className="block text-sm font-medium text-gray-700">
                     Client
@@ -189,6 +210,41 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                   />
                 </div>
                 <div>
+                  <label htmlFor="projectNumber" className="block text-sm font-medium text-gray-700">
+                    Number
+                  </label>
+                  <input
+                    type="text"
+                    id="projectNumber"
+                    name="projectNumber"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="value" className="block text-sm font-medium text-gray-700">
+                    Value
+                  </label>
+                  <input
+                    type="number"
+                    id="value"
+                    name="value"
+                    step="0.01"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
                   <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
                     Start Date
                   </label>
@@ -197,7 +253,34 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     id="startDate"
                     name="startDate"
                     required
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                    Status
+                  </label>
+                  <select
+                    id="status"
+                    name="status"
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  >
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="invoiceOk" className="block text-sm font-medium text-gray-700">
+                    Invoice OK
+                  </label>
+                  <input
+                    type="checkbox"
+                    id="invoiceOk"
+                    name="invoiceOk"
+                    className="mt-1"
                   />
                 </div>
               </>
@@ -255,6 +338,21 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     id="name"
                     name="name"
                     required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    id="startDate"
+                    name="startDate"
+                    defaultValue={new Date().toISOString().split('T')[0]}
+                    required
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
