@@ -51,9 +51,18 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
     <div className="bg-white rounded-lg p-4 print:p-0 print:shadow-none print-receipt">
       {/* Receipt header */}
       <div className="flex flex-col items-center mb-3 print:mb-2">
-        <h1 className="text-xl font-bold text-center">RECEIPT - {employee.name}</h1>
-        <div className="w-24 h-12 my-2 flex items-center justify-center">
-          <h1 className="text-2xl font-bold text-[#5ABB37]">C&A</h1>
+        <div className="w-32 h-16 my-2 flex items-center justify-center">
+          <img 
+            src="/dist/cealogo.png" 
+            alt="C&A Logo" 
+            className="h-full object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.onerror = null;
+              target.src = '';
+              target.parentElement!.innerHTML = '<h1 class="text-2xl font-bold text-[#5ABB37]">C&A</h1>';
+            }}
+          />
         </div>
       </div>
 
