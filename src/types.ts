@@ -52,6 +52,13 @@ export interface Employee {
   email?: string;
   notes?: string;
   workedDates?: string[];
+  monthlyWorkDays?: {
+    [key: string]: {
+      date: string;
+      hours: number;
+      notes?: string;
+    }[];
+  };
 }
 
 export type Item = Expense | Project | StockItem | Employee;
@@ -83,5 +90,4 @@ export interface NavItem {
   icon: string;
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
 }
-
 export type EmployeeName = 'Matheus' | 'João' | 'Pedro' | 'Lucas';

@@ -1,78 +1,63 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Employee } from '../types';
-import { updateEmployee } from '../lib/employee';
+import { ptBR } from 'date-fns/locale';
 import WorkDaysCalendar from './WorkDaysCalendar';
+
+interface Employee {
+  id: string;
+  name: string;
+  role?: string;
+  dailyRate: number;
+  daysWorked: number;
+  workedDates: string[];
+}
 
 interface EmployeeReceiptProps {
   employee: Employee;
-  onAddDay: (employeeId: string) => void;
-  onReset: (employeeId: string) => void;
+  weekStartDate: string;
+  onReset: (employeeId: string, weekStartDate: string) => void;
+  onUpdateWorkedDates: (employeeId: string, dates: string[]) => void;
 }
 
-export default function EmployeeReceipt({ 
+const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({ 
   employee, 
-  onAddDay, 
-  onReset 
-}: EmployeeReceiptProps) {
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [workedDates, setWorkedDates] = useState<string[]>(employee.workedDates || []);
-
+  weekStartDate, 
+  onReset,
+  onUpdateWorkedDates
+}) => {
   const handleDateToggle = async (date: string) => {
     try {
-      // Atualizar o banco de dados
-      const updatedEmployee = {
-        ...employee,
-        workedDates: workedDates.includes(date)
-          ? workedDates.filter(d => d !== date)
-          : [...workedDates, date]
-      };
+      const updatedEmployee = { ...employee };
+      const dateIndex = updatedEmployee.workedDates.indexOf(date);
       
-      await updateEmployee(updatedEmployee);
-      setWorkedDates(updatedEmployee.workedDates);
+      if (dateIndex === -1) {
+        updatedEmployee.workedDates.push(date);
+        updatedEmployee.daysWorked += 1;
+      } else {
+        updatedEmployee.workedDates.splice(dateIndex, 1);
+        updatedEmployee.daysWorked -= 1;
+      }
+
+      // Atualizar o funcionário no estado
+      onUpdateWorkedDates(employee.id, updatedEmployee.workedDates);
+      
     } catch (error) {
-      console.error('Error updating worked dates:', error);
+      console.error('Erro ao atualizar data:', error);
     }
   };
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold">{employee.name}</h3>
-          <p className="text-sm text-gray-600">Daily Rate: ${employee.dailyRate}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-sm text-gray-600">Days Worked: {employee.daysWorked}</p>
-          <p className="text-lg font-bold text-green-600">
-            ${(employee.daysWorked * employee.dailyRate).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-      </div>
-      
-      <div className="flex gap-2 mt-4">
-        <button
-          onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Days Worked
-        </button>
-        
-        <button
-          onClick={() => onReset(employee.id)}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-        >
-          Reset
-        </button>
-      </div>
-
-      {isCalendarOpen && (
+    <div className="bg-white rounded-lg">
+      {/* Calendário sempre visível */}
+      <div>
         <WorkDaysCalendar
           employeeId={employee.id}
-          initialWorkedDates={workedDates}
+          initialWorkedDates={employee.workedDates || []}
           onDateToggle={handleDateToggle}
         />
-      )}
+      </div>
     </div>
   );
-} 
+};
+
+export default EmployeeReceipt; 

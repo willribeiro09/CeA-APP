@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { format, getDaysInMonth, startOfMonth } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface WorkDaysCalendarProps {
   employeeId: string;
@@ -7,46 +8,81 @@ interface WorkDaysCalendarProps {
   onDateToggle: (date: string) => void;
 }
 
-export default function WorkDaysCalendar({ 
-  employeeId, 
-  initialWorkedDates, 
-  onDateToggle 
-}: WorkDaysCalendarProps) {
-  const [workedDates, setWorkedDates] = useState<string[]>(initialWorkedDates);
-  const currentMonth = startOfMonth(new Date());
-  const daysInMonth = getDaysInMonth(currentMonth);
+const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
+  employeeId,
+  initialWorkedDates,
+  onDateToggle
+}) => {
+  // Sempre iniciar com o mês atual
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  // Garantir que workedDates seja sempre um array, mesmo que initialWorkedDates seja undefined
+  const [workedDates, setWorkedDates] = useState<string[]>(initialWorkedDates || []);
 
-  const handleDateClick = (date: string) => {
-    const newDates = workedDates.includes(date)
-      ? workedDates.filter(d => d !== date)
-      : [...workedDates, date];
+  // Atualizar as datas trabalhadas quando as props mudarem
+  useEffect(() => {
+    setWorkedDates(initialWorkedDates || []);
+  }, [initialWorkedDates]);
+
+  const handleDateClick = (date: Date) => {
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    const newDates = workedDates.includes(formattedDate)
+      ? workedDates.filter(d => d !== formattedDate)
+      : [...workedDates, formattedDate];
     
     setWorkedDates(newDates);
-    onDateToggle(date);
+    onDateToggle(formattedDate);
   };
 
-  return (
-    <div className="grid grid-cols-7 gap-2 p-4 bg-white rounded-lg shadow">
-      {Array.from({ length: daysInMonth }, (_, i) => {
-        const date = new Date(currentMonth);
-        date.setDate(i + 1);
-        const dateString = format(date, 'yyyy-MM-dd');
-        const isWorked = workedDates.includes(dateString);
+  // Gerar os dias do mês atual
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-        return (
-          <button
-            key={dateString}
-            onClick={() => handleDateClick(dateString)}
-            className={`p-2 rounded-full ${
-              isWorked 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-100 hover:bg-gray-200'
-            }`}
-          >
-            {date.getDate()}
-          </button>
-        );
-      })}
+  // Nomes dos dias da semana
+  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold text-gray-800 capitalize">
+          {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {weekDays.map(day => (
+          <div key={day} className="text-center text-sm font-medium text-gray-500 py-1">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {daysInMonth.map(day => {
+          const formattedDate = format(day, 'yyyy-MM-dd');
+          // Garantir que workedDates existe antes de chamar includes
+          const isWorked = Array.isArray(workedDates) && workedDates.includes(formattedDate);
+          
+          return (
+            <button
+              key={day.toString()}
+              onClick={() => handleDateClick(day)}
+              className={`
+                h-10 w-full rounded-md flex items-center justify-center text-sm font-medium
+                ${isToday(day) ? 'border-2 border-blue-500' : ''}
+                ${isWorked 
+                  ? 'bg-green-500 text-white hover:bg-green-600' 
+                  : 'hover:bg-gray-100 text-gray-700'}
+                transition-colors duration-200
+              `}
+            >
+              {format(day, 'd')}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
-} 
+};
+
+export default WorkDaysCalendar; 

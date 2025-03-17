@@ -25,6 +25,8 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import 'react-day-picker/dist/style.css';
 import { WeekSelector } from './components/WeekSelector';
 import { ProjectWeekSelector } from './components/ProjectWeekSelector';
+import EmployeeReceipt from './components/EmployeeReceipt';
+import WorkDaysCalendar from './components/WorkDaysCalendar';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -89,6 +91,17 @@ const getWeekEnd = (date: Date, category: 'Expenses' | 'Projects' | 'Stock' | 'E
   return category === 'Employees' ? getEmployeeWeekEnd(date) : getProjectWeekEnd(date);
 };
 
+// Função auxiliar para criar o objeto StorageItems
+const createStorageData = (data: Partial<StorageItems>): StorageItems => ({
+  expenses: data.expenses || {},
+  projects: data.projects || [],
+  stock: data.stock || [],
+  employees: data.employees || {},
+  lastSync: new Date().toISOString(),
+  willBaseRate: data.willBaseRate,
+  willBonus: data.willBonus
+});
+
 export default function App() {
   console.log('Iniciando renderização do App');
   const [expenses, setExpenses] = useState<Record<ListName, Expense[]>>(initialExpenses);
@@ -102,7 +115,7 @@ export default function App() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
   const [selectedList, setSelectedList] = useState<ListName>('C&A');
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeName>('Matheus');
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(getProjectWeekStart(new Date()));
   const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(getProjectWeekEnd(new Date()));
@@ -115,6 +128,8 @@ export default function App() {
   const [showLayoffAlert, setShowLayoffAlert] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [filterDate, setFilterDate] = useState<Date | null>(null);
+  const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false);
+  const [selectedEmployeeName, setSelectedEmployeeName] = useState<EmployeeName>('Matheus');
 
   useEffect(() => {
     const initializeData = async () => {
@@ -243,15 +258,12 @@ export default function App() {
       setExpenses(prevExpenses => {
         const newExpenses = { ...prevExpenses };
         
-        // Encontrar a despesa em todas as listas
         Object.keys(newExpenses).forEach(listName => {
           const list = newExpenses[listName as ListName];
           const index = list.findIndex(expense => expense.id === id);
           
           if (index !== -1) {
-            // Criar uma cópia da despesa e inverter o status de pago
             const updatedExpense = { ...list[index], paid: !list[index].paid };
-            // Atualizar a lista com a despesa atualizada
             newExpenses[listName as ListName] = [
               ...list.slice(0, index),
               updatedExpense,
@@ -260,16 +272,12 @@ export default function App() {
           }
         });
         
-        const storageData: StorageItems = {
+        saveChanges(createStorageData({
           expenses: newExpenses,
           projects,
           stock: stockItems,
-          employees,
-          lastSync: Date.now()
-        };
-        
-        // Usar saveChanges para salvar os dados
-        saveChanges(storageData);
+          employees
+        }));
         
         return newExpenses;
       });
@@ -291,16 +299,12 @@ export default function App() {
         });
         
         // Salvar as alterações
-        const storageData: StorageItems = {
+        saveChanges(createStorageData({
           expenses: newExpenses,
           projects,
           stock: stockItems,
-          employees,
-          lastSync: Date.now()
-        };
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
+          employees
+        }));
         
         return newExpenses;
       });
@@ -309,16 +313,12 @@ export default function App() {
         const newProjects = prevProjects.filter(project => project.id !== id);
         
         // Salvar as alterações
-        const storageData: StorageItems = {
+        saveChanges(createStorageData({
           expenses,
           projects: newProjects,
           stock: stockItems,
-          employees,
-          lastSync: Date.now()
-        };
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
+          employees
+        }));
         
         return newProjects;
       });
@@ -327,16 +327,12 @@ export default function App() {
         const newStockItems = prevStockItems.filter(item => item.id !== id);
         
         // Salvar as alterações
-        const storageData: StorageItems = {
+        saveChanges(createStorageData({
           expenses,
           projects,
           stock: newStockItems,
-          employees,
-          lastSync: Date.now()
-        };
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
+          employees
+        }));
         
         return newStockItems;
       });
@@ -352,16 +348,14 @@ export default function App() {
         });
         
         // Salvar as alterações
-        const storageData: StorageItems = {
+        saveChanges(createStorageData({
           expenses,
           projects,
           stock: stockItems,
           employees: newEmployees,
-          lastSync: Date.now()
-        };
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
+          willBaseRate,
+          willBonus
+        }));
         
         return newEmployees;
       });
@@ -393,18 +387,12 @@ export default function App() {
           });
           
           // Salvar as alterações
-          const storageData: StorageItems = {
+          saveChanges(createStorageData({
             expenses: newExpenses,
             projects,
             stock: stockItems,
-            employees,
-            willBaseRate,  // Preservar o valor original
-            willBonus,     // Preservar o valor original
-            lastSync: Date.now()
-          };
-          
-          // Salvar no Supabase e localmente
-          saveChanges(storageData);
+            employees
+          }));
           
           return newExpenses;
         });
@@ -443,20 +431,12 @@ export default function App() {
             newProjects[index] = updatedProject;
             
             // Salvar as alterações com os valores de Will preservados
-            const storageData: StorageItems = {
+            saveChanges(createStorageData({
               expenses,
               projects: newProjects,
               stock: stockItems,
-              employees,
-              willBaseRate, // Preservar o valor original
-              willBonus,    // Preservar o valor original
-              lastSync: Date.now()
-            };
-            
-            console.log("Storage data for projects update:", storageData);
-            
-            // Salvar no Supabase e localmente
-            saveChanges(storageData);
+              employees
+            }));
             
             return newProjects;
           } catch (error) {
@@ -475,25 +455,18 @@ export default function App() {
           newStockItems[index] = updatedItem as StockItem;
           
           // Salvar as alterações
-          const storageData: StorageItems = {
+          saveChanges(createStorageData({
             expenses,
             projects,
             stock: newStockItems,
-            employees,
-            willBaseRate, // Preservar o valor original
-            willBonus,    // Preservar o valor original
-            lastSync: Date.now()
-          };
-          
-          // Salvar no Supabase e localmente
-          saveChanges(storageData);
+            employees
+          }));
           
           return newStockItems;
         });
       } else if ('employeeName' in updatedItem) {
         // É um funcionário
         setEmployees(prevEmployees => {
-          // Não permitir alterações no Will através da edição normal de funcionários
           if (updatedItem.name === 'Will' || updatedItem.employeeName === 'Will') {
             console.log("Tentativa de editar Will através da edição normal de funcionários. Ignorando.");
             return prevEmployees;
@@ -509,21 +482,14 @@ export default function App() {
             }
           });
           
-          // Salvar as alterações
-          const storageData: StorageItems = {
+          saveChanges(createStorageData({
             expenses,
             projects,
             stock: stockItems,
             employees: newEmployees,
-            willBaseRate,  // Preservar o valor original
-            willBonus,     // Preservar o valor original
-            lastSync: Date.now()
-          };
-          
-          console.log("Saving employees with Will data preserved:", storageData.willBaseRate, storageData.willBonus);
-          
-          // Salvar no Supabase e localmente
-          saveChanges(storageData);
+            willBaseRate,
+            willBonus
+          }));
           
           return newEmployees;
         });
@@ -545,169 +511,114 @@ export default function App() {
     setIsCalendarOpen(false);
   };
 
-  const handleAddItem = (data: Partial<Item>) => {
-    console.log("Função handleAddItem chamada com dados:", JSON.stringify(data));
-    console.log("Lista selecionada:", selectedList);
-    console.log("Data da semana selecionada:", format(selectedWeekStart, 'yyyy-MM-dd'));
+  const handleAddItem = async (item: any) => {
+    try {
+      if (activeCategory === 'Expenses') {
+        const expense = item as Expense;
+        expense.id = crypto.randomUUID();
+        expense.paid = expense.paid || false;
 
-    // Gerar um ID único para o novo item
-    const id = crypto.randomUUID();
+        // Atualizar o estado
+        setExpenses(prevExpenses => {
+          console.log("Estado atual de expenses:", JSON.stringify(prevExpenses));
+          
+          // Criar uma cópia do objeto com tipagem correta
+          const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
+          
+          // Verificar se a lista existe
+          if (!newExpenses[selectedList]) {
+            console.log(`Lista ${selectedList} não encontrada, inicializando...`);
+            newExpenses[selectedList] = [];
+          }
+          
+          // Adicionar a nova despesa à lista selecionada
+          newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
+          console.log(`Despesa adicionada à lista ${selectedList}:`, JSON.stringify(expense));
+          console.log("Novo estado de expenses:", JSON.stringify(newExpenses));
 
-    if (activeCategory === 'Expenses') {
-      const expense = data as Expense;
-      expense.id = id;
-      expense.paid = expense.paid || false;
+          // Salvar as alterações
+          saveChanges(createStorageData({
+            expenses: newExpenses,
+            projects,
+            stock: stockItems,
+            employees
+          }));
 
-      // Atualizar o estado
-      setExpenses(prevExpenses => {
-        console.log("Estado atual de expenses:", JSON.stringify(prevExpenses));
+          return newExpenses;
+        });
+      } else if (activeCategory === 'Projects') {
+        const project = item as Project;
+        project.id = crypto.randomUUID();
+
+        // Atualizar o estado
+        setProjects(prevProjects => {
+          console.log("Estado atual de projects:", JSON.stringify(prevProjects));
+          
+          const newProjects = [...prevProjects, project];
+          console.log("Projeto adicionado:", JSON.stringify(project));
+          console.log("Novo estado de projects:", JSON.stringify(newProjects));
+
+          // Salvar as alterações
+          saveChanges(createStorageData({
+            expenses,
+            projects: newProjects,
+            stock: stockItems,
+            employees
+          }));
+
+          return newProjects;
+        });
+      } else if (activeCategory === 'Stock') {
+        const stockItem = item as StockItem;
+        stockItem.id = crypto.randomUUID();
+
+        // Atualizar o estado
+        setStockItems(prevStockItems => {
+          console.log("Estado atual de stockItems:", JSON.stringify(prevStockItems));
+          
+          const newStockItems = [...prevStockItems, stockItem];
+          console.log("Item de estoque adicionado:", JSON.stringify(stockItem));
+          console.log("Novo estado de stockItems:", JSON.stringify(newStockItems));
+
+          // Salvar as alterações
+          saveChanges(createStorageData({
+            expenses,
+            projects,
+            stock: newStockItems,
+            employees
+          }));
+
+          return newStockItems;
+        });
+      } else if (activeCategory === 'Employees') {
+        const employee = item as Employee;
+        const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
         
-        // Criar uma cópia do objeto com tipagem correta
-        const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
+        // Inicializar workedDates como array vazio
+        employee.workedDates = [];
+        employee.weekStartDate = weekStartDate;
+        employee.daysWorked = 0;
         
-        // Verificar se a lista existe
-        if (!newExpenses[selectedList]) {
-          console.log(`Lista ${selectedList} não encontrada, inicializando...`);
-          newExpenses[selectedList] = [];
+        // Garantir que o dailyRate seja um número
+        if (typeof employee.dailyRate === 'string') {
+          employee.dailyRate = parseFloat(employee.dailyRate);
+        }
+        if (!employee.dailyRate || isNaN(employee.dailyRate)) {
+          employee.dailyRate = 250;
         }
         
-        // Adicionar a nova despesa à lista selecionada
-        newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
-        console.log(`Despesa adicionada à lista ${selectedList}:`, JSON.stringify(expense));
-        console.log("Novo estado de expenses:", JSON.stringify(newExpenses));
-
-        // Salvar as alterações
-        const storageData: StorageItems = {
-          expenses: newExpenses,
-          projects,
-          stock: stockItems,
-          employees,
-          lastSync: Date.now()
-        };
-
-        console.log("Dados a serem salvos:", JSON.stringify(storageData));
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
-
-        return newExpenses;
-      });
-    } else if (activeCategory === 'Projects') {
-      const project = data as Project;
-      project.id = id;
-
-      // Atualizar o estado
-      setProjects(prevProjects => {
-        console.log("Estado atual de projects:", JSON.stringify(prevProjects));
-        
-        const newProjects = [...prevProjects, project];
-        console.log("Projeto adicionado:", JSON.stringify(project));
-        console.log("Novo estado de projects:", JSON.stringify(newProjects));
-
-        // Salvar as alterações
-        const storageData: StorageItems = {
-          expenses,
-          projects: newProjects,
-          stock: stockItems,
-          employees,
-          lastSync: Date.now()
-        };
-
-        console.log("Dados a serem salvos:", JSON.stringify(storageData));
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
-
-        return newProjects;
-      });
-    } else if (activeCategory === 'Stock') {
-      const stockItem = data as StockItem;
-      stockItem.id = id;
-
-      // Atualizar o estado
-      setStockItems(prevStockItems => {
-        console.log("Estado atual de stockItems:", JSON.stringify(prevStockItems));
-        
-        const newStockItems = [...prevStockItems, stockItem];
-        console.log("Item de estoque adicionado:", JSON.stringify(stockItem));
-        console.log("Novo estado de stockItems:", JSON.stringify(newStockItems));
-
-        // Salvar as alterações
-        const storageData: StorageItems = {
-          expenses,
-          projects,
-          stock: newStockItems,
-          employees,
-          lastSync: Date.now()
-        };
-
-        console.log("Dados a serem salvos:", JSON.stringify(storageData));
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
-
-        return newStockItems;
-      });
-    } else if (activeCategory === 'Employees') {
-      const employee = data as Employee;
-      employee.id = id;
-      
-      // Formatar a data da semana como string no formato yyyy-MM-dd
-      const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
-      employee.weekStartDate = weekStartDate;
-      employee.daysWorked = 0; // Iniciar com zero dias trabalhados
-      
-      // Garantir que o dailyRate seja um número
-      if (typeof employee.dailyRate === 'string') {
-        employee.dailyRate = parseFloat(employee.dailyRate);
+        // Adicionar o funcionário à semana selecionada
+        setEmployees(prevEmployees => {
+          const weekEmployees = prevEmployees[weekStartDate] || [];
+          return {
+            ...prevEmployees,
+            [weekStartDate]: [...weekEmployees, employee]
+          };
+        });
       }
-      
-      // Valor padrão caso não seja fornecido
-      if (!employee.dailyRate || isNaN(employee.dailyRate)) {
-        employee.dailyRate = 250;
-      }
-
-      console.log("Adicionando funcionário com data da semana:", weekStartDate);
-
-      // Atualizar o estado
-      setEmployees(prevEmployees => {
-        console.log("Estado atual de employees:", JSON.stringify(prevEmployees));
-        
-        // Criar uma cópia do objeto
-        const newEmployees = { ...prevEmployees };
-        
-        // Garantir que a chave da semana existe
-        if (!newEmployees[weekStartDate]) {
-          console.log(`Semana ${weekStartDate} não encontrada, inicializando...`);
-          newEmployees[weekStartDate] = [];
-        }
-
-        // Adicionar o novo funcionário à semana atual
-        newEmployees[weekStartDate] = [...(newEmployees[weekStartDate] || []), employee];
-        
-        console.log(`Funcionário adicionado à semana ${weekStartDate}:`, JSON.stringify(employee));
-        console.log("Novo estado de employees:", JSON.stringify(newEmployees));
-
-        // Salvar as alterações
-        const storageData: StorageItems = {
-          expenses,
-          projects,
-          stock: stockItems,
-          employees: newEmployees,
-          lastSync: Date.now()
-        };
-
-        console.log("Dados a serem salvos:", JSON.stringify(storageData));
-        
-        // Salvar no Supabase e localmente
-        saveChanges(storageData);
-
-        return newEmployees;
-      });
+    } catch (error) {
+      console.error('Error adding item:', error);
     }
-
-    // Fechar o diálogo após adicionar o item
-    setIsAddDialogOpen(false);
   };
 
   const handleListSelect = (value: ListName) => {
@@ -720,11 +631,11 @@ export default function App() {
     storageData.stock = stockItems;
     storageData.employees = employees;
     
-    saveChanges(storageData);
+    saveChanges(createStorageData(storageData));
   };
 
   const handleEmployeeSelect = (value: EmployeeName) => {
-    setSelectedEmployee(value);
+    setSelectedEmployeeName(value);
     
     const storageData = getData();
     storageData.expenses = expenses;
@@ -732,7 +643,7 @@ export default function App() {
     storageData.stock = stockItems;
     storageData.employees = employees;
     
-    saveChanges(storageData);
+    saveChanges(createStorageData(storageData));
   };
 
   const handleAddDay = (employeeId: string, weekStartDate: string) => {
@@ -744,8 +655,7 @@ export default function App() {
     if (employeeIndex >= 0) {
       weekEmployees[employeeIndex] = {
         ...weekEmployees[employeeIndex],
-        daysWorked: weekEmployees[employeeIndex].daysWorked + 1,
-        workedDates: [...(weekEmployees[employeeIndex].workedDates || []), today]
+        daysWorked: weekEmployees[employeeIndex].daysWorked + 1
       };
     } else {
       const employeeFromWeek = weekEmployees.find((e: Employee) => e.id === employeeId);
@@ -753,8 +663,7 @@ export default function App() {
         weekEmployees.push({
           ...employeeFromWeek,
           weekStartDate,
-          daysWorked: 1,
-          workedDates: [today]
+          daysWorked: 1
         });
       }
     }
@@ -762,17 +671,12 @@ export default function App() {
     updatedEmployees[weekStartDate] = weekEmployees;
     setEmployees(updatedEmployees);
     
-    const storageData: StorageItems = {
+    saveChanges(createStorageData({
       expenses,
       projects,
       stock: stockItems,
-      employees: updatedEmployees,
-      willBaseRate,
-      willBonus,
-      lastSync: Date.now()
-    };
-    
-    saveChanges(storageData);
+      employees: updatedEmployees
+    }));
   };
 
   const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
@@ -815,7 +719,7 @@ export default function App() {
           willBaseRate: storageData.willBaseRate,  // Preservar o valor original
           willBonus: storageData.willBonus  // Preservar o valor original
         };
-        saveChanges(updatedStorageData);
+        saveChanges(createStorageData(updatedStorageData));
       }
       
       return newEmployees;
@@ -831,7 +735,7 @@ export default function App() {
       const storageData = getData();
       storageData.willBaseRate = 200;
       storageData.willBonus = 0;
-      saveChanges(storageData);
+      saveChanges(createStorageData(storageData));
     }, 0);
   };
 
@@ -843,7 +747,7 @@ export default function App() {
     storageData.willBonus = willBonus;
     
     // Salvar todas as alterações
-    saveChanges(storageData);
+    saveChanges(createStorageData(storageData));
   };
 
   // Modificar a função que adiciona bônus ao Will
@@ -856,7 +760,14 @@ export default function App() {
         storageData.willBaseRate = willBaseRate;
         storageData.willBonus = newBonus;
         console.log('Salvando bônus atualizado:', newBonus);
-        saveChanges(storageData);
+        saveChanges(createStorageData({
+          expenses: storageData.expenses,
+          projects: storageData.projects,
+          stock: storageData.stock,
+          employees: storageData.employees,
+          willBaseRate,
+          willBonus: newBonus
+        }));
       }, 0);
       return newBonus;
     });
@@ -878,7 +789,14 @@ export default function App() {
       storageData.willBaseRate = newBaseRate;
       storageData.willBonus = willBonus;
       console.log('Salvando taxa base atualizada:', newBaseRate);
-      saveChanges(storageData);
+      saveChanges(createStorageData({
+        expenses: storageData.expenses,
+        projects: storageData.projects,
+        stock: storageData.stock,
+        employees: storageData.employees,
+        willBaseRate: newBaseRate,
+        willBonus
+      }));
     }, 0);
   };
 
@@ -1112,110 +1030,165 @@ export default function App() {
     setFilterDate(null);
   };
 
+  // Adicionar função para atualizar as datas trabalhadas
+  const handleUpdateWorkedDates = (employeeId: string, dates: string[]) => {
+    setEmployees(prevEmployees => {
+      const newEmployees = { ...prevEmployees };
+      const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+      
+      // Verificar se a semana existe
+      if (!newEmployees[formattedSelectedWeekStart]) {
+        console.error(`Semana ${formattedSelectedWeekStart} não encontrada`);
+        return prevEmployees;
+      }
+      
+      // Encontrar o funcionário na semana
+      const employeeIndex = newEmployees[formattedSelectedWeekStart].findIndex(e => e.id === employeeId);
+      
+      if (employeeIndex === -1) {
+        console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${formattedSelectedWeekStart}`);
+        return prevEmployees;
+      }
+      
+      // Atualizar as datas trabalhadas e o número de dias
+      const updatedEmployee = { ...newEmployees[formattedSelectedWeekStart][employeeIndex] };
+      updatedEmployee.workedDates = dates;
+      updatedEmployee.daysWorked = dates.length;
+      
+      // Atualizar a lista de funcionários
+      newEmployees[formattedSelectedWeekStart] = [
+        ...newEmployees[formattedSelectedWeekStart].slice(0, employeeIndex),
+        updatedEmployee,
+        ...newEmployees[formattedSelectedWeekStart].slice(employeeIndex + 1)
+      ];
+      
+      // Salvar no Supabase e localmente
+      const storageData = getData();
+      if (storageData) {
+        const updatedStorageData = {
+          ...storageData,
+          employees: newEmployees,
+          willBaseRate: storageData.willBaseRate,
+          willBonus: storageData.willBonus
+        };
+        saveChanges(createStorageData(updatedStorageData));
+      }
+      
+      return newEmployees;
+    });
+  };
+
+  // Função para abrir o calendário de dias trabalhados
+  const openWorkDaysCalendar = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsCalendarDialogOpen(true);
+  };
+
   return (
     <>
-    <div className="min-h-screen bg-gray-50">
-      <Header activeCategory={activeCategory} />
-      <Navigation
-        activeCategory={activeCategory}
-        onCategoryChange={setActiveCategory}
-      />
-      
-      <div className="pt-[170px]">
-        {(activeCategory === 'Expenses') && (
-          <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
-            <div className="relative max-w-[800px] mx-auto pb-2">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
-            >
-                <span className="text-gray-700 font-medium">
-                  {selectedList}
-                </span>
-              <ChevronDown
-                className={`w-5 h-5 text-gray-500 transition-transform ${
-                  isDropdownOpen ? 'transform rotate-180' : ''
-                }`}
-              />
-            </button>
-            
-            {isDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-35">
-                <button
-                  onClick={() => handleListSelect('Carlos')}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                  }`}
-                >
-                  Carlos
-                </button>
-                <button
-                  onClick={() => handleListSelect('Diego')}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                  }`}
-                >
-                  Diego
-                </button>
-                <button
-                  onClick={() => handleListSelect('C&A')}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                  }`}
-                >
-                  C&A
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <div className="min-h-screen bg-gray-50">
+        <Header activeCategory={activeCategory} />
+        <Navigation
+          activeCategory={activeCategory}
+          onCategoryChange={setActiveCategory}
+        />
         
-        {(activeCategory === 'Projects') && (
-          <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
-            <div className="relative max-w-[800px] mx-auto pb-4">
-              <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                <ProjectWeekSelector 
-                  selectedWeekStart={selectedWeekStart}
-                  onWeekChange={handleProjectWeekChange}
-                />
-                <div className="flex items-center">
-                  <span className="text-gray-700 font-medium mr-2">Total:</span>
-                  <span className="text-[#5ABB37] text-xl font-bold">
-                    ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
+        <div className="pt-[170px]">
+          {(activeCategory === 'Expenses') && (
+            <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
+              <div className="relative max-w-[800px] mx-auto pb-2">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
+                >
+                    <span className="text-gray-700 font-medium">
+                      {selectedList}
+                    </span>
+                  <ChevronDown
+                    className={`w-5 h-5 text-gray-500 transition-transform ${
+                      isDropdownOpen ? 'transform rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                
+                {isDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-35">
+                    <button
+                      onClick={() => handleListSelect('Carlos')}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                      }`}
+                    >
+                      Carlos
+                    </button>
+                    <button
+                      onClick={() => handleListSelect('Diego')}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                      }`}
+                    >
+                      Diego
+                    </button>
+                    <button
+                      onClick={() => handleListSelect('C&A')}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                      }`}
+                    >
+                      C&A
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {(activeCategory === 'Projects') && (
+            <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
+              <div className="relative max-w-[800px] mx-auto pb-2">
+                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
+                  <ProjectWeekSelector 
+                    selectedWeekStart={selectedWeekStart}
+                    onWeekChange={handleProjectWeekChange}
+                  />
+                  <div className="flex items-center">
+                    <span className="text-gray-700 font-medium text-xs">Total:</span>
+                    <span className="text-[#5ABB37] text-base font-bold ml-1">
+                      ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-        
-        {(activeCategory === 'Stock') && (
-          <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
-            {/* Conteúdo do Stock */}
-          </div>
-        )}
-        
-        {(activeCategory === 'Employees') && (
-          <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50 mb-4">
-            <div className="relative max-w-[800px] mx-auto pb-4">
-              <div className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                <WeekSelector 
-                  selectedWeekStart={selectedWeekStart}
-                  onWeekChange={handleWeekChange}
-                />
-                <div className="flex items-center">
-                  <span className="text-gray-700 font-medium mr-2">Total:</span>
-                  <span className="text-[#5ABB37] text-xl font-bold">
-                    ${calculateEmployeesTotal().toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
+          )}
+          
+          {(activeCategory === 'Stock') && (
+            <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50">
+              {/* Conteúdo do Stock */}
+            </div>
+          )}
+          
+          {(activeCategory === 'Employees') && (
+            <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
+              <div className="relative max-w-[800px] mx-auto pb-2">
+                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
+                  <WeekSelector 
+                    selectedWeekStart={selectedWeekStart}
+                    onWeekChange={handleWeekChange}
+                  />
+                  <div className="flex items-center">
+                    <span className="text-gray-700 font-medium text-xs">Total:</span>
+                    <span className="text-[#5ABB37] text-base font-bold ml-1">
+                      ${calculateEmployeesTotal().toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
               </div>
-          </div>
+            </div>
+          )}
         </div>
-      )}
-      
-      <main className="px-4 pb-20">
+        
+        <main className="px-4 pb-20">
           <div 
             className="max-w-[800px] mx-auto relative z-0 hide-scrollbar main-list-container" 
           >
@@ -1332,8 +1305,7 @@ export default function App() {
                     
                     // Filtrar funcionários que devem ser exibidos na semana selecionada
                     const filteredEmployees = allEmployees.filter(employee => 
-                      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd) && 
-                      didEmployeeWorkOnDate(employee)
+                      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd)
                     );
                     
                     // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
@@ -1383,10 +1355,17 @@ export default function App() {
                                   <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
                                   <div className="flex items-center gap-1.5">
                                     <button
-                                      onClick={() => handleAddDay(employee.id, formattedSelectedWeekStart)}
+                                      onClick={() => {
+                                        // Abrir diretamente o calendário de dias trabalhados
+                                        const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+                                        const weekEmployee = weekEmployees.find(e => e.id === employee.id) || employee;
+                                        
+                                        // Usar a função para abrir o calendário
+                                        openWorkDaysCalendar(weekEmployee);
+                                      }}
                                       className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
                                     >
-                                      +1 Day
+                                      Days Worked
                                     </button>
                                     <button
                                       onClick={() => handleResetEmployee(employee.id, formattedSelectedWeekStart)}
@@ -1401,10 +1380,10 @@ export default function App() {
                                     <span className="text-gray-700 text-sm">Days Worked:</span>
                                     <span className="text-xl font-bold text-gray-900">{daysWorked}</span>
                                   </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-gray-700 text-sm">Amount to Receive:</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-gray-700 text-sm">Valor a Receber:</span>
                                     <span className="text-xl font-bold text-[#5ABB37]">
-                                      $ {((daysWorked * (employee.dailyRate || 250))).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                      R$ {(daysWorked * (employee.dailyRate || 250)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-between">
@@ -1426,10 +1405,9 @@ export default function App() {
                 </>
               )}
             </ul>
-        </div>
-      </main>
+          </div>
+        </main>
       </div>
-    </div>
 
       {/* Mostrar o CalendarButton apenas nos menus relevantes */}
       {activeCategory !== 'Stock' && (
@@ -1467,7 +1445,7 @@ export default function App() {
                 <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-    </div>
+              </div>
               <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
             </div>
           </Dialog.Content>
@@ -1534,10 +1512,42 @@ export default function App() {
         isOpen={isCalendarOpen}
         onOpenChange={setIsCalendarOpen}
       />
+
+      {/* Adicionar modal para o calendário de dias trabalhados */}
+      {selectedEmployee && (
+        <Dialog.Root open={isCalendarDialogOpen} onOpenChange={setIsCalendarDialogOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+            <Dialog.Content 
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl w-[90%] max-w-md z-50"
+              onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+            >
+              <div className="flex justify-between items-center mb-2">
+                <Dialog.Title className="text-lg font-semibold">
+                  {selectedEmployee.name}
+                </Dialog.Title>
+                <Dialog.Close className="text-gray-400 hover:text-gray-600">
+                  <X className="w-5 h-5" />
+                </Dialog.Close>
+              </div>
+              
+              <WorkDaysCalendar
+                employeeId={selectedEmployee.id}
+                initialWorkedDates={selectedEmployee.workedDates || []}
+                onDateToggle={(date: string) => {
+                  handleUpdateWorkedDates(selectedEmployee.id, 
+                    selectedEmployee.workedDates?.includes(date)
+                      ? (selectedEmployee.workedDates || []).filter(d => d !== date)
+                      : [...(selectedEmployee.workedDates || []), date]
+                  );
+                }}
+              />
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      )}
     </>
   );
 }
 
 // Branch Deploy: main@7cc2f34
-
-// ... existing code ...
