@@ -975,18 +975,48 @@ export default function App() {
       const newEmployees = { ...prevEmployees };
       const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
       
-      // Verificar se a semana existe
+      // Verificar se a semana existe, se não, criar
       if (!newEmployees[formattedSelectedWeekStart]) {
-        console.error(`Semana ${formattedSelectedWeekStart} não encontrada`);
-        return prevEmployees;
+        newEmployees[formattedSelectedWeekStart] = [];
       }
       
       // Encontrar o funcionário na semana
-      const employeeIndex = newEmployees[formattedSelectedWeekStart].findIndex(e => e.id === employeeId);
+      let employeeIndex = newEmployees[formattedSelectedWeekStart].findIndex(e => e.id === employeeId);
       
+      // Se não encontrar o funcionário na semana atual, precisamos criá-lo
       if (employeeIndex === -1) {
-        console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${formattedSelectedWeekStart}`);
-        return prevEmployees;
+        console.log(`Funcionário com ID ${employeeId} não encontrado na semana ${formattedSelectedWeekStart}. Procurando em outras semanas...`);
+        
+        // Procurar o funcionário em todas as semanas
+        let employeeFromOtherWeek: Employee | undefined;
+        
+        Object.keys(newEmployees).forEach(weekKey => {
+          const found = newEmployees[weekKey].find(e => e.id === employeeId);
+          if (found && !employeeFromOtherWeek) {
+            employeeFromOtherWeek = found;
+          }
+        });
+        
+        if (employeeFromOtherWeek) {
+          console.log(`Funcionário encontrado em outra semana. Copiando para a semana atual.`);
+          
+          // Criar uma cópia do funcionário para a semana atual
+          const newEmployee: Employee = {
+            ...employeeFromOtherWeek,
+            weekStartDate: formattedSelectedWeekStart,
+            workedDates: [], // Inicializar com array vazio
+            daysWorked: 0    // Inicializar com zero dias trabalhados
+          };
+          
+          // Adicionar o funcionário à semana atual
+          newEmployees[formattedSelectedWeekStart].push(newEmployee);
+          
+          // Atualizar o índice do funcionário
+          employeeIndex = newEmployees[formattedSelectedWeekStart].length - 1;
+        } else {
+          console.error(`Funcionário com ID ${employeeId} não encontrado em nenhuma semana.`);
+          return prevEmployees;
+        }
       }
       
       // Atualizar as datas trabalhadas e o número de dias
@@ -1019,13 +1049,55 @@ export default function App() {
 
   // Função para abrir o calendário de dias trabalhados
   const openWorkDaysCalendar = (employee: Employee) => {
-    setSelectedEmployee(employee);
+    // Encontrar as datas trabalhadas do funcionário na semana atual
+    const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+    const weekEmployees = employees[formattedSelectedWeekStart] || [];
+    const weekEmployee = weekEmployees.find(e => e.id === employee.id);
+    
+    // Se o funcionário não tem registro para esta semana, usar seus dados originais
+    const employeeToUse = weekEmployee || {
+      ...employee,
+      workedDates: employee.workedDates || []
+    };
+    
+    setSelectedEmployee(employeeToUse);
     setIsCalendarDialogOpen(true);
   };
 
   // Função para abrir o recibo
   const openReceipt = (employee: Employee) => {
-    setReceiptEmployee(employee);
+    // Encontrar as datas trabalhadas do funcionário na semana atual 
+    const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+    const weekEmployees = employees[formattedSelectedWeekStart] || [];
+    const weekEmployee = weekEmployees.find(e => e.id === employee.id);
+    
+    // Se o funcionário já tem dias trabalhados específicos para esta semana
+    if (weekEmployee && weekEmployee.workedDates && weekEmployee.workedDates.length > 0) {
+      setReceiptEmployee(weekEmployee);
+    } else {
+      // Se não tem registro específico, filtrar datas trabalhadas que estão na semana atual
+      let workedDatesInWeek: string[] = [];
+      
+      if (employee.workedDates) {
+        const weekStart = selectedWeekStart;
+        const weekEnd = selectedWeekEnd;
+        
+        workedDatesInWeek = employee.workedDates.filter(dateStr => {
+          const date = new Date(dateStr);
+          return date >= weekStart && date <= weekEnd;
+        });
+      }
+      
+      // Criar uma cópia do funcionário com apenas as datas desta semana
+      const employeeWithWeekDates = {
+        ...employee,
+        workedDates: workedDatesInWeek,
+        daysWorked: workedDatesInWeek.length
+      };
+      
+      setReceiptEmployee(employeeWithWeekDates);
+    }
+    
     setIsReceiptDialogOpen(true);
   };
 
@@ -1292,7 +1364,27 @@ export default function App() {
                       filteredEmployees.forEach(employee => {
                         // Encontrar o registro específico do funcionário para a semana selecionada
                         const weekEmployee = weekEmployees.find(e => e.id === employee.id);
-                        const daysWorked = weekEmployee ? weekEmployee.daysWorked : 0;
+                        
+                        // Calcular dias trabalhados para a semana atual
+                        let daysWorked = 0;
+                        let workedDatesInWeek: string[] = [];
+                        
+                        if (weekEmployee) {
+                          // Se o funcionário tem registro para esta semana, usar os dados desse registro
+                          daysWorked = weekEmployee.daysWorked || 0;
+                          workedDatesInWeek = weekEmployee.workedDates || [];
+                        } else if (employee.workedDates) {
+                          // Se não tem registro específico, filtrar datas trabalhadas que estão na semana atual
+                          const weekStart = selectedWeekStart;
+                          const weekEnd = selectedWeekEnd;
+                          
+                          workedDatesInWeek = employee.workedDates.filter(dateStr => {
+                            const date = new Date(dateStr);
+                            return date >= weekStart && date <= weekEnd;
+                          });
+                          
+                          daysWorked = workedDatesInWeek.length;
+                        }
                         
                         employeeElements.push(
                           <li key={employee.id} className="list-none">
@@ -1306,12 +1398,8 @@ export default function App() {
                                   <div className="flex items-center gap-1.5">
                                     <button
                                       onClick={() => {
-                                        // Abrir diretamente o calendário de dias trabalhados
-                                        const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-                                        const weekEmployee = weekEmployees.find(e => e.id === employee.id) || employee;
-                                        
                                         // Usar a função para abrir o calendário
-                                        openWorkDaysCalendar(weekEmployee);
+                                        openWorkDaysCalendar(employee);
                                       }}
                                       className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
                                     >
@@ -1319,12 +1407,12 @@ export default function App() {
                                     </button>
                                     <button
                                       onClick={() => {
-                                        // Abrir o recibo do funcionário
-                                        const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-                                        const weekEmployee = weekEmployees.find(e => e.id === employee.id) || employee;
-                                        
                                         // Usar a função para abrir o recibo
-                                        openReceipt(weekEmployee);
+                                        openReceipt({
+                                          ...employee,
+                                          daysWorked,
+                                          workedDates: workedDatesInWeek
+                                        });
                                       }}
                                       className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors h-8"
                                     >
