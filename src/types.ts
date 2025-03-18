@@ -42,23 +42,12 @@ export interface StockItem {
 export interface Employee {
   id: string;
   name: string;
-  employeeName: string;
-  role?: string;
-  startDate: string;
+  dailyRate: number;
+  employeeName?: string;
   weekStartDate: string;
   daysWorked: number;
-  dailyRate: number;
-  phone?: string;
-  email?: string;
-  notes?: string;
   workedDates?: string[];
-  monthlyWorkDays?: {
-    [key: string]: {
-      date: string;
-      hours: number;
-      notes?: string;
-    }[];
-  };
+  category: 'Employees';
 }
 
 export type Item = Expense | Project | StockItem | Employee;

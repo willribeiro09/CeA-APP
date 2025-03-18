@@ -813,10 +813,7 @@ export default function App() {
   };
 
   // Função para verificar se um funcionário deve ser exibido na semana selecionada
-  const shouldShowEmployeeInWeek = (employee: Employee) => {
-    // Sempre retorna true pois todos os funcionários devem ser mostrados
-    return true;
-  };
+  const shouldShowEmployeeInWeek = () => true;
 
   const calculateEmployeesTotal = () => {
     let total = 0;
@@ -975,7 +972,7 @@ export default function App() {
       const newEmployees = { ...prevEmployees };
       const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
       
-      // Verificar se a semana existe, se não, criar
+      // Verificar se a semana existe, se não, criá-la
       if (!newEmployees[formattedSelectedWeekStart]) {
         newEmployees[formattedSelectedWeekStart] = [];
       }

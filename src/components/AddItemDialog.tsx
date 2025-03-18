@@ -95,7 +95,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       itemData = {
         name: data.name as string,
         employeeName: data.name as string,
-        startDate: startDate.toISOString(),
         weekStartDate: selectedWeekStart?.toISOString() || new Date().toISOString(),
         daysWorked: 0,
         dailyRate: parseFloat(data.dailyRate as string) || 250,
@@ -338,21 +337,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     id="name"
                     name="name"
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    defaultValue={new Date().toISOString().split('T')[0]}
-                    required
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>

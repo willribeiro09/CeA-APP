@@ -142,14 +142,16 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else if (item && 'employeeName' in item) {
       // É um funcionário
+      console.log("Formatando dados de funcionário:", data);
+      
       itemData = {
         ...item,
+        id: (item as Employee).id,
         name: data.name as string,
-        employeeName: data.name as string,
         dailyRate: parseFloat(data.dailyRate as string) || 250,
         category: 'Employees'
       };
-      console.log("Dados de funcionário formatados:", itemData);
+      console.log("Dados de funcionário formatados para edição:", itemData);
       validationError = validation.employee(itemData as Partial<Employee>);
     } else {
       console.error("Categoria de item desconhecida");
