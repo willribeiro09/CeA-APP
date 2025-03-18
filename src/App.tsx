@@ -813,37 +813,9 @@ export default function App() {
   };
 
   // Função para verificar se um funcionário deve ser exibido na semana selecionada
-  const shouldShowEmployeeInWeek = (employee: Employee, weekStart: Date, weekEnd: Date) => {
-    // Se o funcionário não tem data de início, sempre mostrar
-    if (!employee.startDate) return true;
-    
-    // Converter a data de início do funcionário para um objeto Date e resetar o horário
-    const employeeStartDate = new Date(employee.startDate);
-    employeeStartDate.setHours(0, 0, 0, 0);
-    
-    // Criar cópias das datas de início e fim da semana com horário resetado para comparação justa
-    const weekStartCopy = new Date(weekStart);
-    weekStartCopy.setHours(0, 0, 0, 0);
-    
-    const weekEndCopy = new Date(weekEnd);
-    weekEndCopy.setHours(23, 59, 59, 999);
-    
-    // Ajustar a data de início da semana para garantir que a segunda-feira seja incluída
-    // Isso é necessário porque pode haver problemas de fuso horário ou arredondamento
-    const adjustedWeekStart = new Date(weekStartCopy);
-    adjustedWeekStart.setHours(0, 0, 0, 0);
-    
-    // Verificar se a data de início do funcionário está dentro do intervalo da semana selecionada
-    // (entre segunda e sábado daquela semana)
-    const isInWeek = employeeStartDate >= adjustedWeekStart && employeeStartDate <= weekEndCopy;
-    
-    console.log(`Verificando funcionário: ${employee.name}`);
-    console.log(`Data de início do funcionário: ${employeeStartDate.toISOString()}`);
-    console.log(`Início da semana ajustado: ${adjustedWeekStart.toISOString()}`);
-    console.log(`Fim da semana: ${weekEndCopy.toISOString()}`);
-    console.log(`Está na semana? ${isInWeek}`);
-    
-    return isInWeek;
+  const shouldShowEmployeeInWeek = (employee: Employee) => {
+    // Sempre retorna true pois todos os funcionários devem ser mostrados
+    return true;
   };
 
   const calculateEmployeesTotal = () => {
@@ -860,15 +832,13 @@ export default function App() {
       });
     });
     
-    // Filtrar funcionários que devem ser exibidos na semana selecionada
-    const filteredEmployees = allEmployees.filter(employee => 
-      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd)
-    );
+    // Não filtra mais por semana, mostra todos os funcionários
+    const filteredEmployees = allEmployees;
     
     // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
-    
+
     // Calcular o total
     filteredEmployees.forEach(employee => {
       // Encontrar o registro específico do funcionário para a semana selecionada
@@ -1285,10 +1255,8 @@ export default function App() {
                       });
                     });
                     
-                    // Filtrar funcionários que devem ser exibidos na semana selecionada
-                    const filteredEmployees = allEmployees.filter(employee => 
-                      shouldShowEmployeeInWeek(employee, selectedWeekStart, selectedWeekEnd)
-                    );
+                    // Não filtra mais por semana, mostra todos os funcionários
+                    const filteredEmployees = allEmployees;
                     
                     // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
                     const weekEmployees = employees[formattedSelectedWeekStart] || [];
