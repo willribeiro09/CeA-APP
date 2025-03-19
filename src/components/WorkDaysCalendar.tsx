@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
 import { enUS } from 'date-fns/locale';
+import { diagnoseFusoHorario, normalizeEmployeeDate } from '../lib/dateUtils';
 
 interface WorkDaysCalendarProps {
   employeeId: string;
@@ -26,7 +27,18 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   }, [initialWorkedDates]);
 
   const handleDateClick = (date: Date) => {
+    // Diagnosticar a data original
+    console.log("Data selecionada no calendário: ", format(date, 'yyyy-MM-dd'));
+    diagnoseFusoHorario("WorkDaysCalendar - Data Clicada Original", date);
+    
+    // Normalizar a data usando a função específica para funcionários
+    const normalizedDate = normalizeEmployeeDate(date);
+    diagnoseFusoHorario("WorkDaysCalendar - Data Clicada Normalizada", normalizedDate);
+    
+    // Usar a data já formatada pela function format do date-fns
     const formattedDate = format(date, 'yyyy-MM-dd');
+    console.log("Data formatada para toggle: ", formattedDate);
+    
     const newDates = workedDates.includes(formattedDate)
       ? workedDates.filter(d => d !== formattedDate)
       : [...workedDates, formattedDate];
