@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { diagnoseFusoHorario, normalizeEmployeeDate } from '../lib/dateUtils';
+import { normalizeEmployeeDate, formatDateToISO } from '../lib';
 
 interface WorkDaysCalendarProps {
   employeeId: string;
@@ -29,15 +29,15 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   const handleDateClick = (date: Date) => {
     // Diagnosticar a data original
     console.log("Data selecionada no calendário: ", format(date, 'yyyy-MM-dd'));
-    diagnoseFusoHorario("WorkDaysCalendar - Data Clicada Original", date);
     
     // Normalizar a data usando a função específica para funcionários
     const normalizedDate = normalizeEmployeeDate(date);
-    diagnoseFusoHorario("WorkDaysCalendar - Data Clicada Normalizada", normalizedDate);
+    console.log("Data normalizada: ", normalizedDate.toISOString());
     
-    // Usar a data já formatada pela function format do date-fns
-    const formattedDate = format(date, 'yyyy-MM-dd');
-    console.log("Data formatada para toggle: ", formattedDate);
+    // CORREÇÃO: Agora estamos usando a data normalizada para formatação
+    // Formatamos usando a função formatDateToISO do nosso módulo dateUtils
+    const formattedDate = formatDateToISO(normalizedDate);
+    console.log("Data formatada para toggle após normalização: ", formattedDate);
     
     const newDates = workedDates.includes(formattedDate)
       ? workedDates.filter(d => d !== formattedDate)
@@ -106,7 +106,9 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
 
       <div className="grid grid-cols-7 gap-1">
         {daysInMonth.map(day => {
-          const formattedDate = format(day, 'yyyy-MM-dd');
+          // CORREÇÃO: Normalizar cada data do calendário antes de comparar com as datas trabalhadas
+          const normalizedDay = normalizeEmployeeDate(day);
+          const formattedDate = formatDateToISO(normalizedDay);
           // Garantir que workedDates existe antes de chamar includes
           const isWorked = Array.isArray(workedDates) && workedDates.includes(formattedDate);
           

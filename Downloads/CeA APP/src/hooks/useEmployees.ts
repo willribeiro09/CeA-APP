@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Employee } from '../types';
 import { getData, saveData } from '../utils/storageUtils';
+import { normalizeEmployeeDate, formatDateToISO } from '../lib/dateUtils';
 
 /**
  * Hook para gerenciar os funcionários
@@ -56,18 +57,30 @@ export function useEmployees() {
       // Cria um novo objeto para evitar mutação do estado anterior
       const updatedEmployees = { ...prevEmployees };
       
-      // Incrementa os dias trabalhados
-      updatedEmployees[week][employeeIndex] = {
-        ...updatedEmployees[week][employeeIndex],
-        daysWorked: updatedEmployees[week][employeeIndex].daysWorked + 1
-      };
+      // Normaliza a data atual
+      const today = new Date();
+      const normalizedDate = normalizeEmployeeDate(today);
+      const formattedDate = formatDateToISO(normalizedDate);
       
-      // Salva as alterações no armazenamento local
-      const data = getData();
-      saveData({
-        ...data,
-        employees: updatedEmployees
-      });
+      // Atualiza o funcionário com a nova data trabalhada
+      const employee = updatedEmployees[week][employeeIndex];
+      const workedDates = employee.workedDates || [];
+      
+      // Verifica se a data já existe
+      if (!workedDates.includes(formattedDate)) {
+        updatedEmployees[week][employeeIndex] = {
+          ...employee,
+          workedDates: [...workedDates, formattedDate],
+          daysWorked: workedDates.length + 1
+        };
+        
+        // Salva as alterações no armazenamento local
+        const data = getData();
+        saveData({
+          ...data,
+          employees: updatedEmployees
+        });
+      }
       
       return updatedEmployees;
     });

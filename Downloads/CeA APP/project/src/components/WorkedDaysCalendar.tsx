@@ -3,6 +3,7 @@ import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 import { Calendar as CalendarIcon, X } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import 'react-day-picker/dist/style.css';
+import { normalizeEmployeeDate, formatDateToISO } from '../lib/dateUtils';
 
 interface WorkedDaysCalendarProps {
   workedDates: string[];
@@ -56,19 +57,31 @@ export function WorkedDaysCalendar({
     // Prevent future dates from being selected
     if (date > today) return;
     
-    const formattedDate = format(date, 'yyyy-MM-dd');
+    // Normalizar a data usando a função específica para funcionários
+    const normalizedDate = normalizeEmployeeDate(date);
+    const formattedDate = formatDateToISO(normalizedDate);
+    
+    console.log(`Data selecionada: ${date.toISOString()}`);
+    console.log(`Data normalizada: ${normalizedDate.toISOString()}`);
+    console.log(`Data formatada: ${formattedDate}`);
     
     // Use a more precise comparison to prevent multiple selections
     if (isDateSelected(date)) {
       // Remove the date if already selected
       const newDates = selectedDates.filter(d => !isSameDay(d, date));
       setSelectedDates(newDates);
-      onDatesChange(newDates.map(d => format(d, 'yyyy-MM-dd')));
+      onDatesChange(newDates.map(d => {
+        const normalized = normalizeEmployeeDate(d);
+        return formatDateToISO(normalized);
+      }));
     } else {
       // Add the date if not selected
       const newDates = [...selectedDates, date];
       setSelectedDates(newDates);
-      onDatesChange(newDates.map(d => format(d, 'yyyy-MM-dd')));
+      onDatesChange(newDates.map(d => {
+        const normalized = normalizeEmployeeDate(d);
+        return formatDateToISO(normalized);
+      }));
     }
   };
 

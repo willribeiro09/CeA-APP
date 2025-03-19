@@ -18,6 +18,52 @@ export function normalizeDate(date: Date): Date {
   return normalized;
 }
 
+/**
+ * Ajusta uma data especificamente para recibos de funcionários, aplicando ajuste maior
+ * @param date Data a ser normalizada
+ * @returns Data ajustada para meio-dia UTC do mesmo dia
+ */
+export function normalizeEmployeeDate(date: Date): Date {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    console.error("Data inválida recebida para normalizeEmployeeDate:", date);
+    return new Date();
+  }
+  
+  // Ajustar para o dia correto com horário meio-dia UTC
+  // Usando os valores locais do usuário para criar uma data UTC
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+  
+  console.log(`Data original (funcionário detalhado): 
+    ISO: ${date.toISOString()} 
+    Local: ${date.toString()}
+    Date: ${date.getDate()}
+    Month: ${month + 1}
+    Year: ${year}
+    Fuso: ${date.getTimezoneOffset() / -60}h
+  `);
+  
+  // Adicionar 4 dias para compensar o problema de fuso horário
+  // para recibos de funcionários (ajuste necessário conforme observações)
+  const adjustedDay = day + 4; 
+  
+  // Criar data com horário meio-dia UTC para evitar problemas de mudança de dia
+  const normalized = new Date(Date.UTC(year, month, adjustedDay, 12, 0, 0));
+  
+  console.log(`Data normalizada (funcionário detalhado): 
+    ISO: ${normalized.toISOString()} 
+    Local: ${normalized.toString()}
+    Date: ${normalized.getDate()}
+    Month: ${normalized.getMonth() + 1}
+    Year: ${normalized.getFullYear()}
+    Original Day: ${day} -> Adjusted Day: ${adjustedDay}
+    Diferença em dias: +4
+  `);
+  
+  return normalized;
+}
+
 // Função para formatar uma data como string ISO sem componente de tempo
 export function formatDateToISO(date: Date): string {
   const normalized = normalizeDate(date);

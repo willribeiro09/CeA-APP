@@ -27,6 +27,7 @@ import { WeekSelector } from './components/WeekSelector';
 import { ProjectWeekSelector } from './components/ProjectWeekSelector';
 import EmployeeReceipt from './components/EmployeeReceipt';
 import WorkDaysCalendar from './components/WorkDaysCalendar';
+import { normalizeDate, formatDateToISO } from './lib/dateUtils';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -1017,9 +1018,21 @@ export default function App() {
       }
       
       // Atualizar as datas trabalhadas e o número de dias
-      const updatedEmployee = { ...newEmployees[formattedSelectedWeekStart][employeeIndex] };
-      updatedEmployee.workedDates = dates;
-      updatedEmployee.daysWorked = dates.length;
+      const updatedEmployee = { 
+        ...newEmployees[formattedSelectedWeekStart][employeeIndex],
+        workedDates: newEmployees[formattedSelectedWeekStart][employeeIndex].workedDates || []
+      };
+      
+      // Normalizar a data atual antes de adicionar
+      const today = new Date();
+      const normalizedDate = normalizeDate(today);
+      const formattedDate = formatDateToISO(normalizedDate);
+      
+      // Verificar se a data já existe
+      if (!updatedEmployee.workedDates.includes(formattedDate)) {
+        updatedEmployee.workedDates = [...updatedEmployee.workedDates, formattedDate];
+        updatedEmployee.daysWorked = updatedEmployee.workedDates.length;
+      }
       
       // Atualizar a lista de funcionários
       newEmployees[formattedSelectedWeekStart] = [
@@ -1103,6 +1116,94 @@ export default function App() {
     const start = format(startDate, 'MM/dd');
     const end = format(endDate, 'MM/dd');
     return `${start} - ${end}`;
+  };
+
+  const handleAddDay = (employeeId: string, weekStartDate: string) => {
+    setEmployees(prevEmployees => {
+      const newEmployees = { ...prevEmployees };
+      
+      // Verificar se a semana existe, se não, criá-la
+      if (!newEmployees[weekStartDate]) {
+        newEmployees[weekStartDate] = [];
+      }
+      
+      // Encontrar o funcionário na semana
+      let employeeIndex = newEmployees[weekStartDate].findIndex(e => e.id === employeeId);
+      
+      // Se não encontrar o funcionário na semana atual, precisamos criá-lo
+      if (employeeIndex === -1) {
+        console.log(`Funcionário com ID ${employeeId} não encontrado na semana ${weekStartDate}. Procurando em outras semanas...`);
+        
+        // Procurar o funcionário em todas as semanas
+        let employeeFromOtherWeek: Employee | undefined;
+        
+        Object.keys(newEmployees).forEach(weekKey => {
+          const found = newEmployees[weekKey].find(e => e.id === employeeId);
+          if (found && !employeeFromOtherWeek) {
+            employeeFromOtherWeek = found;
+          }
+        });
+        
+        if (employeeFromOtherWeek) {
+          console.log(`Funcionário encontrado em outra semana. Copiando para a semana atual.`);
+          
+          // Criar uma cópia do funcionário para a semana atual
+          const newEmployee: Employee = {
+            ...employeeFromOtherWeek,
+            weekStartDate: weekStartDate,
+            workedDates: [], // Inicializar com array vazio
+            daysWorked: 0    // Inicializar com zero dias trabalhados
+          };
+          
+          // Adicionar o funcionário à semana atual
+          newEmployees[weekStartDate].push(newEmployee);
+          
+          // Atualizar o índice do funcionário
+          employeeIndex = newEmployees[weekStartDate].length - 1;
+        } else {
+          console.error(`Funcionário com ID ${employeeId} não encontrado em nenhuma semana.`);
+          return prevEmployees;
+        }
+      }
+      
+      // Atualizar as datas trabalhadas e o número de dias
+      const updatedEmployee = { 
+        ...newEmployees[weekStartDate][employeeIndex],
+        workedDates: newEmployees[weekStartDate][employeeIndex].workedDates || []
+      };
+      
+      // Normalizar a data atual antes de adicionar
+      const today = new Date();
+      const normalizedDate = normalizeDate(today);
+      const formattedDate = formatDateToISO(normalizedDate);
+      
+      // Verificar se a data já existe
+      if (!updatedEmployee.workedDates.includes(formattedDate)) {
+        updatedEmployee.workedDates = [...updatedEmployee.workedDates, formattedDate];
+        updatedEmployee.daysWorked = updatedEmployee.workedDates.length;
+      }
+      
+      // Atualizar a lista de funcionários
+      newEmployees[weekStartDate] = [
+        ...newEmployees[weekStartDate].slice(0, employeeIndex),
+        updatedEmployee,
+        ...newEmployees[weekStartDate].slice(employeeIndex + 1)
+      ];
+      
+      // Salvar no Supabase e localmente
+      const storageData = getData();
+      if (storageData) {
+        const updatedStorageData = {
+          ...storageData,
+          employees: newEmployees,
+          willBaseRate: storageData.willBaseRate,
+          willBonus: storageData.willBonus
+        };
+        saveChanges(createStorageData(updatedStorageData));
+      }
+      
+      return newEmployees;
+    });
   };
 
   return (
