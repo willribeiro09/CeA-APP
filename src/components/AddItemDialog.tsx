@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Item, ValidationError, Expense, Project, StockItem, Employee } from '../types';
 import { validation, normalizeMonetaryValue } from '../lib/validation';
 import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AddItemDialogProps {
   isOpen: boolean;
@@ -39,46 +40,54 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Formulário enviado");
+    const formData = new FormData(e.target as HTMLFormElement);
+    const data = Object.fromEntries(formData);
+    console.log("Dados do formulário:", data);
     
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-    
-    let itemData: Partial<Item> = {};
-    
+    let itemData: Partial<Item>;
     let validationError: string | null = null;
     
     if (category === 'Expenses') {
-      // Normalizar a data para evitar problemas de fuso horário
       const dueDate = data.dueDate ? normalizeDate(new Date(data.dueDate as string)) : new Date();
       
       itemData = {
         description: data.description as string,
-        amount: normalizeMonetaryValue(data.amount as string),
-        date: formatDateToISO(dueDate), // Usar formato YYYY-MM-DD
+        amount: parseFloat(data.amount as string),
+        date: dueDate.toISOString(),
         category: 'Expenses',
         paid: false
       } as Partial<Expense>;
       console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
-      // Normalizar as datas para evitar problemas de fuso horário
       const startDate = data.startDate ? normalizeDate(new Date(data.startDate as string)) : new Date();
       const endDate = data.endDate ? normalizeDate(new Date(data.endDate as string)) : undefined;
       
+      // Adicione logs detalhados sobre os dados do projeto
+      console.log('Dados brutos do formulário de projeto:', data);
+      console.log('startDate processada:', startDate);
+      console.log('Valor bruto:', data.value);
+      
+      // Garantir que temos todos os campos obrigatórios
+      const projectValue = normalizeMonetaryValue(data.value as string);
+      console.log('Valor normalizado:', projectValue);
+      
+      // Criar o objeto do projeto com todos os campos obrigatórios
       itemData = {
+        id: uuidv4(),
         name: data.client as string,
         client: data.client as string,
-        projectNumber: data.projectNumber as string,
-        location: data.location as string,
-        startDate: formatDateToISO(startDate), // Usar formato YYYY-MM-DD
-        endDate: endDate ? formatDateToISO(endDate) : undefined, // Usar formato YYYY-MM-DD se existir
+        projectNumber: data.projectNumber as string || '',
+        location: data.location as string || '',
+        startDate: startDate.toISOString(),
+        endDate: endDate?.toISOString(),
         status: data.status as 'completed' | 'in_progress',
-        value: normalizeMonetaryValue(data.value as string),
+        value: projectValue,
         invoiceOk: (data.invoiceOk === 'on'),
         category: 'Projects'
       } as Partial<Project>;
-      console.log("Dados de projeto formatados:", itemData);
+      
+      console.log("Dados de projeto formatados completos:", itemData);
       validationError = validation.project(itemData as Partial<Project>);
     } else if (category === 'Stock') {
       itemData = {

@@ -203,6 +203,18 @@ export const syncService = {
     }
 
     try {
+      // Verificar e validar os dados antes de sincronizar
+      if (!data.projects) {
+        console.warn('Array de projetos não definido, inicializando como vazio');
+        data.projects = [];
+      } else if (!Array.isArray(data.projects)) {
+        console.error('Dados de projetos não são um array! Tipo:', typeof data.projects);
+        data.projects = [];
+      } else {
+        console.log(`Sincronizando ${data.projects.length} projetos:`, 
+          data.projects.map(p => `${p.id}: ${p.client}`).join(', '));
+      }
+      
       // Garantir que os valores do Will estejam definidos
       const willValues = ensureWillValues(data);
       

@@ -205,22 +205,48 @@ export default function App() {
 
   // Função para salvar alterações
   const saveChanges = async (newData: StorageItems) => {
-    console.log('Salvando alterações...', JSON.stringify(newData));
+    console.log('Salvando alterações...');
+    
+    // Deep clone para evitar problemas de referência
+    const dataCopy = JSON.parse(JSON.stringify(newData));
+    
+    // Verificar se os projetos estão presentes
+    if (!dataCopy.projects || !Array.isArray(dataCopy.projects)) {
+      console.error('Erro: projects não está definido ou não é um array', dataCopy);
+      dataCopy.projects = [];
+    }
+    
+    // Verificar projetos com dados incompletos
+    dataCopy.projects.forEach((project: any, index: number) => {
+      if (!project.id) {
+        console.error(`Projeto ${index} sem ID:`, project);
+        // Tenta corrigir o problema
+        project.id = uuidv4();
+        console.log(`ID gerado para projeto sem ID: ${project.id}`);
+      }
+    });
+    
+    console.log('Número de projetos a salvar:', dataCopy.projects.length);
+    console.log('IDs dos projetos:', dataCopy.projects.map((p: any) => p.id).join(', '));
+    
     setIsSaving(true);
     try {
       // Salvar dados
-      await saveData(newData);
+      await saveData(dataCopy);
       console.log('Dados salvos com sucesso');
       setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
       
+      // Atualizar o estado de projetos para garantir consistência
+      setProjects(dataCopy.projects);
+      
       // Garantir que o estado local seja atualizado mesmo se houver problemas com o Supabase
-      localStorage.setItem('expenses-app-data', JSON.stringify(newData));
+      localStorage.setItem('expenses-app-data', JSON.stringify(dataCopy));
     } catch (error) {
       console.error('Erro ao salvar alterações:', error);
       setShowFeedback({ show: true, message: 'Erro ao salvar dados!', type: 'error' });
       
       // Mesmo com erro, atualizar o estado local para evitar perda de dados
-      localStorage.setItem('expenses-app-data', JSON.stringify(newData));
+      localStorage.setItem('expenses-app-data', JSON.stringify(dataCopy));
     } finally {
       setIsSaving(false);
       // Esconder o feedback após 3 segundos
@@ -377,17 +403,25 @@ export default function App() {
         // É um projeto
         setProjects(prevProjects => {
           try {
-            console.log("Updating project, pre-check:", updatedItem);
+            console.log("Atualizando projeto, dados recebidos:", JSON.stringify(updatedItem));
             
             // Verificar se o ID existe
+            if (!updatedItem.id) {
+              console.error("ID do projeto não encontrado nos dados de atualização");
+              return prevProjects;
+            }
+            
             const index = prevProjects.findIndex(project => project.id === updatedItem.id);
+            console.log(`Procurando projeto com ID ${updatedItem.id}, índice encontrado: ${index}`);
+            
             if (index === -1) {
-              console.error("Project not found with ID:", updatedItem.id);
+              console.error("Projeto não encontrado com ID:", updatedItem.id);
               return prevProjects;
             }
             
             // Garantir que todos os campos obrigatórios estejam presentes
             const existingProject = prevProjects[index];
+            console.log("Projeto existente:", JSON.stringify(existingProject));
             
             // Criar uma cópia do projeto com todos os campos necessários
             const updatedProject: Project = {
@@ -402,12 +436,13 @@ export default function App() {
               invoiceOk: updatedItem.invoiceOk !== undefined ? updatedItem.invoiceOk : existingProject.invoiceOk
             };
             
-            console.log("Project data prepared for update:", updatedProject);
+            console.log("Dados do projeto preparados para atualização:", JSON.stringify(updatedProject));
             
+            // Criar um novo array para evitar mutação direta
             const newProjects = [...prevProjects];
             newProjects[index] = updatedProject;
             
-            // Salvar as alterações com os valores de Will preservados
+            // Salvar as alterações
             saveChanges(createStorageData({
               expenses,
               projects: newProjects,
@@ -415,9 +450,10 @@ export default function App() {
               employees
             }));
             
+            console.log("Projetos após atualização:", JSON.stringify(newProjects));
             return newProjects;
           } catch (error) {
-            console.error("Error updating project:", error);
+            console.error("Erro ao atualizar projeto:", error);
             // Garantir que retornamos o estado anterior em caso de erro
             return prevProjects;
           }
@@ -494,7 +530,15 @@ export default function App() {
 
   const handleAddItem = async (item: any) => {
     try {
-      const newItem = { ...item, id: uuidv4() };
+      console.log("Função handleAddItem chamada com:", item);
+      
+      // Verificar se o item já tem um ID, caso contrário, criar um novo
+      if (!item.id) {
+        item.id = uuidv4();
+      }
+      
+      const newItem = { ...item, id: item.id };
+      console.log("ID gerado para o novo item:", newItem.id);
       
       if (activeCategory === 'Expenses') {
         const expense = newItem as Expense;
@@ -529,17 +573,52 @@ export default function App() {
           return newExpenses;
         });
       } else if (activeCategory === 'Projects') {
+        console.log("Adicionando projeto:", newItem);
+        
+        // Garantir que o projeto esteja formatado corretamente
         const project = newItem as Project;
-        project.id = uuidv4();
+        
+        // Garantir ID único
+        if (!project.id) {
+          project.id = uuidv4();
+          console.log("Novo ID gerado para o projeto:", project.id);
+        }
+        
+        // Garantir que campos obrigatórios existam
+        if (!project.client) project.client = "Cliente";
+        if (!project.name) project.name = project.client;
+        if (!project.startDate) project.startDate = new Date().toISOString();
+        if (!project.status) project.status = "in_progress";
+        if (!project.location) project.location = "";
+        if (project.value === undefined) project.value = 0;
+        
+        console.log("Projeto formatado para adicionar:", project);
+        console.log("Lista atual de projetos:", projects);
 
         // Atualizar o estado
         setProjects(prevProjects => {
-          console.log("Estado atual de projects:", JSON.stringify(prevProjects));
+          console.log("Estado atual de projects:", prevProjects);
           
-          const newProjects = [...prevProjects, project];
-          console.log("Projeto adicionado:", JSON.stringify(project));
-          console.log("Novo estado de projects:", JSON.stringify(newProjects));
-
+          // Clone profundo para evitar problemas de referência
+          const existingProjects = JSON.parse(JSON.stringify(prevProjects));
+          
+          // Verificar se o projeto já existe
+          const existingIndex = existingProjects.findIndex((p: Project) => p.id === project.id);
+          
+          let newProjects;
+          if (existingIndex >= 0) {
+            // Atualizar projeto existente
+            newProjects = [...existingProjects];
+            newProjects[existingIndex] = project;
+            console.log("Projeto atualizado na posição:", existingIndex);
+          } else {
+            // Adicionar novo projeto
+            newProjects = [...existingProjects, project];
+            console.log("Novo projeto adicionado à lista");
+          }
+          
+          console.log("Lista de projetos atualizada:", newProjects);
+          
           // Salvar as alterações
           saveChanges(createStorageData({
             expenses,
@@ -547,7 +626,7 @@ export default function App() {
             stock: stockItems,
             employees
           }));
-
+          
           return newProjects;
         });
       } else if (activeCategory === 'Stock') {
@@ -1486,7 +1565,7 @@ export default function App() {
                               <p className="text-gray-600 text-sm">Number: {project.projectNumber}</p>
                             )}
                             <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
-        </div>
+                          </div>
                           <div className="text-right">
                             <p className="font-semibold text-[#5ABB37]">$ {(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                             <p className="text-xs text-gray-500">

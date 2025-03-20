@@ -71,10 +71,15 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     } else if (item && 'client' in item) {
       // É um projeto
       try {
-        console.log("Processing project for editing:", item);
+        console.log("Processando projeto para edição:", JSON.stringify(item));
         
         // Necessário extrair cada campo individualmente para evitar problemas
         const projectItem = item as Project;
+        
+        // IMPORTANTE: Preservar o ID original!
+        const projectId = projectItem.id;
+        console.log("ID original do projeto:", projectId);
+        
         const projectClient = data.client as string;
         const projectLocation = data.location as string;
         const projectNumber = data.projectNumber as string;
@@ -85,9 +90,10 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         const projectValue = normalizeMonetaryValue(data.value as string);
         const invoiceOk = data.invoiceOk === 'on';
         
-        // Criar um objeto limpo sem o spread operator (que pode causar problemas)
+        // Criar um objeto limpo com todos os campos necessários
+        // NÃO estamos mais desestruturando o objeto original para evitar problemas
         itemData = {
-          id: projectItem.id,
+          id: projectId, // PRESERVAR O ID ORIGINAL É CRUCIAL!
           name: projectClient, // Usando client como name
           client: projectClient,
           location: projectLocation,
@@ -95,14 +101,16 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           value: projectValue,
           startDate: projectStartDate,
           status: projectStatus,
-          invoiceOk: invoiceOk
+          invoiceOk: invoiceOk,
+          // Preservar outros campos que podem existir
+          description: projectItem.description
         };
         
-        console.log("Project data formatted - SAFE VERSION:", itemData);
+        console.log("Dados do projeto formatados para edição:", JSON.stringify(itemData));
         validationError = validation.project(itemData as Partial<Project>);
       } catch (error) {
-        console.error("Error processing project data:", error);
-        setErrors([{ field: 'form', message: 'Error processing project data. Please try again.' }]);
+        console.error("Erro no processamento dos dados do projeto:", error);
+        setErrors([{ field: 'form', message: 'Erro no processamento dos dados do projeto. Tente novamente.' }]);
         return;
       }
     } else if (item && 'quantity' in item) {
