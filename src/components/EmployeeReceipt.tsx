@@ -3,6 +3,11 @@ import { format } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { 
+  formatDateToISO, 
+  adjustEmployeeDateDisplay, 
+  formatEmployeeDateForDisplay 
+} from '../lib/dateUtils';
 
 interface Employee {
   id: string;
@@ -371,6 +376,30 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
     }
   };
 
+  const renderWorkDays = () => {
+    if (!employee.workedDates || employee.workedDates.length === 0) {
+      return <p className="text-gray-600">Nenhum dia trabalhado registrado.</p>;
+    }
+
+    // Usar a nova função de ajuste para exibir as datas corretamente
+    const sortedDates = [...employee.workedDates]
+      .map(dateStr => ({ 
+        original: dateStr,
+        date: adjustEmployeeDateDisplay(dateStr)
+      }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        {sortedDates.map(({ original, date }) => (
+          <span key={original} className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
+            {formatEmployeeDateForDisplay(date, 'dd/MM')}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div 
       ref={receiptRef} 
@@ -425,44 +454,7 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
           </div>
         </div>
         <div className="bg-gray-50 rounded-md p-2 print:bg-gray-50">
-          {sortedDates && sortedDates.length > 0 ? (
-            <div className="flex flex-col gap-1">
-              {sortedDates.map((dateString) => {
-                // Criar objeto de data a partir da string
-                const dateObj = new Date(dateString);
-                
-                // Compensar o problema de fuso horário (adicionar 1 dia)
-                dateObj.setDate(dateObj.getDate() + 1);
-                
-                // Formatar a data para exibição (mês/dia)
-                const formattedDate = format(dateObj, 'MM/dd', { locale: enUS });
-                
-                // Formatar o dia da semana
-                const dayOfWeek = format(dateObj, 'EEEE', { locale: enUS });
-                
-                // Logs para diagnóstico
-                console.log({
-                  dataRecibo: {
-                    dataString: dateString,
-                    diaOriginal: new Date(dateString).getDate(),
-                    diaAjustado: dateObj.getDate(),
-                    diferenca: dateObj.getDate() - new Date(dateString).getDate(),
-                    formatadaCorrigida: formattedDate,
-                    diaDaSemana: dayOfWeek
-                  }
-                });
-                
-                return (
-                  <div key={dateString} className="text-sm flex justify-between">
-                    <span>{formattedDate}</span>
-                    <span className="text-gray-600">{dayOfWeek}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-sm">No days recorded</p>
-          )}
+          {renderWorkDays()}
         </div>
         {/* Spacer para quando há poucos dias - só aparece na versão compartilhada via API de clonagem */}
         {sortedDates.length < 5 && <div className="min-h-spacer hidden" style={{ minHeight: `${(5 - sortedDates.length) * 30}px` }}></div>}

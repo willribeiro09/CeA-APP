@@ -119,29 +119,56 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
 
   // Função para lidar com clique único (para dispositivos móveis)
   const handleClick = (date: Date) => {
-    // Usar normalizeEmployeeDate para ajustar a data antes de formatá-la
-    const normalizedDate = normalizeEmployeeDate(date);
-    const formattedDate = formatDateToISO(normalizedDate);
-    
-    // Log para diagnóstico
-    console.log("WorkDaysCalendar - Dia selecionado:", {
-      diaOriginal: date.getDate(),
-      diaNormalizado: normalizedDate.getUTCDate(), 
-      diaFormatado: formattedDate.split('-')[2],
-      dataCompleta: formattedDate,
-      observacao: "Sem ajuste de dias, apenas fixado em UTC"
-    });
-    
-    const isDateWorked = workedDates.includes(formattedDate);
-    
-    // Alternar o estado de trabalho da data
-    onDateToggle(formattedDate);
-    
-    // Atualizar o estado local
-    if (isDateWorked) {
-      setWorkedDates(prev => prev.filter(d => d !== formattedDate));
-    } else {
-      setWorkedDates(prev => [...prev, formattedDate]);
+    try {
+      // Usar normalizeEmployeeDate para ajustar a data antes de formatá-la
+      const normalizedDate = normalizeEmployeeDate(date);
+      const formattedDate = formatDateToISO(normalizedDate);
+      
+      // Log para diagnóstico detalhado
+      console.group("=== CLIQUE NO CALENDÁRIO ===");
+      console.log("Data original:", {
+        iso: date.toISOString(),
+        local: date.toString(),
+        diaOriginal: date.getDate(),
+        mesOriginal: date.getMonth() + 1,
+        anoOriginal: date.getFullYear(),
+        timeZoneOffset: date.getTimezoneOffset()
+      });
+      
+      console.log("Data normalizada:", {
+        iso: normalizedDate.toISOString(),
+        local: normalizedDate.toString(),
+        diaNormalizado: normalizedDate.getUTCDate(),
+        mesNormalizado: normalizedDate.getUTCMonth() + 1,
+        anoNormalizado: normalizedDate.getUTCFullYear()
+      });
+      
+      console.log("Data formatada:", {
+        formattedDate: formattedDate,
+        diaFormatado: formattedDate.split('-')[2],
+        mesFormatado: formattedDate.split('-')[1],
+        anoFormatado: formattedDate.split('-')[0]
+      });
+      
+      const isDateWorked = workedDates.includes(formattedDate);
+      console.log("Status:", {
+        jaEstaMarcada: isDateWorked,
+        diasAtuais: workedDates,
+        acao: isDateWorked ? "removendo" : "adicionando"
+      });
+      console.groupEnd();
+      
+      // Alternar o estado de trabalho da data
+      onDateToggle(formattedDate);
+      
+      // Atualizar o estado local
+      if (isDateWorked) {
+        setWorkedDates(prev => prev.filter(d => d !== formattedDate));
+      } else {
+        setWorkedDates(prev => [...prev, formattedDate]);
+      }
+    } catch (error) {
+      console.error("Erro ao processar clique no calendário:", error);
     }
   };
 

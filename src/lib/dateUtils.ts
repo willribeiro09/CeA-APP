@@ -72,21 +72,21 @@ export function normalizeEmployeeDate(date: Date): Date {
     return new Date();
   }
   
+  console.group("=== DIAGNÓSTICO normalizeEmployeeDate ===");
+  
   // Extrair componentes da data original
   const year = date.getFullYear();
   const month = date.getMonth();
   const day = date.getDate();
   
   // Logs para diagnóstico
-  console.log({
-    dataOriginal: {
-      iso: date.toISOString(),
-      local: date.toString(),
-      dia: date.getDate(),
-      mes: date.getMonth() + 1,
-      ano: date.getFullYear(),
-      tzOffset: date.getTimezoneOffset()
-    }
+  console.log("Data original:", {
+    iso: date.toISOString(),
+    local: date.toString(),
+    dia: date.getDate(),
+    mes: date.getMonth() + 1,
+    ano: date.getFullYear(),
+    tzOffset: date.getTimezoneOffset()
   });
   
   // Ajustar para o dia correto com horário meio-dia UTC
@@ -97,16 +97,18 @@ export function normalizeEmployeeDate(date: Date): Date {
   const normalized = new Date(Date.UTC(year, month, adjustedDay, 12, 0, 0));
   
   // Logs para diagnóstico
-  console.log({
-    dataNormalizada: {
-      iso: normalized.toISOString(),
-      local: normalized.toString(),
-      dia: normalized.getUTCDate(),
-      mes: normalized.getUTCMonth() + 1,
-      ano: normalized.getUTCFullYear(),
-      diferencaDias: 0 // Sem ajuste de dia
-    }
+  console.log("Data normalizada:", {
+    iso: normalized.toISOString(),
+    local: normalized.toString(),
+    utcDia: normalized.getUTCDate(),
+    utcMes: normalized.getUTCMonth() + 1,
+    utcAno: normalized.getUTCFullYear(),
+    localDia: normalized.getDate(),
+    localMes: normalized.getMonth() + 1,
+    localAno: normalized.getFullYear()
   });
+  
+  console.groupEnd();
   
   return normalized;
 }
@@ -393,4 +395,56 @@ export function testarAjusteData(dataOriginal: Date): void {
   console.log("- Dia no formato ISO (normalizeEmployeeDate): " + dataISOFuncionario.split("-")[2]);
   
   console.groupEnd();
+}
+
+/**
+ * Ajusta a string ISO retornada do banco de dados para exibição na interface
+ * O formato string ISO "YYYY-MM-DD" é convertido para uma data sem problema de fuso
+ * @param dateString String de data no formato ISO (YYYY-MM-DD)
+ * @returns Data ajustada para o fuso local
+ */
+export function adjustEmployeeDateDisplay(dateString: string): Date {
+  // Verificar se a data é válida
+  if (!dateString || typeof dateString !== 'string') {
+    console.error("String de data inválida recebida:", dateString);
+    return new Date();
+  }
+  
+  // Adicionar horário ao final para garantir o mesmo dia
+  const dateWithTime = `${dateString}T12:00:00Z`;
+  const date = new Date(dateWithTime);
+  
+  console.log("adjustEmployeeDateDisplay:", {
+    original: dateString,
+    withTime: dateWithTime,
+    resultado: date.toISOString(),
+    diaLocal: date.getDate(),
+    diaUTC: date.getUTCDate()
+  });
+  
+  return date;
+}
+
+/**
+ * Formata uma data para exibição em interface do usuário
+ * @param date Data a ser formatada
+ * @param format Formato desejado
+ * @returns String formatada
+ */
+export function formatEmployeeDateForDisplay(date: Date | string, formatString: string = 'dd/MM/yyyy'): string {
+  try {
+    // Se for string, converter para Date usando nosso método de ajuste
+    const dateObj = typeof date === 'string' ? adjustEmployeeDateDisplay(date) : date;
+    
+    // Verificar se a data é válida
+    if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+      return '';
+    }
+    
+    // Formatar a data usando date-fns
+    return format(dateObj, formatString, { locale: enUS });
+  } catch (error) {
+    console.error("Erro ao formatar data para exibição:", error);
+    return '';
+  }
 } 

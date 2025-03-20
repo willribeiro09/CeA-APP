@@ -35,7 +35,8 @@ import {
   getEmployeeWeekStart, 
   getEmployeeWeekEnd, 
   getProjectWeekStart, 
-  getProjectWeekEnd 
+  getProjectWeekEnd,
+  normalizeDate 
 } from './lib/dateUtils';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
@@ -482,7 +483,11 @@ export default function App() {
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
-      setFilterDate(date);
+      // Normalizar a data para evitar problemas de fuso horário
+      const normalizedDate = normalizeDate(date);
+      setSelectedDate(normalizedDate);
+    } else {
+      setSelectedDate(undefined);
     }
     setIsCalendarOpen(false);
   };
@@ -569,7 +574,10 @@ export default function App() {
         });
       } else if (activeCategory === 'Employees') {
         const employee = newItem as Employee;
-        const weekStartDate = formatDateToISO(selectedWeekStart);
+        
+        // Normalizar a data de início da semana para evitar problemas de fuso horário
+        const normalizedWeekStart = normalizeDate(selectedWeekStart);
+        const weekStartDate = formatDateToISO(normalizedWeekStart);
         
         // Inicializar os campos importantes do funcionário
         employee.workedDates = [];
@@ -604,10 +612,20 @@ export default function App() {
         // Adicionar o funcionário à semana selecionada
         setEmployees(prevEmployees => {
           const weekEmployees = prevEmployees[weekStartDate] || [];
-          return {
+          const updatedEmployees = {
             ...prevEmployees,
             [weekStartDate]: [...weekEmployees, employee]
           };
+          
+          // Salvar as alterações
+          saveChanges(createStorageData({
+            expenses,
+            projects,
+            stock: stockItems,
+            employees: updatedEmployees
+          }));
+          
+          return updatedEmployees;
         });
       }
     } catch (error) {

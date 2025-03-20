@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Item, ValidationError, Expense, Project, StockItem, Employee } from '../types';
 import { validation } from '../lib/validation';
+import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
 
 interface AddItemDialogProps {
   isOpen: boolean;
@@ -46,23 +47,28 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
     let validationError: string | null = null;
     
     if (category === 'Expenses') {
+      const dueDate = data.dueDate ? normalizeDate(new Date(data.dueDate as string)) : new Date();
+      
       itemData = {
         description: data.description as string,
         amount: parseFloat(data.amount as string),
-        date: new Date(data.dueDate as string).toISOString(),
+        date: dueDate.toISOString(),
         category: 'Expenses',
         paid: false
       } as Partial<Expense>;
       console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
+      const startDate = data.startDate ? normalizeDate(new Date(data.startDate as string)) : new Date();
+      const endDate = data.endDate ? normalizeDate(new Date(data.endDate as string)) : undefined;
+      
       itemData = {
         name: data.client as string,
         client: data.client as string,
         projectNumber: data.projectNumber as string,
         location: data.location as string,
-        startDate: new Date(data.startDate as string).toISOString(),
-        endDate: data.endDate ? new Date(data.endDate as string).toISOString() : undefined,
+        startDate: startDate.toISOString(),
+        endDate: endDate?.toISOString(),
         status: data.status as 'completed' | 'in_progress',
         value: parseFloat(data.value as string) || 0,
         invoiceOk: (data.invoiceOk === 'on'),
@@ -80,11 +86,17 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       console.log("Dados de estoque formatados:", itemData);
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else {
-      // É um funcionário - remover dependência de data de início
+      // É um funcionário
+      const startDateString = selectedWeekStart?.toISOString() || new Date().toISOString();
+      const startDate = startDateString ? normalizeDate(new Date(startDateString)) : normalizeDate(new Date());
+      
+      // Usar formatDateToISO para garantir formato correto
+      const weekStartDateISO = formatDateToISO(startDate);
+      
       itemData = {
         name: data.name as string,
         employeeName: data.name as string,
-        weekStartDate: selectedWeekStart?.toISOString() || new Date().toISOString(),
+        weekStartDate: startDate.toISOString(),
         daysWorked: 0,
         dailyRate: parseFloat(data.dailyRate as string) || 250,
         category: 'Employees',
