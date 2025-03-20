@@ -57,10 +57,10 @@ export const validation = {
 };
 
 /**
- * Normaliza um valor monetário para o formato adequado
- * Aceita valores como "1,347.05" ou "1.347,05"
- * @param value Valor monetário em string
- * @returns Valor como número
+ * Normaliza um valor monetário, aceitando diferentes formatos (vírgulas e pontos)
+ * e retornando um número
+ * @param value String com o valor monetário (ex: "1,347.05" ou "1.347,05")
+ * @returns number
  */
 export function normalizeMonetaryValue(value: string): number {
   if (!value) return 0;
@@ -68,34 +68,18 @@ export function normalizeMonetaryValue(value: string): number {
   // Remove espaços em branco
   let normalizedValue = value.trim();
   
-  // Verifica se temos o formato com ponto e vírgula (ex: 1,347.05)
-  if (normalizedValue.includes(',') && normalizedValue.includes('.')) {
-    // Verifica qual vem primeiro: a vírgula ou o ponto
-    const commaIndex = normalizedValue.indexOf(',');
-    const dotIndex = normalizedValue.indexOf('.');
-    
-    if (commaIndex < dotIndex) {
-      // Formato americano 1,347.05 - Remove as vírgulas
-      normalizedValue = normalizedValue.replace(/,/g, '');
-    } else {
-      // Formato europeu 1.347,05 - Remove os pontos e substitui a vírgula por ponto
-      normalizedValue = normalizedValue.replace(/\./g, '').replace(',', '.');
-    }
-  } else if (normalizedValue.includes(',')) {
-    // Verifica se a vírgula está sendo usada como separador decimal ou de milhar
-    const parts = normalizedValue.split(',');
-    if (parts[1] && parts[1].length <= 2) {
-      // Vírgula como separador decimal (ex: 1347,05)
-      normalizedValue = normalizedValue.replace(',', '.');
-    } else {
-      // Vírgula como separador de milhar (ex: 1,347)
-      normalizedValue = normalizedValue.replace(/,/g, '');
-    }
+  // Verifica o formato: se tem vírgula como decimal (1.347,05) ou ponto como decimal (1,347.05)
+  if (normalizedValue.indexOf(',') > normalizedValue.indexOf('.') && normalizedValue.indexOf('.') !== -1) {
+    // Formato americano: 1,347.05
+    // Remove as vírgulas
+    normalizedValue = normalizedValue.replace(/,/g, '');
+  } else {
+    // Formato brasileiro: 1.347,05
+    // Substitui pontos por nada e vírgulas por pontos
+    normalizedValue = normalizedValue.replace(/\./g, '').replace(',', '.');
   }
   
-  // Converte para número
-  const numericValue = parseFloat(normalizedValue);
-  
-  // Retorna 0 se não for um número válido
-  return isNaN(numericValue) ? 0 : numericValue;
+  // Converte para número e garante que não seja NaN
+  const result = parseFloat(normalizedValue);
+  return isNaN(result) ? 0 : result;
 } 
