@@ -48,28 +48,49 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
     printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt - ${employee.name} (${weekRange})</title>
+          <title>Payment Receipt - ${employee.name}</title>
           <style>
             body {
               font-family: 'Segoe UI', Arial, sans-serif;
               padding: 0;
               margin: 0;
-              background-color: white;
+              background-color: #f3f4f6;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
             }
             .print-receipt {
-              max-width: 100%;
-              margin: 0 auto;
+              max-width: 400px;
+              margin: 20px auto;
               padding: 20px;
               box-sizing: border-box;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+              border-radius: 0.5rem;
+              background-color: white;
+            }
+            .print-title {
+              font-size: 14px;
+              color: #6b7280;
+              text-align: center;
+              margin-bottom: 10px;
+              font-weight: normal;
+              display: none;
             }
             @media print {
               body {
                 margin: 0;
                 padding: 0;
+                background-color: white;
+                display: block;
               }
               .print-receipt {
                 width: 100%;
+                max-width: 100%;
                 box-shadow: none;
+                border-radius: 0;
+                margin: 0;
+                padding: 0.5cm;
               }
               .print-hidden {
                 display: none !important;
@@ -128,6 +149,72 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
             .mb-6 { margin-bottom: 1.5rem; }
             .text-center { text-align: center; }
             .w-full { width: 100%; }
+            
+            /* Estilos adicionais para impressão */
+            @media print {
+              /* Destacar a área de assinatura */
+              .signature-line {
+                border-top: 1px solid #a0aec0 !important;
+              }
+              
+              /* Aumentar o espaço para a assinatura */
+              .signature-space {
+                margin-top: 40px !important;
+              }
+              
+              /* Garantir que as cores sejam mantidas na impressão */
+              .text-green-600, .text-[#5ABB37] {
+                color: #38a169 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              
+              .bg-gray-50, .bg-gray-100 {
+                background-color: #f3f4f6 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              
+              /* Layout para impressão */
+              .header-logo {
+                width: 100px !important;
+                height: 100px !important;
+              }
+              
+              /* Garantir que os textos fiquem mais destacados */
+              .text-md {
+                font-size: 12pt !important;
+              }
+              
+              .text-lg {
+                font-size: 14pt !important;
+              }
+              
+              .important-text {
+                font-weight: bold !important;
+              }
+              
+              /* Destacar o total */
+              .bg-gray-100 {
+                border: 1px solid #38a169 !important;
+                padding: 10px !important;
+              }
+              
+              /* Posicionamento na página */
+              @page {
+                size: auto;
+                margin: 0.5cm;
+              }
+              
+              /* Formatação semelhante à versão de compartilhamento */
+              .print-receipt {
+                max-width: 400px !important;
+                margin: 0 auto !important;
+                padding: 20px !important;
+                page-break-after: always;
+                page-break-before: always;
+              }
+            }
           </style>
         </head>
         <body>
@@ -147,26 +234,18 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
     if (!receiptRef.current) return;
     
     try {
-      // Temporarily hide the buttons for PDF generation
+      // Temporariamente ocultar os botões para captura
       const buttons = receiptRef.current.querySelector('.print-hidden');
       if (buttons instanceof HTMLElement) {
         buttons.style.display = 'none';
       }
       
-      // Capture receipt as canvas
+      // Capturar o recibo exatamente como está na tela
       const canvas = await html2canvas(receiptRef.current, {
-        scale: 2, // Higher resolution
+        scale: 2, // Resolução maior
         useCORS: true,
         backgroundColor: 'white',
-        logging: false,
-        onclone: (clonedDoc: Document, element: HTMLElement) => {
-          if (element instanceof HTMLElement) {
-            element.style.width = 'auto';
-            element.style.height = 'auto';
-            element.style.padding = '20px';
-            element.style.boxShadow = 'none';
-          }
-        }
+        logging: false
       });
       
       // Create PDF from canvas
@@ -194,17 +273,17 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
       // Convert to blob for sharing
       const pdfBlob = pdf.output('blob');
       
-      // Show buttons again
+      // Mostrar botões novamente
       if (buttons instanceof HTMLElement) {
         buttons.style.display = 'flex';
       }
       
       // Try to use Web Share API if available
       if (navigator.share) {
-        const file = new File([pdfBlob], `Receipt-${employee.name}-${weekRange}.pdf`, { type: 'application/pdf' });
+        const file = new File([pdfBlob], `Payment Receipt - ${employee.name}.pdf`, { type: 'application/pdf' });
         
         await navigator.share({
-          title: `Receipt - ${employee.name} (${weekRange})`,
+          title: `Payment Receipt - ${employee.name}`,
           text: `Payment receipt for ${employee.name} for week ${weekRange} in the amount of $ ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
           files: [file]
         });
@@ -217,7 +296,7 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
           // Alternative: Force download
           const link = document.createElement('a');
           link.href = pdfUrl;
-          link.download = `Receipt-${employee.name}-${weekRange}.pdf`;
+          link.download = `Payment Receipt - ${employee.name}.pdf`;
           link.click();
         }
       }
@@ -230,22 +309,7 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
         const canvas = await html2canvas(receiptRef.current, {
           backgroundColor: "white",
           scale: 2, // Higher resolution
-          logging: false,
-          onclone: (clonedDoc: Document, element: HTMLElement) => {
-            // Make sure the element has the right styling in the cloned document
-            if (element instanceof HTMLElement) {
-              element.style.padding = '20px';
-              element.style.boxShadow = 'none';
-              element.style.width = 'auto';
-              element.style.height = 'auto';
-              
-              // Hide print buttons in the screenshot
-              const buttons = element.querySelector('.print-hidden');
-              if (buttons instanceof HTMLElement) {
-                buttons.style.display = 'none';
-              }
-            }
-          }
+          logging: false
         });
         
         // Convert canvas to blob
@@ -258,10 +322,10 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
         
         // Try to use Web Share API if available
         if (navigator.share) {
-          const file = new File([blob], `Receipt-${employee.name}-${weekRange}.png`, { type: 'image/png' });
+          const file = new File([blob], `Payment Receipt - ${employee.name}.png`, { type: 'image/png' });
           
           await navigator.share({
-            title: `Receipt - ${employee.name} (${weekRange})`,
+            title: `Payment Receipt - ${employee.name}`,
             text: `Payment receipt for ${employee.name} for week ${weekRange} in the amount of $ ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
             files: [file]
           });
@@ -273,7 +337,7 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
             tab.document.write(`
               <html>
                 <head>
-                  <title>Receipt - ${employee.name} (${weekRange})</title>
+                  <title>Payment Receipt - ${employee.name}</title>
                   <style>
                     body { 
                       margin: 0; 
@@ -311,10 +375,11 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
     <div 
       ref={receiptRef} 
       className="bg-white rounded-lg p-4 print:p-0 print:shadow-none print-receipt"
+      style={{ boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
     >
       {/* Receipt header */}
       <div className="flex flex-col items-center mb-4 print:mb-3">
-        <div className="w-56 h-28 mb-2 flex items-center justify-center">
+        <div className="w-56 h-28 mb-2 flex items-center justify-center header-logo">
           <img 
             src="./cealogo.png" 
             alt="C&A Logo" 
@@ -327,14 +392,15 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
             }}
           />
         </div>
-        <p className="text-lg font-medium text-gray-700 tracking-wide" style={{ fontFamily: "'Segoe UI', Arial, sans-serif", letterSpacing: '0.05em' }}>
+        <p className="text-lg font-medium text-gray-700 tracking-wide important-text" style={{ fontFamily: "'Segoe UI', Arial, sans-serif", letterSpacing: '0.05em' }}>
           C&A Gutters Inc.
         </p>
       </div>
 
       {/* Employee information */}
       <div className="border-t border-b border-gray-200 py-2 mb-3">
-        <div className="grid grid-cols-3 gap-2">
+        {/* First row: Name, Daily Rate, Days Worked (nesta ordem) */}
+        <div className="flex justify-between items-center">
           <div>
             <p className="text-gray-500 text-sm">Name:</p>
             <p className="font-semibold">{employee.name}</p>
@@ -344,16 +410,21 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
             <p className="font-semibold">$ {employee.dailyRate.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
           </div>
           <div>
-            <p className="text-gray-500 text-sm">Week:</p>
-            <p className="font-semibold">{weekRange || 'Current Week'}</p>
+            <p className="text-gray-500 text-sm text-center">Days Count:</p>
+            <p className="font-semibold text-center">{employee.daysWorked}</p>
           </div>
         </div>
       </div>
 
       {/* Worked days details */}
-      <div className="mb-3">
-        <h2 className="text-md font-semibold mb-1">Worked Days</h2>
-        <div className="bg-gray-50 rounded-md p-2 print:bg-white print:p-0">
+      <div className="mb-3 worked-days-section">
+        <div className="flex justify-between items-center mb-1">
+          <h2 className="text-md font-semibold">Worked Days</h2>
+          <div className="flex items-center">
+            <span className="text-gray-500 text-sm">{weekRange || 'Current Week'}</span>
+          </div>
+        </div>
+        <div className="bg-gray-50 rounded-md p-2 print:bg-gray-50">
           {sortedDates.length > 0 ? (
             <div className="flex flex-col gap-1">
               {sortedDates.map(date => {
@@ -370,37 +441,39 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
             <p className="text-gray-500 text-sm">No days recorded</p>
           )}
         </div>
+        {/* Spacer para quando há poucos dias - só aparece na versão compartilhada via API de clonagem */}
+        {sortedDates.length < 5 && <div className="min-h-spacer hidden" style={{ minHeight: `${(5 - sortedDates.length) * 30}px` }}></div>}
       </div>
 
       {/* Total amount */}
-      <div className="bg-gray-100 rounded-md p-3 mb-8 print:bg-white print:p-0 print:mb-6">
+      <div className="bg-gray-100 rounded-md p-3 mb-8 print:bg-gray-100 print:mb-6 total-amount-section">
         <div className="flex justify-between items-center">
-          <span className="text-md font-semibold">Total Amount:</span>
-          <span className="text-lg font-bold text-green-600">
+          <span className="text-md font-semibold important-text">Total Amount:</span>
+          <span className="text-lg font-bold text-green-600 important-text" style={{ printColorAdjust: 'exact' }}>
             $ {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </span>
         </div>
       </div>
 
       {/* Signatures */}
-      <div className="grid grid-cols-2 gap-4 mb-3 print:mb-2">
+      <div className="grid grid-cols-2 gap-4 mb-3 print:mb-6">
         <div className="flex flex-col items-center">
-          <div className="border-t border-gray-300 w-full mt-4"></div>
-          <p className="text-xs text-gray-500 mt-1">Employee Signature</p>
+          <div className="border-t border-gray-300 w-full mt-4 signature-line signature-space" style={{ borderColor: '#d1d5db', borderWidth: '1px' }}></div>
+          <p className="text-xs text-gray-500 mt-1 print:mt-2 print:text-sm">Employee Signature</p>
         </div>
         <div className="flex flex-col items-center">
-          <div className="border-t border-gray-300 w-full mt-4"></div>
-          <p className="text-xs text-gray-500 mt-1">Company Signature</p>
+          <div className="border-t border-gray-300 w-full mt-4 signature-line signature-space" style={{ borderColor: '#d1d5db', borderWidth: '1px' }}></div>
+          <p className="text-xs text-gray-500 mt-1 print:mt-2 print:text-sm">Company Signature</p>
         </div>
       </div>
 
       {/* Date */}
-      <div className="text-center text-xs text-gray-500 mb-3 print:mb-2">
+      <div className="text-center text-xs text-gray-500 mb-3 print:mb-2 print:text-sm print:mt-6 date-section">
         <p>Document issued on {format(new Date(), 'MM/dd', { locale: enUS })}</p>
       </div>
 
       {/* Action buttons (hidden when printing) */}
-      <div className="flex justify-center gap-4 print:hidden print-hidden">
+      <div className="flex justify-center gap-4 mt-4 print:hidden print-hidden">
         <button
           onClick={handlePrint}
           className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors flex items-center"
