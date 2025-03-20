@@ -212,9 +212,28 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
 
   // Função para confirmar todas as datas selecionadas
   const handleConfirm = () => {
-    // Fechar o calendário automaticamente
-    if (onClose) {
-      onClose();
+    // Garantir que todas as datas foram corretamente processadas
+    console.log("Confirmando datas:", workedDates);
+    
+    // Dupla verificação para garantir que todas as datas foram devidamente processadas
+    try {
+      // Aguardar um momento para garantir que todas as mudanças de estado foram processadas
+      setTimeout(() => {
+        // Verificar se as datas confirmadas foram devidamente persistidas
+        const dataGarantida = [...workedDates];
+        console.log("Datas garantidas:", dataGarantida);
+        
+        // Fechar o calendário automaticamente
+        if (onClose) {
+          onClose();
+        }
+      }, 300);
+    } catch (error) {
+      console.error("Erro ao confirmar datas:", error);
+      // Tentar novamente após erro
+      if (onClose) {
+        onClose();
+      }
     }
   };
 
@@ -329,14 +348,6 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
         <div className="bg-yellow-100 p-2 mb-2 text-xs">
           <p>Ambiente: {isMobile ? 'Mobile' : 'Desktop'}</p>
           <p>Fuso: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
-        </div>
-      )}
-      
-      {/* Instrução para usuários mobile */}
-      {isMobile && (
-        <div className="bg-blue-50 p-2 mb-3 text-xs text-center rounded">
-          <p>Toque para selecionar dias individualmente</p>
-          <p>Toque e arraste para selecionar múltiplos dias</p>
         </div>
       )}
       

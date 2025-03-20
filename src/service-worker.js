@@ -1,6 +1,6 @@
 // This is the service worker with the Advanced caching
 
-const CACHE = "cea-app-v1.7.0";
+const CACHE = "cea-app-v1.8.0";
 const cacheFiles = [
   "/",
   "index.html",
@@ -41,6 +41,15 @@ self.addEventListener("activate", event => {
 
 // Estratégia de Cache: Verificar rede primeiro, depois cache para fallback
 self.addEventListener("fetch", event => {
+  // Garantir que solicitações para dados locais sempre são atualizadas
+  if (event.request.url.includes('localStorage') || 
+      event.request.url.includes('indexedDB') ||
+      event.request.method === 'POST') {
+    // Não interferir com operações de dados locais
+    console.log('[ServiceWorker] Passando operação de dados local', event.request.url);
+    return;
+  }
+  
   if (event.request.url.includes('/api/')) {
     // Para chamadas de API, sempre tentar rede primeiro
     event.respondWith(networkFirst(event.request));
@@ -50,6 +59,10 @@ self.addEventListener("fetch", event => {
       fetch(event.request)
         .then(response => {
           // Se for resposta válida, armazena no cache
+          if (!response || response.status !== 200) {
+            return response;
+          }
+          
           let responseClone = response.clone();
           caches.open(CACHE).then(cache => {
             cache.put(event.request, responseClone);
@@ -58,7 +71,12 @@ self.addEventListener("fetch", event => {
         })
         .catch(() => {
           // Se falhar, busca do cache
-          return caches.match(event.request);
+          return caches.match(event.request).then(cachedResponse => {
+            return cachedResponse || new Response('Recurso não disponível offline', {
+              status: 404,
+              statusText: 'Não encontrado'
+            });
+          });
         })
     );
   }
@@ -69,7 +87,7 @@ function networkFirst(request) {
   return fetch(request)
     .then(response => {
       // Se for resposta válida, clone e armazena no cache
-      if (!response || response.status !== 200 || response.type !== 'basic') {
+      if (!response || response.status !== 200) {
         return response;
       }
 
@@ -82,19 +100,35 @@ function networkFirst(request) {
     })
     .catch(() => {
       // Se falhar, tenta buscar do cache
-      return caches.match(request);
+      return caches.match(request).then(cachedResponse => {
+        return cachedResponse || new Response('API não disponível offline', {
+          status: 503,
+          statusText: 'Serviço indisponível'
+        });
+      });
     });
 }
 
 // Mensagens - permite atualizações forçadas da aplicação
 self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  
-  if (event.data && event.data.type === 'CHECK_UPDATE') {
-    console.log('[ServiceWorker] Verificando por atualizações');
-    // Força recarregamento do service worker
-    self.registration.update();
+  if (event.data) {
+    console.log('[ServiceWorker] Mensagem recebida:', event.data);
+    
+    if (event.data.type === 'SKIP_WAITING') {
+      self.skipWaiting();
+    }
+    
+    if (event.data.type === 'CHECK_UPDATE') {
+      console.log('[ServiceWorker] Verificando por atualizações');
+      // Força recarregamento do service worker
+      self.registration.update();
+    }
+    
+    if (event.data.type === 'CLEAR_CACHE') {
+      console.log('[ServiceWorker] Limpando cache por solicitação');
+      caches.delete(CACHE).then(() => {
+        console.log('[ServiceWorker] Cache limpo com sucesso');
+      });
+    }
   }
 }); 

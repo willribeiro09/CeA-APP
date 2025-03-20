@@ -1158,6 +1158,9 @@ export default function App() {
 
   // Função para alternar uma data trabalhada do funcionário
   const handleToggleEmployeeWorkedDate = (employeeId: string, date: string) => {
+    // Log detalhado para diagnóstico
+    console.log(`Alterando data ${date} para funcionário ${employeeId}`);
+    
     // Encontrar o funcionário na semana atual
     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
@@ -1175,13 +1178,79 @@ export default function App() {
     // Verificar se a data já está marcada como trabalhada
     const isDateWorked = workedDates.includes(date);
     
-    // Criar a nova lista de datas trabalhadas
+    // Criar a nova lista de datas trabalhadas com segurança (clone para evitar referências)
     const newWorkedDates = isDateWorked
       ? workedDates.filter(d => d !== date)
       : [...workedDates, date];
     
-    // Atualizar as datas trabalhadas do funcionário
-    handleUpdateWorkedDates(employeeId, newWorkedDates);
+    console.log(`Status anterior: ${isDateWorked ? 'Marcado' : 'Não marcado'}`);
+    console.log(`Nova condição: ${isDateWorked ? 'Removendo' : 'Adicionando'}`);
+    console.log('Datas anteriores:', workedDates);
+    console.log('Novas datas:', newWorkedDates);
+    
+    // Criar uma cópia do estado para trabalhar
+    setEmployees(prevEmployees => {
+      const updatedEmployees = { ...prevEmployees };
+      
+      // Garantir que a semana existe
+      if (!updatedEmployees[formattedSelectedWeekStart]) {
+        updatedEmployees[formattedSelectedWeekStart] = [];
+      }
+      
+      // Verificar novamente se o funcionário existe (pode ter mudado desde a verificação anterior)
+      const currentEmployeeIndex = updatedEmployees[formattedSelectedWeekStart].findIndex(e => e.id === employeeId);
+      
+      if (currentEmployeeIndex === -1) {
+        console.error(`Funcionário não encontrado na atualização. Tentando recuperar.`);
+        // Tentar encontrar o funcionário em outras semanas
+        let employeeData: Employee | undefined;
+        Object.values(updatedEmployees).forEach(weekEmps => {
+          const found = weekEmps.find(e => e.id === employeeId);
+          if (found) employeeData = found;
+        });
+        
+        if (!employeeData) {
+          console.error(`Não foi possível encontrar dados do funcionário.`);
+          return prevEmployees;
+        }
+        
+        // Criar novo registro para este funcionário nesta semana
+        const newEmployee: Employee = {
+          ...employeeData,
+          weekStartDate: formattedSelectedWeekStart,
+          daysWorked: newWorkedDates.length,
+          workedDates: newWorkedDates
+        };
+        
+        updatedEmployees[formattedSelectedWeekStart].push(newEmployee);
+      } else {
+        // Atualizar funcionário existente
+        updatedEmployees[formattedSelectedWeekStart][currentEmployeeIndex] = {
+          ...updatedEmployees[formattedSelectedWeekStart][currentEmployeeIndex],
+          daysWorked: newWorkedDates.length,
+          workedDates: newWorkedDates
+        };
+      }
+      
+      // Salvar no armazenamento local imediatamente
+      const storageData = getData();
+      if (storageData) {
+        try {
+          const updatedStorageData = {
+            ...storageData,
+            employees: updatedEmployees
+          };
+          saveChanges(createStorageData(updatedStorageData));
+          
+          // Log para confirmar salvamento
+          console.log('Datas atualizadas e salvas com sucesso');
+        } catch (error) {
+          console.error('Erro ao salvar alterações:', error);
+        }
+      }
+      
+      return updatedEmployees;
+    });
   };
 
   // Forçar atualização do service worker/PWA quando o aplicativo iniciar
@@ -1191,16 +1260,46 @@ export default function App() {
     
     // Registrar funções para atualização do service worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        // Verificar por atualizações
-        console.log("Verificando atualizações do service worker...");
-        registration.update();
-        
-        // Enviar mensagem para o service worker verificar atualizações
-        if (registration.active) {
-          registration.active.postMessage({ type: 'CHECK_UPDATE' });
+      // Limpar cache e forçar atualização
+      const clearCacheAndUpdate = async () => {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          
+          for (const registration of registrations) {
+            // Enviar mensagem para limpar o cache
+            if (registration.active) {
+              console.log('Enviando comando para limpar cache');
+              registration.active.postMessage({ type: 'CLEAR_CACHE' });
+              
+              // Verificar atualizações
+              registration.update();
+            }
+          }
+          
+          // Atualizar dados locais
+          console.log('Verificando dados locais');
+          const storageData = getData();
+          if (storageData) {
+            // Verificar por inconsistências nos dados
+            if (typeof storageData.lastSync !== 'number') {
+              console.log('Corrigindo timestamp de sincronização');
+              storageData.lastSync = Date.now();
+              saveChanges(storageData);
+            }
+            
+            // Limpar qualquer dado temporário potencialmente inconsistente
+            localStorage.removeItem('temp_employee_data');
+            sessionStorage.clear();
+            
+            console.log('Dados locais verificados e atualizados');
+          }
+        } catch (error) {
+          console.error('Erro ao atualizar aplicação:', error);
         }
-      });
+      };
+      
+      // Executar limpeza e atualização
+      clearCacheAndUpdate();
       
       // Adicionar listener para detectar quando há uma nova versão disponível
       let refreshing = false;
@@ -1210,6 +1309,13 @@ export default function App() {
           console.log("Nova versão detectada, recarregando aplicativo...");
           window.location.reload();
         }
+      });
+    }
+    
+    // Definir mecanismo de persistência para o IndexedDB
+    if ('indexedDB' in window && 'persist' in navigator.storage) {
+      navigator.storage.persist().then(isPersisted => {
+        console.log(`Persistência de armazenamento ${isPersisted ? 'concedida' : 'negada'}`);
       });
     }
   }, []);
