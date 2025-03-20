@@ -38,6 +38,7 @@ import {
   getProjectWeekEnd,
   normalizeDate 
 } from './lib/dateUtils';
+import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -1182,6 +1183,46 @@ export default function App() {
     // Atualizar as datas trabalhadas do funcionário
     handleUpdateWorkedDates(employeeId, newWorkedDates);
   };
+
+  // Forçar atualização do service worker/PWA quando o aplicativo iniciar
+  useEffect(() => {
+    const envInfo = getEnvironmentInfo();
+    console.log("Informações do ambiente:", envInfo);
+    
+    // Registrar funções para atualização do service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        // Verificar por atualizações
+        console.log("Verificando atualizações do service worker...");
+        registration.update();
+        
+        // Enviar mensagem para o service worker verificar atualizações
+        if (registration.active) {
+          registration.active.postMessage({ type: 'CHECK_UPDATE' });
+        }
+      });
+      
+      // Adicionar listener para detectar quando há uma nova versão disponível
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          console.log("Nova versão detectada, recarregando aplicativo...");
+          window.location.reload();
+        }
+      });
+    }
+  }, []);
+  
+  // Verificar problemas de fuso horário
+  useEffect(() => {
+    console.group("Diagnóstico de data/hora");
+    console.log("Data/hora atual (local):", new Date().toString());
+    console.log("Data/hora atual (ISO):", new Date().toISOString());
+    console.log("Fuso horário:", Intl.DateTimeFormat().resolvedOptions().timeZone);
+    console.log("Offset do fuso (minutos):", new Date().getTimezoneOffset());
+    console.groupEnd();
+  }, []);
 
   return (
     <>

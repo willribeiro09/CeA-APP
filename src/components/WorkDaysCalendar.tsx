@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, isSameDay, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { diagnoseFusoHorario, normalizeEmployeeDate, formatDateToISO } from '../lib/dateUtils';
+import { isMobileDevice, getEnvironmentInfo } from '../lib/deviceUtils';
 
 interface WorkDaysCalendarProps {
   employeeId: string;
@@ -120,12 +121,17 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   // Função para lidar com clique único (para dispositivos móveis)
   const handleClick = (date: Date) => {
     try {
+      // Log de ambiente para diagnóstico
+      const envInfo = getEnvironmentInfo();
+      
       // Usar normalizeEmployeeDate para ajustar a data antes de formatá-la
       const normalizedDate = normalizeEmployeeDate(date);
       const formattedDate = formatDateToISO(normalizedDate);
       
       // Log para diagnóstico detalhado
       console.group("=== CLIQUE NO CALENDÁRIO ===");
+      console.log("Ambiente:", envInfo);
+      
       console.log("Data original:", {
         iso: date.toISOString(),
         local: date.toString(),
@@ -206,8 +212,24 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   // Nomes dos dias da semana em inglês
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  // Detectar se é dispositivo móvel para ajustar a UI
+  const isMobile = isMobileDevice();
+
+  // Para dispositivos móveis, melhorar a área de toque
+  const mobileStyles = isMobile ? 
+    { padding: '12px', minHeight: '40px', touchAction: 'manipulation' as const } : 
+    {};
+
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
+      {/* Informações de ambiente para depuração - só visível durante desenvolvimento */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-100 p-2 mb-2 text-xs">
+          <p>Ambiente: {isMobile ? 'Mobile' : 'Desktop'}</p>
+          <p>Fuso: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-gray-800 capitalize">
           {format(currentMonth, 'MMMM yyyy', { locale: enUS })}
@@ -228,50 +250,68 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mb-2">
+      <div className="grid grid-cols-7 gap-1">
+        {/* Cabeçalho com os dias da semana */}
         {weekDays.map(day => (
-          <div key={day} className="text-center text-sm font-medium text-gray-500 py-1">
+          <div key={day} className="text-center font-medium text-gray-500 text-sm">
             {day}
           </div>
         ))}
-      </div>
-
-      <div 
-        className="grid grid-cols-7 gap-1"
-        onMouseLeave={handleMouseUp}
-        onMouseUp={handleMouseUp}
-        onTouchEnd={handleMouseUp}
-      >
-        {daysInMonth.map(day => {
-          // Usar normalizeEmployeeDate para verificar corretamente as datas
-          const normalizedDate = normalizeEmployeeDate(day);
-          const formattedDate = formatDateToISO(normalizedDate);
+        
+        {/* Dias do mês e eventos do mouse */}
+        <div 
+          className="grid grid-cols-7 gap-1 col-span-7"
+          onMouseLeave={handleMouseUp}
+          onMouseUp={handleMouseUp}
+          onTouchEnd={handleMouseUp}
+        >
+          {/* Preenchimento para os dias antes do início do mês */}
+          {Array.from({ length: getDay(monthStart) }).map((_, i) => (
+            <div key={`padding-${i}`} className="h-8" />
+          ))}
           
-          // Verificar se está na seleção atual ou já marcado como trabalhado
-          const isWorked = workedDates.includes(formattedDate);
-          const isSelected = isSelecting && isDateInSelection(day);
-          const shouldHighlight = (isSelected && isAdding) || (isWorked && !isSelected) || (isSelected && !isAdding && !isWorked);
-          
-          return (
-            <div
-              key={day.toString()}
-              onMouseDown={(e) => handleMouseDown(day, e)}
-              onMouseOver={() => handleMouseOver(day)}
-              onTouchStart={() => handleTouchStart(day)}
-              className={`
-                h-10 w-full rounded-md flex items-center justify-center text-sm font-medium cursor-pointer select-none
-                ${isToday(day) ? 'border-2 border-blue-500' : ''}
-                ${shouldHighlight 
-                  ? 'bg-green-500 text-white hover:bg-green-600' 
-                  : 'hover:bg-gray-100 text-gray-700'}
-                transition-colors duration-200
-                active:scale-95
-              `}
-            >
-              {format(day, 'd')}
-            </div>
-          );
-        })}
+          {/* Dias do mês */}
+          {daysInMonth.map(day => {
+            // Usar normalizeEmployeeDate para verificar corretamente as datas
+            const normalizedDate = normalizeEmployeeDate(day);
+            const formattedDate = formatDateToISO(normalizedDate);
+            
+            // Verificar se está na seleção atual ou já marcado como trabalhado
+            const isWorked = workedDates.includes(formattedDate);
+            const isSelected = isSelecting && isDateInSelection(day);
+            const shouldHighlight = (isSelected && isAdding) || (isWorked && !isSelected) || (isSelected && !isAdding && !isWorked);
+            
+            // Classes para estilização combinando as abordagens anteriores
+            const dayClasses = [
+              "flex items-center justify-center",
+              "cursor-pointer select-none",
+              "transition-colors duration-200",
+              isToday(day) ? "border-2 border-blue-500" : "",
+              shouldHighlight 
+                ? "bg-green-500 text-white hover:bg-green-600" 
+                : "hover:bg-gray-100 text-gray-700",
+              isMobile ? "h-10 w-10" : "h-8 w-8",
+              "rounded-md"
+            ].filter(Boolean).join(" ");
+            
+            return (
+              <div
+                key={day.toString()}
+                className={dayClasses}
+                style={mobileStyles}
+                onMouseDown={(e) => handleMouseDown(day, e)}
+                onMouseOver={() => handleMouseOver(day)}
+                onTouchStart={() => handleTouchStart(day)}
+                data-date={format(day, 'yyyy-MM-dd')}
+                aria-label={`${day.getDate()} ${format(day, 'MMMM yyyy')}`}
+                role="button"
+                tabIndex={0}
+              >
+                {format(day, 'd')}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Botões de Confirm e Reset */}

@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { enUS } from 'date-fns/locale';
+import { isMobileDevice, getEnvironmentInfo } from './deviceUtils';
 
 /**
  * SOLUÇÃO DEFINITIVA PARA PROBLEMAS DE FUSO HORÁRIO EM DATAS
@@ -62,6 +63,7 @@ export function normalizeDate(date: Date): Date {
 
 /**
  * Ajusta uma data especificamente para recibos de funcionários, aplicando ajuste maior
+ * Versão melhorada para suportar melhor dispositivos móveis e diferentes fusos horários
  * @param date Data a ser normalizada
  * @returns Data ajustada para meio-dia UTC do mesmo dia
  */
@@ -72,7 +74,11 @@ export function normalizeEmployeeDate(date: Date): Date {
     return new Date();
   }
   
+  // Obter informações do ambiente para diagnóstico
+  const envInfo = getEnvironmentInfo();
+  
   console.group("=== DIAGNÓSTICO normalizeEmployeeDate ===");
+  console.log("Ambiente:", envInfo);
   
   // Extrair componentes da data original
   const year = date.getFullYear();
@@ -89,12 +95,26 @@ export function normalizeEmployeeDate(date: Date): Date {
     tzOffset: date.getTimezoneOffset()
   });
   
-  // Ajustar para o dia correto com horário meio-dia UTC
-  // NÃO adiciona dia extra, apenas fixa o horário às 12:00 UTC
-  const adjustedDay = day;
+  // Ajuste para dispositivos móveis - testando abordagem robusta
+  let adjustedDay = day;
   
   // Criar data normalizada com horário meio-dia UTC para evitar problemas de mudança de dia
+  // Agora garantindo que o dia será o mesmo independente do fuso ou plataforma
   const normalized = new Date(Date.UTC(year, month, adjustedDay, 12, 0, 0));
+  
+  // Em dispositivos móveis, podemos precisar de ajustes adicionais dependendo do comportamento
+  if (isMobileDevice()) {
+    console.log("Dispositivo mobile detectado - aplicando ajustes adicionais");
+    
+    // Verificar se o dia foi alterado incorretamente devido ao fuso horário
+    if (normalized.getUTCDate() !== day) {
+      console.log("Correção necessária: dia UTC difere do dia original");
+      
+      // Ajustar explicitamente para o dia correto
+      normalized.setUTCDate(day);
+      normalized.setUTCHours(12, 0, 0, 0);
+    }
+  }
   
   // Logs para diagnóstico
   console.log("Data normalizada:", {
@@ -400,6 +420,7 @@ export function testarAjusteData(dataOriginal: Date): void {
 /**
  * Ajusta a string ISO retornada do banco de dados para exibição na interface
  * O formato string ISO "YYYY-MM-DD" é convertido para uma data sem problema de fuso
+ * Versão robusta para múltiplos fusos horários e dispositivos
  * @param dateString String de data no formato ISO (YYYY-MM-DD)
  * @returns Data ajustada para o fuso local
  */
@@ -410,17 +431,35 @@ export function adjustEmployeeDateDisplay(dateString: string): Date {
     return new Date();
   }
   
-  // Adicionar horário ao final para garantir o mesmo dia
-  const dateWithTime = `${dateString}T12:00:00Z`;
-  const date = new Date(dateWithTime);
+  console.group("adjustEmployeeDateDisplay");
+  const envInfo = getEnvironmentInfo();
+  console.log("Ambiente:", envInfo);
+  
+  // Extrair dia, mês e ano da string
+  const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+  
+  // Adicionar horário ao final para garantir o mesmo dia - abordagem robusta
+  // Criando a data diretamente com os componentes extraídos e fixando o horário em 12:00 UTC
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
   
   console.log("adjustEmployeeDateDisplay:", {
     original: dateString,
-    withTime: dateWithTime,
+    yearPart: year,
+    monthPart: month,
+    dayPart: day,
     resultado: date.toISOString(),
     diaLocal: date.getDate(),
     diaUTC: date.getUTCDate()
   });
+  
+  // Em dispositivos móveis, podemos precisar de verificações extras
+  if (isMobileDevice() && date.getUTCDate() !== day) {
+    console.log("Correção para mobile: ajustando dia explicitamente");
+    date.setUTCDate(day);
+    date.setUTCHours(12, 0, 0, 0);
+  }
+  
+  console.groupEnd();
   
   return date;
 }
