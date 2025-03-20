@@ -1,6 +1,6 @@
 // This is the service worker with the Advanced caching
 
-const CACHE = "cea-app-v1.6.0";
+const CACHE = "cea-app-v1.7.0";
 const cacheFiles = [
   "/",
   "index.html",

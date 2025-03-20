@@ -35,9 +35,6 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   const [mobileSelectionStart, setMobileSelectionStart] = useState<Date | null>(null);
   const [currentTouchDate, setCurrentTouchDate] = useState<Date | null>(null);
 
-  // Adicionando botão de modo de seleção múltipla para mobile
-  const [multiSelectMode, setMultiSelectMode] = useState(false);
-
   // Atualizar as datas trabalhadas quando as props mudarem
   useEffect(() => {
     setWorkedDates(initialWorkedDates || []);
@@ -316,7 +313,8 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   };
 
   const toggleMultiSelectMode = () => {
-    setMultiSelectMode(!multiSelectMode);
+    // Não é mais necessário, mas mantemos a função para limpar seleções
+    // setMultiSelectMode(!multiSelectMode);
     
     // Limpar qualquer seleção em andamento
     setIsMobileSelecting(false);
@@ -331,6 +329,14 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
         <div className="bg-yellow-100 p-2 mb-2 text-xs">
           <p>Ambiente: {isMobile ? 'Mobile' : 'Desktop'}</p>
           <p>Fuso: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
+        </div>
+      )}
+      
+      {/* Instrução para usuários mobile */}
+      {isMobile && (
+        <div className="bg-blue-50 p-2 mb-3 text-xs text-center rounded">
+          <p>Toque para selecionar dias individualmente</p>
+          <p>Toque e arraste para selecionar múltiplos dias</p>
         </div>
       )}
       
@@ -353,22 +359,6 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Botão de modo de seleção múltipla para dispositivos móveis */}
-      {isMobile && (
-        <div className="mb-3">
-          <button
-            onClick={toggleMultiSelectMode}
-            className={`text-xs px-3 py-1 rounded-full ${
-              multiSelectMode 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-200 text-gray-700'
-            }`}
-          >
-            {multiSelectMode ? 'Seleção múltipla: ON' : 'Seleção múltipla: OFF'}
-          </button>
-        </div>
-      )}
 
       <div className="grid grid-cols-7 gap-1">
         {/* Cabeçalho com os dias da semana */}
@@ -422,7 +412,7 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
                 onMouseDown={(e) => handleMouseDown(day, e)}
                 onMouseOver={() => handleMouseOver(day)}
                 onTouchStart={(e) => {
-                  if (isMobile && multiSelectMode) {
+                  if (isMobile) {
                     e.preventDefault();
                     if (!isMobileSelecting) {
                       handleMobileMultiSelectStart(day);
@@ -434,7 +424,7 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
                   }
                 }}
                 onTouchMove={(e) => {
-                  if (isMobile && multiSelectMode && isMobileSelecting) {
+                  if (isMobile && isMobileSelecting) {
                     e.preventDefault();
                     
                     // Identificar o elemento sob o toque
@@ -452,11 +442,11 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
                   }
                 }}
                 onTouchEnd={() => {
-                  if (isMobile && multiSelectMode && isMobileSelecting) {
+                  if (isMobile && isMobileSelecting) {
                     handleMobileMultiSelectEnd();
                   }
                 }}
-                onClick={() => isMobile && !multiSelectMode && handleClick(day)}
+                onClick={() => isMobile && !isMobileSelecting && handleClick(day)}
                 data-date={format(day, 'yyyy-MM-dd')}
                 aria-label={`${day.getDate()} ${format(day, 'MMMM yyyy')}`}
                 role="button"
