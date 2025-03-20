@@ -390,11 +390,16 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
       .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     return (
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-col gap-1">
         {sortedDates.map(({ original, date }) => (
-          <span key={original} className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
-            {formatEmployeeDateForDisplay(date, 'dd/MM')}
-          </span>
+          <div key={original} className="text-sm flex justify-between">
+            <span className="text-gray-800">
+              {format(date, 'MM/dd/yyyy', { locale: enUS })}
+            </span>
+            <span className="text-gray-600">
+              {format(date, 'EEEE', { locale: enUS })}
+            </span>
+          </div>
         ))}
       </div>
     );
