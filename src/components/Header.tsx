@@ -14,9 +14,6 @@ export function Header({ activeCategory }: { activeCategory: string }) {
             </p>
           </div>
         </div>
-        <div className="version-indicator">
-          <small className="text-xs text-gray-400">v{new Date().toISOString().substring(0,10)}</small>
-        </div>
         <div className="ml-auto text-white text-lg font-medium">
           {activeCategory}
         </div>
