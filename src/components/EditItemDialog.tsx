@@ -2,7 +2,8 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Item, ValidationError, Expense, Project, StockItem, Employee, BaseItem } from '../types';
-import { validation } from '../lib/validation';
+import { validation, normalizeMonetaryValue } from '../lib/validation';
+import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
 
 interface EditItemDialogProps {
   isOpen: boolean;
@@ -72,41 +73,16 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
       try {
         console.log("Processing project for editing:", item);
         
-        // Usar type assertion mais segura para garantir que o item seja tratado como Project
-        const projectItem = item as unknown as Project;
+        // Necessário extrair cada campo individualmente para evitar problemas
+        const projectItem = item as Project;
+        const projectClient = data.client as string;
+        const projectLocation = data.location as string;
+        const projectNumber = data.projectNumber as string;
         
-        // Garantir que todos os campos estejam presentes e com valores válidos
-        const projectClient = data.client as string || projectItem.client || '';
-        const projectLocation = data.location as string || projectItem.location || '';
-        const projectNumber = data.projectNumber as string || projectItem.projectNumber || '';
-        
-        // Tratar o valor como número, com fallback para o valor atual ou zero
-        let projectValue = 0;
-        try {
-          projectValue = parseFloat(data.value as string);
-          if (isNaN(projectValue)) {
-            projectValue = projectItem.value || 0;
-          }
-        } catch (e) {
-          console.error("Error processing project value:", e);
-          projectValue = projectItem.value || 0;
-        }
-        
-        // Tratar a data com fallback para a data atual ou a data do item
-        let projectStartDate = '';
-        try {
-          projectStartDate = new Date(data.startDate as string).toISOString();
-        } catch (e) {
-          console.error("Error processing project date:", e);
-          projectStartDate = projectItem.startDate || new Date().toISOString();
-        }
-        
-        // Garantir que o status seja um dos valores válidos
-        const projectStatus = ['completed', 'in_progress'].includes(data.status as string) 
-          ? data.status as 'completed' | 'in_progress'
-          : 'in_progress'; // Defaulting to 'in_progress' instead of checking for 'pending'
-        
-        // Verificar se o invoice está OK
+        // Normalizar datas (importante para funcionar corretamente)
+        const projectStartDate = data.startDate ? formatDateToISO(normalizeDate(new Date(data.startDate as string))) : projectItem.startDate;
+        const projectStatus = data.status as 'completed' | 'in_progress';
+        const projectValue = normalizeMonetaryValue(data.value as string);
         const invoiceOk = data.invoiceOk === 'on';
         
         // Criar um objeto limpo sem o spread operator (que pode causar problemas)
@@ -308,11 +284,11 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     Value
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     id="value"
                     name="value"
                     defaultValue={(item as Project).value || ''}
-                    step="0.01"
+                    placeholder="0.00"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>

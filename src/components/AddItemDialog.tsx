@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Item, ValidationError, Expense, Project, StockItem, Employee } from '../types';
-import { validation } from '../lib/validation';
+import { validation, normalizeMonetaryValue } from '../lib/validation';
 import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
 
 interface AddItemDialogProps {
@@ -39,26 +39,30 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Formulário enviado");
-    const formData = new FormData(e.target as HTMLFormElement);
-    const data = Object.fromEntries(formData);
-    console.log("Dados do formulário:", data);
     
-    let itemData: Partial<Item>;
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    let itemData: Partial<Item> = {};
+    
     let validationError: string | null = null;
     
     if (category === 'Expenses') {
+      // Normalizar a data para evitar problemas de fuso horário
       const dueDate = data.dueDate ? normalizeDate(new Date(data.dueDate as string)) : new Date();
       
       itemData = {
         description: data.description as string,
-        amount: parseFloat(data.amount as string),
-        date: dueDate.toISOString(),
+        amount: normalizeMonetaryValue(data.amount as string),
+        date: formatDateToISO(dueDate), // Usar formato YYYY-MM-DD
         category: 'Expenses',
         paid: false
       } as Partial<Expense>;
       console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
+      // Normalizar as datas para evitar problemas de fuso horário
       const startDate = data.startDate ? normalizeDate(new Date(data.startDate as string)) : new Date();
       const endDate = data.endDate ? normalizeDate(new Date(data.endDate as string)) : undefined;
       
@@ -67,10 +71,10 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         client: data.client as string,
         projectNumber: data.projectNumber as string,
         location: data.location as string,
-        startDate: startDate.toISOString(),
-        endDate: endDate?.toISOString(),
+        startDate: formatDateToISO(startDate), // Usar formato YYYY-MM-DD
+        endDate: endDate ? formatDateToISO(endDate) : undefined, // Usar formato YYYY-MM-DD se existir
         status: data.status as 'completed' | 'in_progress',
-        value: parseFloat(data.value as string) || 0,
+        value: normalizeMonetaryValue(data.value as string),
         invoiceOk: (data.invoiceOk === 'on'),
         category: 'Projects'
       } as Partial<Project>;
@@ -238,10 +242,10 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     Value
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     id="value"
                     name="value"
-                    step="0.01"
+                    placeholder="0.00"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
