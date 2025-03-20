@@ -41,6 +41,11 @@ export default defineConfig(({ mode }) => {
       // Otimizações adicionais para PWA
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,gif,webp}'],
+        clientsClaim: true,
+        skipWaiting: true,
+        // Aumentar a frequência de checagem por atualizações
+        navigationPreload: true,
+        // Reduzir o tempo de cache para arquivos críticos
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/mnucrulwdurskwofsgwp\.supabase\.co\/.*/i,
@@ -49,7 +54,18 @@ export default defineConfig(({ mode }) => {
               cacheName: 'supabase-api-cache',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 // 24 horas
+                maxAgeSeconds: 60 * 60 // Reduzido para 1 hora
+              }
+            }
+          },
+          {
+            urlPattern: /\.(?:js|css)$/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'assets-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 10 // Apenas 10 minutos para arquivos JS e CSS
               }
             }
           }
