@@ -48,9 +48,9 @@ export function normalizeDate(date: Date): Date {
   
   console.log(`Data original: ${date.toISOString()} (${date.toString()})`);
   
-  // Adicionar 2 dias para compensar o problema de fuso horário
-  // Aumentamos de +1 para +2 porque ainda está salvando um dia a menos
-  const adjustedDay = day + 2; 
+  // Adicionar 1 dia para compensar o problema de fuso horário
+  // O ajuste de +2 está causando problemas, voltamos para +1
+  const adjustedDay = day + 1; 
   
   // Criar data com horário meio-dia UTC para evitar problemas de mudança de dia
   const normalized = new Date(Date.UTC(year, month, adjustedDay, 12, 0, 0));
@@ -66,42 +66,47 @@ export function normalizeDate(date: Date): Date {
  * @returns Data ajustada para meio-dia UTC do mesmo dia
  */
 export function normalizeEmployeeDate(date: Date): Date {
+  // Verificar se a data é válida
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-    console.error("Data inválida recebida para normalizeEmployeeDate:", date);
+    console.error("Data inválida recebida:", date);
     return new Date();
   }
   
-  // Ajustar para o dia correto com horário meio-dia UTC
-  // Usando os valores locais do usuário para criar uma data UTC
+  // Extrair componentes da data original
   const year = date.getFullYear();
   const month = date.getMonth();
   const day = date.getDate();
   
-  console.log(`Data original (funcionário detalhado): 
-    ISO: ${date.toISOString()} 
-    Local: ${date.toString()}
-    Date: ${date.getDate()}
-    Month: ${month + 1}
-    Year: ${year}
-    Fuso: ${date.getTimezoneOffset() / -60}h
-  `);
+  // Logs para diagnóstico
+  console.log({
+    dataOriginal: {
+      iso: date.toISOString(),
+      local: date.toString(),
+      dia: date.getDate(),
+      mes: date.getMonth() + 1,
+      ano: date.getFullYear(),
+      tzOffset: date.getTimezoneOffset()
+    }
+  });
   
-  // Adicionar 4 dias para compensar o problema de fuso horário
-  // para recibos de funcionários (ajuste necessário conforme observações)
-  const adjustedDay = day + 4; 
+  // Ajustar para o dia correto com horário meio-dia UTC
+  // NÃO adiciona dia extra, apenas fixa o horário às 12:00 UTC
+  const adjustedDay = day;
   
-  // Criar data com horário meio-dia UTC para evitar problemas de mudança de dia
+  // Criar data normalizada com horário meio-dia UTC para evitar problemas de mudança de dia
   const normalized = new Date(Date.UTC(year, month, adjustedDay, 12, 0, 0));
   
-  console.log(`Data normalizada (funcionário detalhado): 
-    ISO: ${normalized.toISOString()} 
-    Local: ${normalized.toString()}
-    Date: ${normalized.getDate()}
-    Month: ${normalized.getMonth() + 1}
-    Year: ${normalized.getFullYear()}
-    Original Day: ${day} -> Adjusted Day: ${adjustedDay}
-    Diferença em dias: +4
-  `);
+  // Logs para diagnóstico
+  console.log({
+    dataNormalizada: {
+      iso: normalized.toISOString(),
+      local: normalized.toString(),
+      dia: normalized.getUTCDate(),
+      mes: normalized.getUTCMonth() + 1,
+      ano: normalized.getUTCFullYear(),
+      diferencaDias: 0 // Sem ajuste de dia
+    }
+  });
   
   return normalized;
 }
@@ -353,5 +358,39 @@ export function diagnoseFusoHorario(label: string, date: Date): void {
   console.log("getUTCDate():", date.getUTCDate());
   console.log("getTimezoneOffset():", date.getTimezoneOffset(), "minutos");
   console.log("Fuso horário local:", Intl.DateTimeFormat().resolvedOptions().timeZone);
+  console.groupEnd();
+}
+
+/**
+ * Função de teste para verificar a correção das datas
+ * Use esta função para testar se o ajuste está funcionando corretamente
+ */
+export function testarAjusteData(dataOriginal: Date): void {
+  console.group("TESTE DE AJUSTE DE DATA");
+  console.log("Data Original:", dataOriginal.toISOString(), "Local:", dataOriginal.toString());
+  
+  // Testar normalizeDate (adiciona +1 dia para compensar fuso)
+  const dataNormalizada = normalizeDate(dataOriginal);
+  console.log("Após normalizeDate (+1 dia):", dataNormalizada.toISOString(), "Local:", dataNormalizada.toString());
+  
+  // Testar normalizeEmployeeDate (mantém o mesmo dia, só ajusta para UTC)
+  const dataFuncionario = normalizeEmployeeDate(dataOriginal);
+  console.log("Após normalizeEmployeeDate (sem ajuste):", dataFuncionario.toISOString(), "Local:", dataFuncionario.toString());
+  
+  // Formatar para ISO (armazenamento)
+  const dataISO = formatDateToISO(dataNormalizada);
+  console.log("Formato ISO para armazenamento (normalizeDate):", dataISO);
+  
+  // Formatar para ISO (armazenamento de funcionário)
+  const dataISOFuncionario = formatDateToISO(dataFuncionario);
+  console.log("Formato ISO para armazenamento (normalizeEmployeeDate):", dataISOFuncionario);
+  
+  console.log("\nResumo importante:");
+  console.log("- Dia original: " + dataOriginal.getDate());
+  console.log("- Dia após normalizeDate: " + dataNormalizada.getUTCDate());
+  console.log("- Dia após normalizeEmployeeDate: " + dataFuncionario.getUTCDate());
+  console.log("- Dia no formato ISO (normalizeDate): " + dataISO.split("-")[2]);
+  console.log("- Dia no formato ISO (normalizeEmployeeDate): " + dataISOFuncionario.split("-")[2]);
+  
   console.groupEnd();
 } 

@@ -425,14 +425,37 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
           </div>
         </div>
         <div className="bg-gray-50 rounded-md p-2 print:bg-gray-50">
-          {sortedDates.length > 0 ? (
+          {sortedDates && sortedDates.length > 0 ? (
             <div className="flex flex-col gap-1">
-              {sortedDates.map(date => {
-                const dateObj = new Date(date);
+              {sortedDates.map((dateString) => {
+                // Criar objeto de data a partir da string
+                const dateObj = new Date(dateString);
+                
+                // Compensar o problema de fuso horário (adicionar 1 dia)
+                dateObj.setDate(dateObj.getDate() + 1);
+                
+                // Formatar a data para exibição (mês/dia)
+                const formattedDate = format(dateObj, 'MM/dd', { locale: enUS });
+                
+                // Formatar o dia da semana
+                const dayOfWeek = format(dateObj, 'EEEE', { locale: enUS });
+                
+                // Logs para diagnóstico
+                console.log({
+                  dataRecibo: {
+                    dataString: dateString,
+                    diaOriginal: new Date(dateString).getDate(),
+                    diaAjustado: dateObj.getDate(),
+                    diferenca: dateObj.getDate() - new Date(dateString).getDate(),
+                    formatadaCorrigida: formattedDate,
+                    diaDaSemana: dayOfWeek
+                  }
+                });
+                
                 return (
-                  <div key={date} className="text-sm flex justify-between">
-                    <span>{format(dateObj, 'MM/dd', { locale: enUS })}</span>
-                    <span className="text-gray-600">{format(dateObj, 'EEEE', { locale: enUS })}</span>
+                  <div key={dateString} className="text-sm flex justify-between">
+                    <span>{formattedDate}</span>
+                    <span className="text-gray-600">{dayOfWeek}</span>
                   </div>
                 );
               })}

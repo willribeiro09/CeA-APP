@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, isSameDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { diagnoseFusoHorario, normalizeEmployeeDate } from '../lib/dateUtils';
+import { diagnoseFusoHorario, normalizeEmployeeDate, formatDateToISO } from '../lib/dateUtils';
 
 interface WorkDaysCalendarProps {
   employeeId: string;
@@ -46,14 +46,19 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
 
   // Função para verificar se uma data já está marcada como trabalhada
   const isDateWorked = (date: Date): boolean => {
-    const formattedDate = format(date, 'yyyy-MM-dd');
+    // Usar normalizeEmployeeDate para ajustar a data
+    const normalizedDate = normalizeEmployeeDate(date);
+    const formattedDate = formatDateToISO(normalizedDate);
     return workedDates.includes(formattedDate);
   };
 
   // Iniciar a seleção múltipla
   const handleMouseDown = (date: Date, e: React.MouseEvent) => {
     e.preventDefault(); // Impedir comportamento padrão do mousedown
-    const formattedDate = format(date, 'yyyy-MM-dd');
+    // Usar normalizeEmployeeDate para ajustar a data
+    const normalizedDate = normalizeEmployeeDate(date);
+    const formattedDate = formatDateToISO(normalizedDate);
+    
     // Determinar se estamos adicionando ou removendo com base no estado atual do dia
     setIsAdding(!workedDates.includes(formattedDate));
     setIsSelecting(true);
@@ -80,7 +85,10 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
       
       // Aplicar a operação (adicionar ou remover) a todas as datas no intervalo
       datesInRange.forEach(date => {
-        const formattedDate = format(date, 'yyyy-MM-dd');
+        // Usar normalizeEmployeeDate para ajustar a data
+        const normalizedDate = normalizeEmployeeDate(date);
+        const formattedDate = formatDateToISO(normalizedDate);
+        
         const isCurrentlyWorked = workedDates.includes(formattedDate);
         
         // Se estamos adicionando e não está marcado, ou removendo e está marcado
@@ -111,7 +119,19 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
 
   // Função para lidar com clique único (para dispositivos móveis)
   const handleClick = (date: Date) => {
-    const formattedDate = format(date, 'yyyy-MM-dd');
+    // Usar normalizeEmployeeDate para ajustar a data antes de formatá-la
+    const normalizedDate = normalizeEmployeeDate(date);
+    const formattedDate = formatDateToISO(normalizedDate);
+    
+    // Log para diagnóstico
+    console.log("WorkDaysCalendar - Dia selecionado:", {
+      diaOriginal: date.getDate(),
+      diaNormalizado: normalizedDate.getUTCDate(), 
+      diaFormatado: formattedDate.split('-')[2],
+      dataCompleta: formattedDate,
+      observacao: "Sem ajuste de dias, apenas fixado em UTC"
+    });
+    
     const isDateWorked = workedDates.includes(formattedDate);
     
     // Alternar o estado de trabalho da data
@@ -196,7 +216,10 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
         onTouchEnd={handleMouseUp}
       >
         {daysInMonth.map(day => {
-          const formattedDate = format(day, 'yyyy-MM-dd');
+          // Usar normalizeEmployeeDate para verificar corretamente as datas
+          const normalizedDate = normalizeEmployeeDate(day);
+          const formattedDate = formatDateToISO(normalizedDate);
+          
           // Verificar se está na seleção atual ou já marcado como trabalhado
           const isWorked = workedDates.includes(formattedDate);
           const isSelected = isSelecting && isDateInSelection(day);
