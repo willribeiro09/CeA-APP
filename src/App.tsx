@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { ExpenseItem } from './components/ExpenseItem';
 import { Navigation } from './components/Navigation';
@@ -15,7 +15,7 @@ import { syncService, loadInitialData, saveData } from './lib/sync';
 import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
-import { format } from 'date-fns';
+import { format, addDays, startOfDay, getDay, addWeeks } from 'date-fns';
 import { SwipeableItem } from './components/SwipeableItem';
 import * as Dialog from '@radix-ui/react-dialog';
 import { WillItemFixed } from './components/WillItemFixed';
@@ -27,6 +27,16 @@ import { WeekSelector } from './components/WeekSelector';
 import { ProjectWeekSelector } from './components/ProjectWeekSelector';
 import EmployeeReceipt from './components/EmployeeReceipt';
 import WorkDaysCalendar from './components/WorkDaysCalendar';
+import { v4 as uuidv4 } from 'uuid';
+import { 
+  formatDateToISO, 
+  formatWeekRange, 
+  getNext5Weeks, 
+  getEmployeeWeekStart, 
+  getEmployeeWeekEnd, 
+  getProjectWeekStart, 
+  getProjectWeekEnd 
+} from './lib/dateUtils';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -38,57 +48,9 @@ const initialExpenses: Record<ListName, Expense[]> = {
 
 const initialEmployees: Record<string, Employee[]> = {};
 
-// Função para obter a terça-feira atual ou anterior mais próxima
-const getProjectWeekStart = (date: Date): Date => {
-  const result = new Date(date);
-  const day = result.getDay(); // 0 = domingo, 1 = segunda, 2 = terça, ...
-  const daysToSubtract = day === 2 ? 0 : day < 2 ? day + 5 : day - 2;
-  
-  result.setDate(result.getDate() - daysToSubtract);
-  result.setHours(0, 0, 0, 0);
-  return result;
-};
-
-// Função para obter a segunda-feira seguinte
-const getProjectWeekEnd = (date: Date): Date => {
-  const weekStart = getProjectWeekStart(date);
-  const result = new Date(weekStart);
-  result.setDate(result.getDate() + 6); // 6 dias após terça = segunda
-  result.setHours(23, 59, 59, 999);
-  return result;
-};
-
-// Funções para cálculo de datas para Employees (segunda a sábado)
-const getEmployeeWeekStart = (date: Date): Date => {
-  const result = new Date(date);
-  const day = result.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
-  // 1 = segunda-feira (já é um dia válido da semana)
-  const diff = day === 0 ? 6 : day - 1;
-  result.setDate(result.getDate() - diff);
-  result.setHours(0, 0, 0, 0);
-  return result;
-};
-
-const getEmployeeWeekEnd = (date: Date): Date => {
-  const weekStart = getEmployeeWeekStart(date);
-  const result = new Date(weekStart);
-  result.setDate(result.getDate() + 5); // 5 dias após segunda = sábado (sábado também é um dia válido)
-  result.setHours(23, 59, 59, 999);
-  return result;
-};
-
 const formatDateRange = (start: Date, end: Date): string => {
   // Mostrar apenas dia e mês para economizar espaço
   return `${format(start, 'dd/MM')} - ${format(end, 'dd/MM')}`;
-};
-
-// Função auxiliar para determinar a função correta com base na categoria
-const getWeekStart = (date: Date, category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' = 'Projects'): Date => {
-  return category === 'Employees' ? getEmployeeWeekStart(date) : getProjectWeekStart(date);
-};
-
-const getWeekEnd = (date: Date, category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' = 'Projects'): Date => {
-  return category === 'Employees' ? getEmployeeWeekEnd(date) : getProjectWeekEnd(date);
 };
 
 // Função auxiliar para criar o objeto StorageItems
@@ -101,6 +63,18 @@ const createStorageData = (data: Partial<StorageItems>): StorageItems => ({
   willBaseRate: data.willBaseRate,
   willBonus: data.willBonus
 });
+
+// Função auxiliar para encontrar funcionário em outras semanas
+const findEmployeeInOtherWeeks = (employeeId: string, employeesData: Record<string, Employee[]>): Employee | null => {
+  for (const weekKey of Object.keys(employeesData)) {
+    const weekEmployees = employeesData[weekKey] || [];
+    const found = weekEmployees.find(e => e.id === employeeId);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+};
 
 export default function App() {
   console.log('Iniciando renderização do App');
@@ -515,9 +489,10 @@ export default function App() {
 
   const handleAddItem = async (item: any) => {
     try {
+      const newItem = { ...item, id: uuidv4() };
+      
       if (activeCategory === 'Expenses') {
-        const expense = item as Expense;
-        expense.id = crypto.randomUUID();
+        const expense = newItem as Expense;
         expense.paid = expense.paid || false;
 
         // Atualizar o estado
@@ -549,8 +524,8 @@ export default function App() {
           return newExpenses;
         });
       } else if (activeCategory === 'Projects') {
-        const project = item as Project;
-        project.id = crypto.randomUUID();
+        const project = newItem as Project;
+        project.id = uuidv4();
 
         // Atualizar o estado
         setProjects(prevProjects => {
@@ -571,8 +546,8 @@ export default function App() {
           return newProjects;
         });
       } else if (activeCategory === 'Stock') {
-        const stockItem = item as StockItem;
-        stockItem.id = crypto.randomUUID();
+        const stockItem = newItem as StockItem;
+        stockItem.id = uuidv4();
 
         // Atualizar o estado
         setStockItems(prevStockItems => {
@@ -593,10 +568,10 @@ export default function App() {
           return newStockItems;
         });
       } else if (activeCategory === 'Employees') {
-        const employee = item as Employee;
-        const weekStartDate = format(selectedWeekStart, 'yyyy-MM-dd');
+        const employee = newItem as Employee;
+        const weekStartDate = formatDateToISO(selectedWeekStart);
         
-        // Inicializar workedDates como array vazio
+        // Inicializar os campos importantes do funcionário
         employee.workedDates = [];
         employee.weekStartDate = weekStartDate;
         employee.daysWorked = 0;
@@ -607,6 +582,23 @@ export default function App() {
         }
         if (!employee.dailyRate || isNaN(employee.dailyRate)) {
           employee.dailyRate = 250;
+        }
+        
+        // Verificar se já existe este funcionário em alguma semana
+        let employeeExists = false;
+        const employeeId = employee.id;
+        
+        // Procurar o funcionário em todas as semanas
+        Object.keys(employees).forEach(weekKey => {
+          if (employees[weekKey].some(e => e.name === employee.name)) {
+            employeeExists = true;
+          }
+        });
+        
+        // Se o funcionário já existe, mostrar um alerta
+        if (employeeExists) {
+          alert(`Funcionário "${employee.name}" já existe.`);
+          return;
         }
         
         // Adicionar o funcionário à semana selecionada
@@ -649,35 +641,29 @@ export default function App() {
   };
 
   const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
-    console.log(`Resetando dias para funcionário ${employeeId} na semana ${weekStartDate}`);
+    console.log(`Resetando todos os dias para funcionário ${employeeId}`);
     
     setEmployees(prevEmployees => {
       const newEmployees = { ...prevEmployees };
       
-      // Verificar se a semana existe
-      if (!newEmployees[weekStartDate]) {
-        console.error(`Semana ${weekStartDate} não encontrada`);
-        return prevEmployees;
-      }
-      
-      // Encontrar o funcionário na semana
-      const employeeIndex = newEmployees[weekStartDate].findIndex(e => e.id === employeeId);
-      
-      if (employeeIndex === -1) {
-        console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${weekStartDate}`);
-        return prevEmployees;
-      }
-      
-      // Resetar os dias trabalhados
-      const updatedEmployee = { ...newEmployees[weekStartDate][employeeIndex] };
-      updatedEmployee.daysWorked = 0;
-      
-      // Atualizar a lista de funcionários
-      newEmployees[weekStartDate] = [
-        ...newEmployees[weekStartDate].slice(0, employeeIndex),
-        updatedEmployee,
-        ...newEmployees[weekStartDate].slice(employeeIndex + 1)
-      ];
+      // Resetar o funcionário em todas as semanas
+      Object.keys(newEmployees).forEach(weekKey => {
+        const employeeIndex = newEmployees[weekKey].findIndex(e => e.id === employeeId);
+        
+        if (employeeIndex !== -1) {
+          // Resetar os dias trabalhados
+          const updatedEmployee = { ...newEmployees[weekKey][employeeIndex] };
+          updatedEmployee.daysWorked = 0;
+          updatedEmployee.workedDates = [];
+          
+          // Atualizar a lista de funcionários
+          newEmployees[weekKey] = [
+            ...newEmployees[weekKey].slice(0, employeeIndex),
+            updatedEmployee,
+            ...newEmployees[weekKey].slice(employeeIndex + 1)
+          ];
+        }
+      });
       
       // Salvar no Supabase e localmente
       const storageData = getData();
@@ -685,8 +671,8 @@ export default function App() {
         const updatedStorageData = {
           ...storageData,
           employees: newEmployees,
-          willBaseRate: storageData.willBaseRate,  // Preservar o valor original
-          willBonus: storageData.willBonus  // Preservar o valor original
+          willBaseRate: storageData.willBaseRate,
+          willBonus: storageData.willBonus
         };
         saveChanges(createStorageData(updatedStorageData));
       }
@@ -862,8 +848,8 @@ export default function App() {
   // Função para atualizar as datas da semana com base na categoria
   const updateWeekDatesForCategory = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
     const today = new Date();
-    const weekStart = getWeekStart(today, category);
-    const weekEnd = getWeekEnd(today, category);
+    const weekStart = getProjectWeekStart(today);
+    const weekEnd = getProjectWeekEnd(today);
     setSelectedWeekStart(weekStart);
     setSelectedWeekEnd(weekEnd);
   };
@@ -1051,10 +1037,48 @@ export default function App() {
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
     const weekEmployee = weekEmployees.find(e => e.id === employee.id);
     
-    // Se o funcionário não tem registro para esta semana, usar seus dados originais
+    // Se o funcionário não tem registro para esta semana, verificar em outras semanas
+    if (!weekEmployee) {
+      // Procurar o funcionário em outras semanas
+      const foundEmployee = findEmployeeInOtherWeeks(employee.id, employees);
+      
+      if (foundEmployee) {
+        // Criar uma cópia do funcionário para a semana atual com propriedades explícitas
+        const newEmployee: Employee = {
+          id: foundEmployee.id,
+          name: foundEmployee.name,
+          dailyRate: foundEmployee.dailyRate || 250,
+          weekStartDate: formattedSelectedWeekStart,
+          daysWorked: 0,
+          workedDates: [],
+          category: 'Employees'
+        };
+        
+        // Adicionar o funcionário à semana atual
+        setEmployees(prevEmployees => {
+          return {
+            ...prevEmployees,
+            [formattedSelectedWeekStart]: [...(prevEmployees[formattedSelectedWeekStart] || []), newEmployee]
+          };
+        });
+        
+        // Usar o funcionário recém-criado
+        setSelectedEmployee(newEmployee);
+        setIsCalendarDialogOpen(true);
+        return;
+      }
+    }
+    
+    // Se o funcionário já tem registro para esta semana, ou não foi encontrado em nenhuma outra
     const employeeToUse = weekEmployee || {
-      ...employee,
-      workedDates: employee.workedDates || []
+      id: employee.id || "",
+      name: employee.name || "",
+      dailyRate: employee.dailyRate || 250,
+      employeeName: employee.name || "",
+      weekStartDate: formattedSelectedWeekStart,
+      daysWorked: 0,
+      workedDates: [],
+      category: 'Employees' as const
     };
     
     setSelectedEmployee(employeeToUse);
@@ -1070,7 +1094,11 @@ export default function App() {
     
     // Se o funcionário já tem dias trabalhados específicos para esta semana
     if (weekEmployee && weekEmployee.workedDates && weekEmployee.workedDates.length > 0) {
-      setReceiptEmployee(weekEmployee);
+      setReceiptEmployee({
+        ...weekEmployee,
+        // Garantir que temos a data de início da semana correta
+        weekStartDate: formattedSelectedWeekStart
+      });
     } else {
       // Se não tem registro específico, filtrar datas trabalhadas que estão na semana atual
       let workedDatesInWeek: string[] = [];
@@ -1089,20 +1117,52 @@ export default function App() {
       const employeeWithWeekDates = {
         ...employee,
         workedDates: workedDatesInWeek,
-        daysWorked: workedDatesInWeek.length
+        daysWorked: workedDatesInWeek.length,
+        // Garantir que temos a data de início da semana correta
+        weekStartDate: formattedSelectedWeekStart
       };
       
       setReceiptEmployee(employeeWithWeekDates);
     }
     
+    // Certifique-se de usar a semana atualmente selecionada
     setIsReceiptDialogOpen(true);
   };
 
   // Adicionar esta função para formatar a data no formato MM/DD
   const formatWeekRangeMMDD = (startDate: Date, endDate: Date) => {
+    // Usar o formato MM/dd que é consistente com o resto da aplicação
     const start = format(startDate, 'MM/dd');
     const end = format(endDate, 'MM/dd');
     return `${start} - ${end}`;
+  };
+
+  // Função para alternar uma data trabalhada do funcionário
+  const handleToggleEmployeeWorkedDate = (employeeId: string, date: string) => {
+    // Encontrar o funcionário na semana atual
+    const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+    const weekEmployees = employees[formattedSelectedWeekStart] || [];
+    const employeeIndex = weekEmployees.findIndex(e => e.id === employeeId);
+    
+    if (employeeIndex === -1) {
+      console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${formattedSelectedWeekStart}`);
+      return;
+    }
+    
+    // Obter os dados do funcionário
+    const employee = weekEmployees[employeeIndex];
+    const workedDates = employee.workedDates || [];
+    
+    // Verificar se a data já está marcada como trabalhada
+    const isDateWorked = workedDates.includes(date);
+    
+    // Criar a nova lista de datas trabalhadas
+    const newWorkedDates = isDateWorked
+      ? workedDates.filter(d => d !== date)
+      : [...workedDates, date];
+    
+    // Atualizar as datas trabalhadas do funcionário
+    handleUpdateWorkedDates(employeeId, newWorkedDates);
   };
 
   return (
@@ -1477,9 +1537,9 @@ export default function App() {
 
       <Dialog.Root open={showLayoffAlert} onOpenChange={setShowLayoffAlert}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
           <Dialog.Content 
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-50"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-[100]"
             onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
           >
             <div className="flex flex-col items-center text-center">
@@ -1496,9 +1556,9 @@ export default function App() {
 
       <Dialog.Root open={isRateDialogOpen} onOpenChange={setIsRateDialogOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
           <Dialog.Content 
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-[100]"
             onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
           >
             <div className="flex justify-between items-center mb-4">
@@ -1559,32 +1619,29 @@ export default function App() {
       {selectedEmployee && (
         <Dialog.Root open={isCalendarDialogOpen} onOpenChange={setIsCalendarDialogOpen}>
           <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
             <Dialog.Content 
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl w-[90%] max-w-md z-50"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl max-w-md w-[95%] z-[100]"
               onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
             >
-              <div className="flex justify-between items-center mb-2">
-                <Dialog.Title className="text-lg font-semibold">
-                  {selectedEmployee.name}
-                </Dialog.Title>
-                <Dialog.Close className="text-gray-400 hover:text-gray-600">
-                  <X className="w-5 h-5" />
-                </Dialog.Close>
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold">
+                    Work Days: {selectedEmployee.name}
+                  </h2>
+                  <button onClick={() => setIsCalendarDialogOpen(false)} className="text-gray-500 hover:text-gray-700">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <WorkDaysCalendar
+                  employeeId={selectedEmployee.id}
+                  initialWorkedDates={selectedEmployee.workedDates || []}
+                  onDateToggle={(date) => handleToggleEmployeeWorkedDate(selectedEmployee.id, date)}
+                  onClose={() => setIsCalendarDialogOpen(false)}
+                  onReset={handleResetEmployee}
+                  weekStartDate={selectedEmployee.weekStartDate}
+                />
               </div>
-              
-              <WorkDaysCalendar
-                employeeId={selectedEmployee.id}
-                initialWorkedDates={selectedEmployee.workedDates || []}
-                onDateToggle={(date: string) => {
-                  handleUpdateWorkedDates(selectedEmployee.id, 
-                    selectedEmployee.workedDates?.includes(date)
-                      ? (selectedEmployee.workedDates || []).filter(d => d !== date)
-                      : [...(selectedEmployee.workedDates || []), date]
-                  );
-                }}
-                onClose={() => setIsCalendarDialogOpen(false)}
-              />
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
@@ -1594,14 +1651,14 @@ export default function App() {
       {receiptEmployee && (
         <Dialog.Root open={isReceiptDialogOpen} onOpenChange={setIsReceiptDialogOpen}>
           <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
             <Dialog.Content 
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl w-[95%] max-w-2xl max-h-[90vh] overflow-y-auto z-50"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl w-[95%] max-w-2xl max-h-[90vh] overflow-y-auto z-[100]"
               onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
             >
               <div className="flex justify-between items-center mb-2 sticky top-0 bg-white z-10 pb-2 border-b">
                 <Dialog.Title className="text-lg font-semibold">
-                  Receipt - {receiptEmployee.name}
+                  Payment Receipt - {receiptEmployee.name}
                 </Dialog.Title>
                 <Dialog.Close className="text-gray-400 hover:text-gray-600">
                   <X className="w-5 h-5" />

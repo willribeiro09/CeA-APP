@@ -52,7 +52,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         date: new Date(data.dueDate as string).toISOString(),
         category: 'Expenses',
         paid: false
-      };
+      } as Partial<Expense>;
       console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
@@ -67,7 +67,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         value: parseFloat(data.value as string) || 0,
         invoiceOk: (data.invoiceOk === 'on'),
         category: 'Projects'
-      };
+      } as Partial<Project>;
       console.log("Dados de projeto formatados:", itemData);
       validationError = validation.project(itemData as Partial<Project>);
     } else if (category === 'Stock') {
@@ -76,30 +76,20 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         quantity: parseInt(data.quantity as string),
         unit: data.unit as string,
         category: 'Stock'
-      };
+      } as Partial<StockItem>;
       console.log("Dados de estoque formatados:", itemData);
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else {
-      // Capturar a data de início do formulário
-      const startDateString = data.startDate as string;
-      console.log("Data de início selecionada:", startDateString);
-      
-      // Criar um objeto Date a partir da string da data
-      const startDate = startDateString ? new Date(startDateString) : new Date();
-      
-      // Resetar o horário para evitar problemas de comparação
-      startDate.setHours(0, 0, 0, 0);
-      
-      console.log("Data de início processada:", startDate.toISOString());
-      
+      // É um funcionário - remover dependência de data de início
       itemData = {
         name: data.name as string,
         employeeName: data.name as string,
         weekStartDate: selectedWeekStart?.toISOString() || new Date().toISOString(),
         daysWorked: 0,
         dailyRate: parseFloat(data.dailyRate as string) || 250,
-        category: 'Employees'
-      };
+        category: 'Employees',
+        workedDates: []  // Inicializar com array vazio
+      } as Partial<Employee>;
       console.log("Dados de funcionário formatados:", itemData);
       validationError = validation.employee(itemData as Partial<Employee>);
     }
@@ -123,9 +113,9 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
   return (
     <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
         <Dialog.Content 
-          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-[100]"
           onOpenAutoFocus={(e: React.FocusEvent) => {
             // Previne o foco automático que pode causar scroll
             e.preventDefault();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, isSameDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { diagnoseFusoHorario, normalizeEmployeeDate } from '../lib/dateUtils';
 
@@ -8,43 +8,121 @@ interface WorkDaysCalendarProps {
   initialWorkedDates: string[];
   onDateToggle: (date: string) => void;
   onClose?: () => void;
+  onReset?: (employeeId: string, weekStartDate: string) => void;
+  weekStartDate?: string;
 }
 
 const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   employeeId,
   initialWorkedDates,
   onDateToggle,
-  onClose
+  onClose,
+  onReset,
+  weekStartDate
 }) => {
   // Sempre iniciar com o mês atual
   const [currentMonth, setCurrentMonth] = useState(new Date());
   // Garantir que workedDates seja sempre um array, mesmo que initialWorkedDates seja undefined
   const [workedDates, setWorkedDates] = useState<string[]>(initialWorkedDates || []);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<Date | null>(null);
+  const [mouseOverDate, setMouseOverDate] = useState<Date | null>(null);
+  const [isAdding, setIsAdding] = useState(true);
 
   // Atualizar as datas trabalhadas quando as props mudarem
   useEffect(() => {
     setWorkedDates(initialWorkedDates || []);
   }, [initialWorkedDates]);
 
-  const handleDateClick = (date: Date) => {
-    // Diagnosticar a data original
-    console.log("Data selecionada no calendário: ", format(date, 'yyyy-MM-dd'));
-    diagnoseFusoHorario("WorkDaysCalendar - Data Clicada Original", date);
+  // Função para verificar se uma data está dentro da seleção atual
+  const isDateInSelection = (date: Date): boolean => {
+    if (!isSelecting || !selectionStart || !mouseOverDate) return false;
     
-    // Normalizar a data usando a função específica para funcionários
-    const normalizedDate = normalizeEmployeeDate(date);
-    diagnoseFusoHorario("WorkDaysCalendar - Data Clicada Normalizada", normalizedDate);
+    const start = selectionStart < mouseOverDate ? selectionStart : mouseOverDate;
+    const end = selectionStart < mouseOverDate ? mouseOverDate : selectionStart;
     
-    // Usar a data já formatada pela function format do date-fns
+    return date >= start && date <= end;
+  };
+
+  // Função para verificar se uma data já está marcada como trabalhada
+  const isDateWorked = (date: Date): boolean => {
     const formattedDate = format(date, 'yyyy-MM-dd');
-    console.log("Data formatada para toggle: ", formattedDate);
+    return workedDates.includes(formattedDate);
+  };
+
+  // Iniciar a seleção múltipla
+  const handleMouseDown = (date: Date, e: React.MouseEvent) => {
+    e.preventDefault(); // Impedir comportamento padrão do mousedown
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    // Determinar se estamos adicionando ou removendo com base no estado atual do dia
+    setIsAdding(!workedDates.includes(formattedDate));
+    setIsSelecting(true);
+    setSelectionStart(date);
+    setMouseOverDate(date);
+  };
+
+  // Atualizar a seleção enquanto move o mouse
+  const handleMouseOver = (date: Date) => {
+    if (isSelecting) {
+      setMouseOverDate(date);
+    }
+  };
+
+  // Finalizar a seleção múltipla
+  const handleMouseUp = () => {
+    if (isSelecting && selectionStart && mouseOverDate) {
+      // Ordenar as datas de início e fim
+      const start = selectionStart < mouseOverDate ? selectionStart : mouseOverDate;
+      const end = selectionStart < mouseOverDate ? mouseOverDate : selectionStart;
+      
+      // Obter todas as datas no intervalo
+      const datesInRange = eachDayOfInterval({ start, end });
+      
+      // Aplicar a operação (adicionar ou remover) a todas as datas no intervalo
+      datesInRange.forEach(date => {
+        const formattedDate = format(date, 'yyyy-MM-dd');
+        const isCurrentlyWorked = workedDates.includes(formattedDate);
+        
+        // Se estamos adicionando e não está marcado, ou removendo e está marcado
+        if ((isAdding && !isCurrentlyWorked) || (!isAdding && isCurrentlyWorked)) {
+          onDateToggle(formattedDate);
+          
+          // Atualizar o estado local para refletir a mudança
+          if (isAdding) {
+            setWorkedDates(prev => [...prev, formattedDate]);
+          } else {
+            setWorkedDates(prev => prev.filter(d => d !== formattedDate));
+          }
+        }
+      });
+    }
     
-    const newDates = workedDates.includes(formattedDate)
-      ? workedDates.filter(d => d !== formattedDate)
-      : [...workedDates, formattedDate];
+    // Limpar o estado de seleção
+    setIsSelecting(false);
+    setSelectionStart(null);
+    setMouseOverDate(null);
+  };
+
+  // Separar manipuladores de evento para desktop e touch devices
+  const handleTouchStart = (date: Date) => {
+    // No toque, vamos apenas alternar a data individual
+    handleClick(date);
+  };
+
+  // Função para lidar com clique único (para dispositivos móveis)
+  const handleClick = (date: Date) => {
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    const isDateWorked = workedDates.includes(formattedDate);
     
-    setWorkedDates(newDates);
+    // Alternar o estado de trabalho da data
     onDateToggle(formattedDate);
+    
+    // Atualizar o estado local
+    if (isDateWorked) {
+      setWorkedDates(prev => prev.filter(d => d !== formattedDate));
+    } else {
+      setWorkedDates(prev => [...prev, formattedDate]);
+    }
   };
 
   // Função para confirmar todas as datas selecionadas
@@ -57,13 +135,20 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
 
   // Função para resetar todas as datas
   const handleReset = () => {
-    // Para cada data trabalhada, chamar onDateToggle para removê-la
-    [...workedDates].forEach(date => {
-      onDateToggle(date);
-    });
-    
-    // Limpar o estado local
-    setWorkedDates([]);
+    // Usar o callback de reset se estiver disponível
+    if (onReset && weekStartDate) {
+      onReset(employeeId, weekStartDate);
+      // Limpar o estado local
+      setWorkedDates([]);
+    } else {
+      // Para cada data trabalhada, chamar onDateToggle para removê-la
+      [...workedDates].forEach(date => {
+        onDateToggle(date);
+      });
+      
+      // Limpar o estado local
+      setWorkedDates([]);
+    }
   };
 
   // Gerar os dias do mês atual
@@ -104,27 +189,37 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div 
+        className="grid grid-cols-7 gap-1"
+        onMouseLeave={handleMouseUp}
+        onMouseUp={handleMouseUp}
+        onTouchEnd={handleMouseUp}
+      >
         {daysInMonth.map(day => {
           const formattedDate = format(day, 'yyyy-MM-dd');
-          // Garantir que workedDates existe antes de chamar includes
-          const isWorked = Array.isArray(workedDates) && workedDates.includes(formattedDate);
+          // Verificar se está na seleção atual ou já marcado como trabalhado
+          const isWorked = workedDates.includes(formattedDate);
+          const isSelected = isSelecting && isDateInSelection(day);
+          const shouldHighlight = (isSelected && isAdding) || (isWorked && !isSelected) || (isSelected && !isAdding && !isWorked);
           
           return (
-            <button
+            <div
               key={day.toString()}
-              onClick={() => handleDateClick(day)}
+              onMouseDown={(e) => handleMouseDown(day, e)}
+              onMouseOver={() => handleMouseOver(day)}
+              onTouchStart={() => handleTouchStart(day)}
               className={`
-                h-10 w-full rounded-md flex items-center justify-center text-sm font-medium
+                h-10 w-full rounded-md flex items-center justify-center text-sm font-medium cursor-pointer select-none
                 ${isToday(day) ? 'border-2 border-blue-500' : ''}
-                ${isWorked 
+                ${shouldHighlight 
                   ? 'bg-green-500 text-white hover:bg-green-600' 
                   : 'hover:bg-gray-100 text-gray-700'}
                 transition-colors duration-200
+                active:scale-95
               `}
             >
               {format(day, 'd')}
-            </button>
+            </div>
           );
         })}
       </div>
@@ -141,7 +236,7 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
           onClick={handleReset}
           className="px-4 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-colors"
         >
-          Reset
+          Reset All Days
         </button>
       </div>
     </div>

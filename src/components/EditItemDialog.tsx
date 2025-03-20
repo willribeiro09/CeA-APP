@@ -137,7 +137,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         quantity: parseInt(data.quantity as string),
         unit: data.unit as string,
         category: 'Stock'
-      };
+      } as Partial<StockItem>;
       console.log("Dados de estoque formatados:", itemData);
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else if (item && 'employeeName' in item) {
@@ -190,9 +190,9 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
   return (
     <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-[2px]" />
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
         <Dialog.Content 
-          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-50"
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-[100]"
           onOpenAutoFocus={(e: React.FocusEvent) => {
             // Previne o foco automático que pode causar scroll
             e.preventDefault();

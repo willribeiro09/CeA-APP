@@ -18,8 +18,11 @@ export function Calendar({ selectedDate, onSelect, isOpen, onOpenChange }: Calen
   return (
     <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl z-50">
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+        <Dialog.Content 
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 pt-6 shadow-lg w-[95%] max-w-xs mx-auto z-[100]"
+          onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+        >
           <div className="flex justify-end">
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
