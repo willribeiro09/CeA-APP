@@ -30,6 +30,14 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   const [mouseOverDate, setMouseOverDate] = useState<Date | null>(null);
   const [isAdding, setIsAdding] = useState(true);
 
+  // Estado para seleção em dispositivos móveis
+  const [isMobileSelecting, setIsMobileSelecting] = useState(false);
+  const [mobileSelectionStart, setMobileSelectionStart] = useState<Date | null>(null);
+  const [currentTouchDate, setCurrentTouchDate] = useState<Date | null>(null);
+
+  // Adicionando botão de modo de seleção múltipla para mobile
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+
   // Atualizar as datas trabalhadas quando as props mudarem
   useEffect(() => {
     setWorkedDates(initialWorkedDates || []);
@@ -112,10 +120,37 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
     setMouseOverDate(null);
   };
 
+  // Para dispositivos móveis, melhorar a área de toque
+  const mobileStyles = isMobileDevice() ? 
+    { 
+      padding: '16px', 
+      minHeight: '44px', 
+      minWidth: '44px',
+      touchAction: 'manipulation' as const,
+      WebkitTapHighlightColor: 'transparent' as const,
+      userSelect: 'none' as const
+    } : 
+    {};
+
   // Separar manipuladores de evento para desktop e touch devices
-  const handleTouchStart = (date: Date) => {
-    // No toque, vamos apenas alternar a data individual
-    handleClick(date);
+  const handleTouchStart = (date: Date, e: React.TouchEvent) => {
+    try {
+      e.preventDefault(); // Prevenir comportamentos padrão que possam interferir
+      
+      // Para dispositivos móveis, melhorar o feedback visual
+      const target = e.currentTarget as HTMLDivElement;
+      target.style.opacity = '0.7';
+      
+      // Usar a função de clique individual
+      handleClick(date);
+      
+      // Restaurar a opacidade após breve delay
+      setTimeout(() => {
+        if (target) target.style.opacity = '1';
+      }, 200);
+    } catch (error) {
+      console.error("Erro no touch start:", error);
+    }
   };
 
   // Função para lidar com clique único (para dispositivos móveis)
@@ -215,10 +250,79 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   // Detectar se é dispositivo móvel para ajustar a UI
   const isMobile = isMobileDevice();
 
-  // Para dispositivos móveis, melhorar a área de toque
-  const mobileStyles = isMobile ? 
-    { padding: '12px', minHeight: '40px', touchAction: 'manipulation' as const } : 
-    {};
+  // Iniciar seleção em dispositivos móveis
+  const handleMobileMultiSelectStart = (date: Date) => {
+    setIsMobileSelecting(true);
+    setMobileSelectionStart(date);
+    setCurrentTouchDate(date);
+    
+    // Determinar se estamos adicionando ou removendo
+    const normalizedDate = normalizeEmployeeDate(date);
+    const formattedDate = formatDateToISO(normalizedDate);
+    setIsAdding(!workedDates.includes(formattedDate));
+    
+    console.log("Iniciando seleção múltipla em mobile:", date);
+  };
+  
+  // Atualizar a seleção durante o toque
+  const handleMobileMultiSelectMove = (date: Date) => {
+    if (isMobileSelecting && mobileSelectionStart && date !== currentTouchDate) {
+      setCurrentTouchDate(date);
+      console.log("Atualizando seleção múltipla em mobile:", date);
+    }
+  };
+  
+  // Finalizar a seleção múltipla em dispositivos móveis
+  const handleMobileMultiSelectEnd = () => {
+    if (isMobileSelecting && mobileSelectionStart && currentTouchDate) {
+      console.log("Finalizando seleção múltipla em mobile", {
+        inicio: mobileSelectionStart,
+        fim: currentTouchDate
+      });
+      
+      // Ordenar as datas de início e fim
+      const start = mobileSelectionStart < currentTouchDate ? mobileSelectionStart : currentTouchDate;
+      const end = mobileSelectionStart < currentTouchDate ? currentTouchDate : mobileSelectionStart;
+      
+      // Obter todas as datas no intervalo
+      const datesInRange = eachDayOfInterval({ start, end });
+      
+      // Aplicar a operação (adicionar ou remover) a todas as datas no intervalo
+      datesInRange.forEach(date => {
+        // Usar normalizeEmployeeDate para ajustar a data
+        const normalizedDate = normalizeEmployeeDate(date);
+        const formattedDate = formatDateToISO(normalizedDate);
+        
+        const isCurrentlyWorked = workedDates.includes(formattedDate);
+        
+        // Se estamos adicionando e não está marcado, ou removendo e está marcado
+        if ((isAdding && !isCurrentlyWorked) || (!isAdding && isCurrentlyWorked)) {
+          onDateToggle(formattedDate);
+          
+          // Atualizar o estado local para refletir a mudança
+          if (isAdding) {
+            setWorkedDates(prev => [...prev, formattedDate]);
+          } else {
+            setWorkedDates(prev => prev.filter(d => d !== formattedDate));
+          }
+        }
+      });
+      
+      // Limpar o estado de seleção
+      setIsMobileSelecting(false);
+      setMobileSelectionStart(null);
+      setCurrentTouchDate(null);
+    }
+  };
+
+  const toggleMultiSelectMode = () => {
+    setMultiSelectMode(!multiSelectMode);
+    
+    // Limpar qualquer seleção em andamento
+    setIsMobileSelecting(false);
+    setMobileSelectionStart(null);
+    setCurrentTouchDate(null);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
@@ -249,6 +353,22 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Botão de modo de seleção múltipla para dispositivos móveis */}
+      {isMobile && (
+        <div className="mb-3">
+          <button
+            onClick={toggleMultiSelectMode}
+            className={`text-xs px-3 py-1 rounded-full ${
+              multiSelectMode 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-200 text-gray-700'
+            }`}
+          >
+            {multiSelectMode ? 'Seleção múltipla: ON' : 'Seleção múltipla: OFF'}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-7 gap-1">
         {/* Cabeçalho com os dias da semana */}
@@ -301,7 +421,42 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
                 style={mobileStyles}
                 onMouseDown={(e) => handleMouseDown(day, e)}
                 onMouseOver={() => handleMouseOver(day)}
-                onTouchStart={() => handleTouchStart(day)}
+                onTouchStart={(e) => {
+                  if (isMobile && multiSelectMode) {
+                    e.preventDefault();
+                    if (!isMobileSelecting) {
+                      handleMobileMultiSelectStart(day);
+                    } else {
+                      handleMobileMultiSelectMove(day);
+                    }
+                  } else {
+                    handleTouchStart(day, e);
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (isMobile && multiSelectMode && isMobileSelecting) {
+                    e.preventDefault();
+                    
+                    // Identificar o elemento sob o toque
+                    const touch = e.touches[0];
+                    const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+                    
+                    // Verificar se é um dia do calendário
+                    if (elem && elem.hasAttribute('data-date')) {
+                      const dateStr = elem.getAttribute('data-date');
+                      if (dateStr) {
+                        const date = new Date(dateStr);
+                        handleMobileMultiSelectMove(date);
+                      }
+                    }
+                  }
+                }}
+                onTouchEnd={() => {
+                  if (isMobile && multiSelectMode && isMobileSelecting) {
+                    handleMobileMultiSelectEnd();
+                  }
+                }}
+                onClick={() => isMobile && !multiSelectMode && handleClick(day)}
                 data-date={format(day, 'yyyy-MM-dd')}
                 aria-label={`${day.getDate()} ${format(day, 'MMMM yyyy')}`}
                 role="button"
