@@ -130,5 +130,38 @@ self.addEventListener('message', event => {
         console.log('[ServiceWorker] Cache limpo com sucesso');
       });
     }
+    
+    if (event.data.type === 'SYNC_DATA') {
+      console.log('[ServiceWorker] Solicitação de sincronização de dados recebida');
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          // Notifica todos os clientes para sincronizar dados
+          client.postMessage({
+            type: 'PERFORM_SYNC',
+            timestamp: new Date().getTime()
+          });
+        });
+      });
+    }
+  }
+}); 
+
+// Evento de sincronização em segundo plano (quando suportado)
+self.addEventListener('sync', event => {
+  console.log('[ServiceWorker] Evento de sincronização em segundo plano:', event.tag);
+  
+  if (event.tag === 'sync-data') {
+    console.log('[ServiceWorker] Executando sincronização em segundo plano');
+    event.waitUntil(
+      self.clients.matchAll().then(clients => {
+        return clients.map(client => {
+          // Notifica clientes para realizar sincronização
+          return client.postMessage({
+            type: 'PERFORM_SYNC',
+            timestamp: new Date().getTime()
+          });
+        });
+      })
+    );
   }
 }); 

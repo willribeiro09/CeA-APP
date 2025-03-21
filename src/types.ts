@@ -60,6 +60,10 @@ export interface StorageItems {
   lastSync: number | string;
   willBaseRate?: number;
   willBonus?: number;
+  updatedAt?: number;
+  version?: number;
+  pendingChanges?: PendingChange[];
+  isOffline?: boolean;
 }
 
 export type SyncData = StorageItems;
@@ -80,3 +84,16 @@ export interface NavItem {
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
 }
 export type EmployeeName = 'Matheus' | 'João' | 'Pedro' | 'Lucas';
+
+/**
+ * Tipo para mudanças pendentes quando offline
+ */
+export interface PendingChange {
+  id: string;
+  timestamp: string;
+  syncStatus: 'pending' | 'failed' | 'completed';
+  type: 'add' | 'update' | 'delete';
+  entity: 'expenses' | 'projects' | 'stock' | 'employees';
+  data: any;
+  lastAttempt?: string;
+}

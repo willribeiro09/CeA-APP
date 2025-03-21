@@ -1,10 +1,11 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Item, ValidationError, Expense, Project, StockItem, Employee } from '../types';
+import { Item, ValidationError, Expense, Project, StockItem, Employee, PendingChange } from '../types';
 import { validation, normalizeMonetaryValue } from '../lib/validation';
 import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
 import { v4 as uuidv4 } from 'uuid';
+import { syncService } from '../lib/sync';
 
 interface AddItemDialogProps {
   isOpen: boolean;
@@ -12,9 +13,10 @@ interface AddItemDialogProps {
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
   onSubmit: (data: Partial<Item>) => void;
   selectedWeekStart?: Date;
+  onRequestClose: () => void;
 }
 
-export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, selectedWeekStart }: AddItemDialogProps) {
+export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, selectedWeekStart, onRequestClose }: AddItemDialogProps) {
   const [errors, setErrors] = useState<ValidationError[]>([]);
 
   useEffect(() => {
@@ -37,53 +39,47 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
     document.body.classList.remove('input-focused');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Formulário enviado");
-    const formData = new FormData(e.target as HTMLFormElement);
-    const data = Object.fromEntries(formData);
-    console.log("Dados do formulário:", data);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     
     let itemData: Partial<Item>;
     let validationError: string | null = null;
     
     if (category === 'Expenses') {
-      const dueDate = data.dueDate ? normalizeDate(new Date(data.dueDate as string)) : new Date();
+      const dueDate = formData.get('dueDate') ? normalizeDate(new Date(formData.get('dueDate') as string)) : new Date();
       
       itemData = {
-        description: data.description as string,
-        amount: parseFloat(data.amount as string),
+        description: formData.get('description') as string,
+        amount: parseFloat(formData.get('amount') as string),
         date: dueDate.toISOString(),
         category: 'Expenses',
         paid: false
       } as Partial<Expense>;
-      console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
-      const startDate = data.startDate ? normalizeDate(new Date(data.startDate as string)) : new Date();
-      const endDate = data.endDate ? normalizeDate(new Date(data.endDate as string)) : undefined;
+      const startDate = formData.get('startDate') ? normalizeDate(new Date(formData.get('startDate') as string)) : new Date();
+      const endDate = formData.get('endDate') ? normalizeDate(new Date(formData.get('endDate') as string)) : undefined;
       
-      // Adicione logs detalhados sobre os dados do projeto
-      console.log('Dados brutos do formulário de projeto:', data);
+      console.log('Dados brutos do formulário de projeto:', formData);
       console.log('startDate processada:', startDate);
-      console.log('Valor bruto:', data.value);
+      console.log('Valor bruto:', formData.get('value'));
       
-      // Garantir que temos todos os campos obrigatórios
-      const projectValue = normalizeMonetaryValue(data.value as string);
+      const projectValue = normalizeMonetaryValue(formData.get('value') as string);
       console.log('Valor normalizado:', projectValue);
       
-      // Criar o objeto do projeto com todos os campos obrigatórios
       itemData = {
         id: uuidv4(),
-        name: data.client as string,
-        client: data.client as string,
-        projectNumber: data.projectNumber as string || '',
-        location: data.location as string || '',
+        name: formData.get('client') as string,
+        client: formData.get('client') as string,
+        projectNumber: formData.get('projectNumber') as string || '',
+        location: formData.get('location') as string || '',
         startDate: startDate.toISOString(),
         endDate: endDate?.toISOString(),
-        status: data.status as 'completed' | 'in_progress',
+        status: formData.get('status') as 'completed' | 'in_progress',
         value: projectValue,
-        invoiceOk: (data.invoiceOk === 'on'),
+        invoiceOk: (formData.get('invoiceOk') === 'on'),
         category: 'Projects'
       } as Partial<Project>;
       
@@ -91,31 +87,27 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       validationError = validation.project(itemData as Partial<Project>);
     } else if (category === 'Stock') {
       itemData = {
-        name: data.name as string,
-        quantity: parseInt(data.quantity as string),
-        unit: data.unit as string,
+        name: formData.get('name') as string,
+        quantity: parseInt(formData.get('quantity') as string),
+        unit: formData.get('unit') as string,
         category: 'Stock'
       } as Partial<StockItem>;
-      console.log("Dados de estoque formatados:", itemData);
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else {
-      // É um funcionário
       const startDateString = selectedWeekStart?.toISOString() || new Date().toISOString();
       const startDate = startDateString ? normalizeDate(new Date(startDateString)) : normalizeDate(new Date());
       
-      // Usar formatDateToISO para garantir formato correto
       const weekStartDateISO = formatDateToISO(startDate);
       
       itemData = {
-        name: data.name as string,
-        employeeName: data.name as string,
+        name: formData.get('name') as string,
+        employeeName: formData.get('name') as string,
         weekStartDate: startDate.toISOString(),
         daysWorked: 0,
-        dailyRate: parseFloat(data.dailyRate as string) || 250,
+        dailyRate: parseFloat(formData.get('dailyRate') as string) || 250,
         category: 'Employees',
-        workedDates: []  // Inicializar com array vazio
+        workedDates: []
       } as Partial<Employee>;
-      console.log("Dados de funcionário formatados:", itemData);
       validationError = validation.employee(itemData as Partial<Employee>);
     }
 
@@ -125,10 +117,25 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       return;
     }
 
-    console.log("Dados válidos, chamando onSubmit com:", itemData);
-    setErrors([]);
-    onSubmit(itemData);
-    onOpenChange(false);
+    try {
+      onSubmit(itemData);
+      
+      if (!navigator.onLine) {
+        console.log('Operação offline detectada, registrando para sincronização posterior');
+        const change: Omit<PendingChange, 'id' | 'timestamp' | 'syncStatus'> = {
+          type: 'add',
+          entity: category.toLowerCase() as any,
+          data: itemData
+        };
+        
+        await syncService.addOfflineChange(change);
+      }
+      
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Erro ao adicionar item:', error);
+      setErrors([{ field: 'form', message: 'Ocorreu um erro ao adicionar o item.' }]);
+    }
   };
 
   const getFieldError = (fieldName: string) => {
@@ -142,7 +149,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         <Dialog.Content 
           className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-[100]"
           onOpenAutoFocus={(e: React.FocusEvent) => {
-            // Previne o foco automático que pode causar scroll
             e.preventDefault();
           }}
         >

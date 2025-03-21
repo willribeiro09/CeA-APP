@@ -11,7 +11,7 @@ import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems
 import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
-import { syncService, loadInitialData, saveData, registerBackgroundSync, SHARED_UUID, isEmptyOrMinimal } from './lib/sync';
+import { syncService, loadInitialData, saveData } from './lib/sync';
 import { isSupabaseConfigured, initSyncTable, supabase } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
@@ -38,6 +38,7 @@ import {
   normalizeDate 
 } from './lib/dateUtils';
 import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
+import { OfflineBanner } from './components/OfflineBanner';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -142,6 +143,11 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
   const [projectTotal, setProjectTotal] = useState(0);
+  
+  // Adicionar estados para controle do modo offline
+  const [isOffline, setIsOffline] = useState(false);
+  const [pendingChangesCount, setPendingChangesCount] = useState(0);
+  const [isSyncingOfflineChanges, setIsSyncingOfflineChanges] = useState(false);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -783,25 +789,29 @@ export default function App() {
     setSelectedList(value);
     setIsDropdownOpen(false);
     
-    const storageData = getData();
-    storageData.expenses = expenses;
-    storageData.projects = projects;
-    storageData.stock = stockItems;
-    storageData.employees = employees;
-    
-    saveChanges(createStorageData(storageData));
+    // Salvar os dados atualizados
+    saveChanges(createStorageData({
+      expenses,
+      projects,
+      stock: stockItems,
+      employees,
+      willBaseRate,
+      willBonus
+    }));
   };
 
   const handleEmployeeSelect = (value: EmployeeName) => {
     setActiveEmployee(value);
     
-    const storageData = getData();
-    storageData.expenses = expenses;
-    storageData.projects = projects;
-    storageData.stock = stockItems;
-    storageData.employees = employees;
-    
-    saveChanges(createStorageData(storageData));
+    // Salvar os dados atualizados
+    saveChanges(createStorageData({
+      expenses,
+      projects,
+      stock: stockItems,
+      employees,
+      willBaseRate,
+      willBonus
+    }));
   };
 
   const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
@@ -830,16 +840,14 @@ export default function App() {
       });
       
       // Salvar no Supabase e localmente
-      const storageData = getData();
-      if (storageData) {
-        const updatedStorageData = {
-          ...storageData,
-          employees: newEmployees,
-          willBaseRate: storageData.willBaseRate,
-          willBonus: storageData.willBonus
-        };
-        saveChanges(createStorageData(updatedStorageData));
-      }
+      saveChanges(createStorageData({
+        expenses,
+        projects,
+        stock: stockItems,
+        employees: newEmployees,
+        willBaseRate,
+        willBonus
+      }));
       
       return newEmployees;
     });
@@ -851,22 +859,28 @@ export default function App() {
     
     // Salvar dados após resetar os valores
     setTimeout(() => {
-      const storageData = getData();
-      storageData.willBaseRate = 200;
-      storageData.willBonus = 0;
-      saveChanges(createStorageData(storageData));
+      saveChanges(createStorageData({
+        expenses,
+        projects,
+        stock: stockItems,
+        employees,
+        willBaseRate: 200,
+        willBonus: 0
+      }));
     }, 0);
   };
 
   // Adicionar função para salvar os dados do Will
   const handleSaveWillData = () => {
-    const storageData = getData();
-    // Adicionar os dados do Will ao objeto de armazenamento
-    storageData.willBaseRate = willBaseRate;
-    storageData.willBonus = willBonus;
-    
     // Salvar todas as alterações
-    saveChanges(createStorageData(storageData));
+    saveChanges(createStorageData({
+      expenses,
+      projects,
+      stock: stockItems,
+      employees,
+      willBaseRate,
+      willBonus
+    }));
   };
 
   // Modificar a função que adiciona bônus ao Will
@@ -875,15 +889,12 @@ export default function App() {
       const newBonus = prev + 100;
       // Salvar dados após atualizar o bônus
       setTimeout(() => {
-        const storageData = getData();
-        storageData.willBaseRate = willBaseRate;
-        storageData.willBonus = newBonus;
         console.log('Salvando bônus atualizado:', newBonus);
         saveChanges(createStorageData({
-          expenses: storageData.expenses,
-          projects: storageData.projects,
-          stock: storageData.stock,
-          employees: storageData.employees,
+          expenses,
+          projects,
+          stock: stockItems,
+          employees,
           willBaseRate,
           willBonus: newBonus
         }));
@@ -904,15 +915,12 @@ export default function App() {
     
     // Salvar dados após atualizar o salário base
     setTimeout(() => {
-      const storageData = getData();
-      storageData.willBaseRate = newBaseRate;
-      storageData.willBonus = willBonus;
       console.log('Salvando taxa base atualizada:', newBaseRate);
       saveChanges(createStorageData({
-        expenses: storageData.expenses,
-        projects: storageData.projects,
-        stock: storageData.stock,
-        employees: storageData.employees,
+        expenses,
+        projects,
+        stock: stockItems,
+        employees,
         willBaseRate: newBaseRate,
         willBonus
       }));
@@ -1166,16 +1174,14 @@ export default function App() {
       ];
       
       // Salvar no Supabase e localmente
-      const storageData = getData();
-      if (storageData) {
-        const updatedStorageData = {
-          ...storageData,
-          employees: newEmployees,
-          willBaseRate: storageData.willBaseRate,
-          willBonus: storageData.willBonus
-        };
-        saveChanges(createStorageData(updatedStorageData));
-      }
+      saveChanges(createStorageData({
+        expenses,
+        projects,
+        stock: stockItems,
+        employees: newEmployees,
+        willBaseRate,
+        willBonus
+      }));
       
       return newEmployees;
     });
@@ -1410,13 +1416,15 @@ export default function App() {
           
           // Atualizar dados locais
           console.log('Verificando dados locais');
-          const storageData = getData();
-          if (storageData) {
+          const localData = await getData();
+          if (localData) {
             // Verificar por inconsistências nos dados
-            if (typeof storageData.lastSync !== 'number') {
+            if (typeof localData.lastSync !== 'string' && typeof localData.lastSync !== 'number') {
               console.log('Corrigindo timestamp de sincronização');
-              storageData.lastSync = Date.now();
-              saveChanges(storageData);
+              saveChanges(createStorageData({
+                ...localData,
+                lastSync: new Date().toISOString()
+              }));
             }
             
             // Limpar qualquer dado temporário potencialmente inconsistente
@@ -1462,8 +1470,99 @@ export default function App() {
     console.groupEnd();
   }, []);
 
+  // Função para verificar mudanças pendentes
+  const checkPendingChanges = useCallback(async () => {
+    try {
+      const count = await syncService.getPendingChangesCount();
+      setPendingChangesCount(count);
+      return count;
+    } catch (error) {
+      console.error('Erro ao verificar mudanças pendentes:', error);
+      return 0;
+    }
+  }, []);
+
+  // Função para forçar sincronização de mudanças offline
+  const forceSyncOfflineChanges = useCallback(async () => {
+    if (isSyncingOfflineChanges) return;
+    
+    setIsSyncingOfflineChanges(true);
+    try {
+      await syncService.syncPendingChanges();
+      // Atualizar a contagem após sincronização
+      const count = await syncService.getPendingChangesCount();
+      setPendingChangesCount(count);
+    } catch (error) {
+      console.error('Erro ao sincronizar mudanças offline:', error);
+    } finally {
+      setIsSyncingOfflineChanges(false);
+    }
+  }, [isSyncingOfflineChanges]);
+  
+  // useEffect para configurar listeners de conectividade
+  useEffect(() => {
+    // Verificar mudanças pendentes inicialmente
+    checkPendingChanges();
+    
+    // Configurar listeners para conectividade
+    const handleOnline = () => {
+      setIsOffline(false);
+      console.log('Dispositivo está online novamente');
+
+      // Tentar sincronizar alterações feitas offline
+      syncService.syncPendingChanges()
+        .then(() => checkPendingChanges())
+        .catch(error => {
+          console.error('Erro ao sincronizar após voltar online:', error);
+        });
+    };
+    
+    const handleOffline = () => {
+      setIsOffline(true);
+      console.log('Dispositivo está offline');
+    };
+    
+    // Registrar os listeners
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Configurar verificações periódicas de mudanças pendentes
+    const checkInterval = setInterval(checkPendingChanges, 30000);
+    
+    // Configurar listener para mudanças de conectividade via storage
+    const connectivityCleanup = storage.offline.onConnectivityChange((online) => {
+      setIsOffline(!online);
+      if (online) {
+        syncService.syncPendingChanges()
+          .then(() => checkPendingChanges())
+          .catch(error => console.error('Erro ao sincronizar:', error));
+      }
+    });
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(checkInterval);
+      connectivityCleanup();
+    };
+  }, [checkPendingChanges]);
+  
+  // Verificar e sincronizar mudanças offline quando voltar online
+  useEffect(() => {
+    if (!isOffline && pendingChangesCount > 0) {
+      forceSyncOfflineChanges();
+    }
+  }, [isOffline, pendingChangesCount, forceSyncOfflineChanges]);
+
   return (
-    <>
+    <div className="app">
+      <OfflineBanner 
+        isOffline={isOffline}
+        pendingChangesCount={pendingChangesCount}
+        onSync={forceSyncOfflineChanges}
+      />
+      
       <div className="min-h-screen bg-gray-50">
         <Header activeCategory={activeCategory} />
         <Navigation
@@ -1818,6 +1917,7 @@ export default function App() {
       <AddItemDialog
         isOpen={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
+        onRequestClose={() => setIsAddDialogOpen(false)}
         category={activeCategory}
         onSubmit={handleAddItem}
         selectedWeekStart={selectedWeekStart}
@@ -1974,7 +2074,7 @@ export default function App() {
           </Dialog.Portal>
         </Dialog.Root>
       )}
-    </>
+    </div>
   );
 }
 

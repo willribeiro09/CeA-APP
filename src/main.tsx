@@ -2,6 +2,23 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
+import { watchVisibilityChanges } from './lib/sync';
+import { syncService } from './lib/sync';
+
+// Inicializar o serviço de sincronização em tempo real
+syncService.init();
+
+// Inicializa o monitoramento de visibilidade para sincronização de dados
+const unwatchVisibility = watchVisibilityChanges();
+
+// Limpar recursos ao fechar a aplicação
+window.addEventListener('beforeunload', () => {
+  // Limpar monitoramento de visibilidade
+  unwatchVisibility();
+  
+  // Limpar serviço de sincronização em tempo real
+  syncService.cleanup();
+});
 
 // Forçar atualização do cache quando houver nova versão
 if ('serviceWorker' in navigator) {
