@@ -11,8 +11,8 @@ import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems
 import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
-import { syncService, loadInitialData, saveData } from './lib/sync';
-import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
+import { syncService, loadInitialData, saveData, registerBackgroundSync, SHARED_UUID, isEmptyOrMinimal } from './lib/sync';
+import { isSupabaseConfigured, initSyncTable, supabase } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
 import { format, addDays, startOfDay, getDay, addWeeks } from 'date-fns';
@@ -79,34 +79,69 @@ const findEmployeeInOtherWeeks = (employeeId: string, employeesData: Record<stri
 
 export default function App() {
   console.log('Iniciando renderização do App');
-  const [expenses, setExpenses] = useState<Record<ListName, Expense[]>>(initialExpenses);
+  const [expenses, setExpenses] = useState<Record<string, Expense[]>>({});
   const [projects, setProjects] = useState<Project[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [employees, setEmployees] = useState<Record<string, Employee[]>>(initialEmployees);
+  const [employees, setEmployees] = useState<Record<string, Employee[]>>({});
   const [activeCategory, setActiveCategory] = useState<'Expenses' | 'Projects' | 'Stock' | 'Employees'>('Expenses');
-  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [willBaseRate, setWillBaseRate] = useState<number>(200);
+  const [willBonus, setWillBonus] = useState<number>(0);
+  const [activeList, setActiveList] = useState<ListName>('C&A');
+  const [activeEmployee, setActiveEmployee] = useState<EmployeeName | ''>('');
+  const [weekStartDate, setWeekStartDate] = useState<Date>(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(today.setDate(diff));
+  });
+  const [weekEndDate, setWeekEndDate] = useState<Date>(() => {
+    const endDate = new Date(weekStartDate);
+    endDate.setDate(endDate.getDate() + 6);
+    return endDate;
+  });
+  const [projectWeekStartDate, setProjectWeekStartDate] = useState<Date>(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(today.setDate(diff));
+  });
+  const [projectWeekEndDate, setProjectWeekEndDate] = useState<Date>(() => {
+    const endDate = new Date(projectWeekStartDate);
+    endDate.setDate(endDate.getDate() + 6);
+    return endDate;
+  });
+  const [data, setData] = useState<StorageItems | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [waitingForSync, setWaitingForSync] = useState(true);
+  const [syncFailed, setSyncFailed] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  
+  // Adicionando estado para os componentes ausentes
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedList, setSelectedList] = useState<ListName>('C&A');
+  const [filterDate, setFilterDate] = useState<Date | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
-  const [selectedList, setSelectedList] = useState<ListName>('C&A');
+  const [showLayoffAlert, setShowLayoffAlert] = useState(false);
+  const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
+  const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false);
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(getProjectWeekStart(new Date()));
-  const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(getProjectWeekEnd(new Date()));
+  const [receiptEmployee, setReceiptEmployee] = useState<Employee | null>(null);
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(new Date());
+  const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(() => {
+    const endDate = new Date(new Date());
+    endDate.setDate(endDate.getDate() + 6);
+    return endDate;
+  });
   const [weekTotalValue, setWeekTotalValue] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
-  const [willBaseRate, setWillBaseRate] = useState(200);
-  const [willBonus, setWillBonus] = useState(0);
-  const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
-  const [showLayoffAlert, setShowLayoffAlert] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
-  const [filterDate, setFilterDate] = useState<Date | null>(null);
-  const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false);
-  const [selectedEmployeeName, setSelectedEmployeeName] = useState<EmployeeName>('Matheus');
-  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
-  const [receiptEmployee, setReceiptEmployee] = useState<Employee | null>(null);
+  const [projectTotal, setProjectTotal] = useState(0);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -202,6 +237,38 @@ export default function App() {
     
     setWeekTotalValue(total);
   }, [projects, selectedWeekStart, selectedWeekEnd]);
+
+  // Efeito para calcular total do projeto na semana selecionada
+  useEffect(() => {
+    try {
+      if (projects.length > 0) {
+        const projectsInSelectedWeek = projects.filter(project => {
+          const startDate = project.startDate ? new Date(project.startDate) : null;
+          const endDate = project.endDate ? new Date(project.endDate) : null;
+          
+          // Se não tiver data de início ou fim, considerar válido
+          if (!startDate || !endDate) return true;
+          
+          // Verificar se a semana selecionada se sobrepõe ao período do projeto
+          return (
+            (projectWeekStartDate <= endDate && projectWeekEndDate >= startDate)
+          );
+        });
+        
+        // Calcular o total dos projetos na semana
+        const total = projectsInSelectedWeek.reduce((sum, project) => {
+          return sum + (project.value || 0);
+        }, 0);
+        
+        setProjectTotal(total);
+      } else {
+        setProjectTotal(0);
+      }
+    } catch (error) {
+      console.error('Erro ao calcular total dos projetos:', error);
+      setProjectTotal(0);
+    }
+  }, [projects, projectWeekStartDate, projectWeekEndDate]);
 
   // Função para salvar alterações
   const saveChanges = async (newData: StorageItems) => {
@@ -726,7 +793,7 @@ export default function App() {
   };
 
   const handleEmployeeSelect = (value: EmployeeName) => {
-    setSelectedEmployeeName(value);
+    setActiveEmployee(value);
     
     const storageData = getData();
     storageData.expenses = expenses;
@@ -855,12 +922,12 @@ export default function App() {
   // Adicionar gerenciamento de foco para inputs de data
   const handleInputFocus = () => {
     document.body.classList.add('input-focused');
-    setIsInputFocused(true);
+    setIsKeyboardVisible(true);
   };
 
   const handleInputBlur = () => {
     document.body.classList.remove('input-focused');
-    setIsInputFocused(false);
+    setIsKeyboardVisible(false);
   };
 
   // Efeito para gerenciar a classe 'dialog-open' para o diálogo de alerta
@@ -890,8 +957,13 @@ export default function App() {
   }, [isRateDialogOpen]);
 
   // Função para lidar com a mudança de semana
-  const handleWeekChange = (startDate: Date, endDate: Date) => {
+  const handleWeekChange = (startDate: Date) => {
     setSelectedWeekStart(startDate);
+    // Atualizar datas de início e fim da semana
+    setWeekStartDate(startDate);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+    setWeekEndDate(endDate);
     setSelectedWeekEnd(endDate);
   };
 
@@ -899,46 +971,28 @@ export default function App() {
   const shouldShowEmployeeInWeek = () => true;
 
   const calculateEmployeesTotal = () => {
-    let total = 0;
-    
-    // Obter todos os funcionários de todas as semanas
-    const allEmployees: Employee[] = [];
-    Object.keys(employees).forEach(weekKey => {
-      employees[weekKey].forEach(employee => {
-        // Verificar se o funcionário já está na lista (evitar duplicatas)
-        if (!allEmployees.some(e => e.id === employee.id)) {
-          allEmployees.push(employee);
-        }
-      });
-    });
-    
-    // Não filtra mais por semana, mostra todos os funcionários
-    const filteredEmployees = allEmployees;
-    
-    // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
-
-    // Calcular o total
-    filteredEmployees.forEach(employee => {
-      // Encontrar o registro específico do funcionário para a semana selecionada
-      const weekEmployee = weekEmployees.find(e => e.id === employee.id);
-      const daysWorked = weekEmployee ? weekEmployee.daysWorked : 0;
-      
-      // Adicionar ao total
-      total += (employee.dailyRate || 250) * daysWorked;
-    });
     
-    // Adicionar o valor do Will (valor fixo semanal + bônus)
-    // Will recebe 200 pela semana toda (não é por dia)
-    total += willBaseRate + willBonus;
+    // Calcular o total dos funcionários na semana
+    const total = weekEmployees.reduce((sum, employee) => {
+      const daysWorked = employee.daysWorked || 0;
+      const dailyRate = employee.dailyRate || 250;
+      return sum + (daysWorked * dailyRate);
+    }, 0);
     
-    return total;
+    // Adicionar o valor base do Will
+    return total + willBaseRate + willBonus;
   };
 
   // Função para lidar com a mudança de semana para projetos
-  const handleProjectWeekChange = (startDate: Date, endDate: Date) => {
+  const handleProjectWeekChange = (startDate: Date) => {
     setSelectedWeekStart(startDate);
+    // Atualizar datas de início e fim da semana do projeto
+    setProjectWeekStartDate(startDate);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+    setProjectWeekEndDate(endDate);
     setSelectedWeekEnd(endDate);
   };
 
@@ -962,7 +1016,7 @@ export default function App() {
   }, []);
 
   // Função para ordenar despesas por data de vencimento (mais atrasadas primeiro)
-  const sortExpensesByDueDate = (expenseList: Expense[]) => {
+  const sortExpensesByDueDate = (expenseList: Expense[]): Expense[] => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
