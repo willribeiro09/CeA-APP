@@ -15,6 +15,160 @@ console.log('UUID compartilhado para sincronização:', SHARED_UUID);
 // Intervalo de sincronização em milissegundos (5 segundos)
 const SYNC_INTERVAL = 5000;
 
+// Variáveis de controle para sincronização automática
+let isAppReady = false;
+let isSyncInProgress = false;
+let lastSyncTimestamp = 0;
+let syncBackgroundTimer: number | null = null;
+let appVisibilityState = 'visible';
+
+// Função para marcar o app como pronto para interação
+const setAppReady = () => {
+  if (!isAppReady) {
+    isAppReady = true;
+    window.dispatchEvent(new CustomEvent('appReady'));
+    console.log('App marcado como pronto para interação');
+  }
+};
+
+// Função para verificar se é necessário sincronizar
+const shouldSync = (): boolean => {
+  const now = Date.now();
+  // Sincroniza se passou pelo menos 30 segundos desde a última sincronização
+  return !isSyncInProgress && (now - lastSyncTimestamp > 30000);
+};
+
+// Função que sincroniza os dados com o Supabase
+const syncWithSupabase = async (): Promise<boolean> => {
+  if (isSyncInProgress || !supabase) {
+    return false;
+  }
+  
+  isSyncInProgress = true;
+  console.log('Iniciando sincronização automática com Supabase...');
+  
+  try {
+    // Carregar dados atuais do storage
+    const localData = storage.load();
+    if (!localData) {
+      console.log('Nenhum dado local encontrado para sincronizar');
+      isSyncInProgress = false;
+      return false;
+    }
+    
+    // Carregar dados mais recentes do Supabase
+    const { data: remoteData, error } = await supabase
+      .from('sync_data')
+      .select('*')
+      .eq('id', SHARED_UUID)
+      .limit(1);
+    
+    if (error) {
+      console.error('Erro ao sincronizar com Supabase:', error);
+      isSyncInProgress = false;
+      return false;
+    }
+    
+    // Se não tiver dados remotos, enviar os locais
+    if (!remoteData || remoteData.length === 0) {
+      console.log('Nenhum dado remoto encontrado, enviando dados locais');
+      await syncService.sync(localData);
+      lastSyncTimestamp = Date.now();
+      isSyncInProgress = false;
+      return true;
+    }
+    
+    // Mesclar dados remotos com locais (preservando dados locais quando houver conflitos)
+    const mergedData: StorageItems = {
+      expenses: { ...remoteData[0].expenses, ...localData.expenses },
+      projects: Array.isArray(localData.projects) && localData.projects.length > 0 
+        ? localData.projects 
+        : (remoteData[0].projects || []),
+      stock: Array.isArray(localData.stock) && localData.stock.length > 0 
+        ? localData.stock 
+        : (remoteData[0].stock || []),
+      employees: { ...remoteData[0].employees, ...localData.employees },
+      willBaseRate: localData.willBaseRate || remoteData[0].willBaseRate || 200,
+      willBonus: localData.willBonus || remoteData[0].willBonus || 0,
+      lastSync: Date.now()
+    };
+    
+    // Salvar localmente
+    storage.save(mergedData);
+    
+    // Enviar para o Supabase
+    await syncService.sync(mergedData);
+    
+    // Disparar evento para atualizar a UI
+    window.dispatchEvent(new CustomEvent('dataUpdated', { 
+      detail: mergedData 
+    }));
+    
+    console.log('Sincronização automática concluída com sucesso');
+    lastSyncTimestamp = Date.now();
+    return true;
+  } catch (error) {
+    console.error('Erro durante sincronização automática:', error);
+    return false;
+  } finally {
+    isSyncInProgress = false;
+  }
+};
+
+// Configura os listeners para eventos de visibilidade
+export const setupVisibilityListeners = () => {
+  // Monitora quando o app sai ou volta do segundo plano
+  document.addEventListener('visibilitychange', () => {
+    appVisibilityState = document.visibilityState;
+    
+    if (document.visibilityState === 'visible') {
+      console.log('App retornou para o primeiro plano, sincronizando...');
+      syncWithSupabase();
+    }
+  });
+  
+  // Monitora quando o app é retomado em dispositivos móveis
+  window.addEventListener('focus', () => {
+    if (appVisibilityState !== 'visible') {
+      appVisibilityState = 'visible';
+      console.log('App obteve foco, sincronizando...');
+      syncWithSupabase();
+    }
+  });
+  
+  // Configura a sincronização periódica em segundo plano
+  startBackgroundSync();
+};
+
+// Inicia a sincronização em segundo plano
+export const startBackgroundSync = () => {
+  if (syncBackgroundTimer) {
+    clearInterval(syncBackgroundTimer);
+  }
+  
+  // Sincronização a cada 2 minutos em segundo plano
+  syncBackgroundTimer = window.setInterval(() => {
+    if (shouldSync()) {
+      syncWithSupabase();
+    }
+  }, 120000); // 2 minutos
+  
+  console.log('Sincronização em segundo plano iniciada');
+  return () => {
+    if (syncBackgroundTimer) {
+      clearInterval(syncBackgroundTimer);
+      syncBackgroundTimer = null;
+    }
+  };
+};
+
+// Força uma sincronização antes de qualquer operação de leitura/escrita
+export const syncBeforeOperation = async (): Promise<void> => {
+  if (shouldSync()) {
+    await syncWithSupabase();
+  }
+};
+
 // Canais de sincronização para cada tipo de dados
 type SyncChannels = {
   expenses: RealtimeChannel | null;
@@ -291,6 +445,48 @@ export const syncService = {
       return false;
     }
   },
+  
+  // Forçar sincronização imediata
+  async forceSyncNow(): Promise<void> {
+    if (!supabase || isSyncInProgress) {
+      // Se não há Supabase ou já está sincronizando, marcar como pronto mesmo assim
+      setAppReady();
+      return;
+    }
+    
+    isSyncInProgress = true;
+    
+    try {
+      console.log('Forçando sincronização imediata...');
+      
+      // Carregar dados mais recentes do Supabase
+      const latestData = await this.loadLatestData();
+      
+      if (latestData) {
+        // Salvar no armazenamento local
+        storage.save(latestData);
+        
+        // Disparar evento para atualizar a UI
+        window.dispatchEvent(new CustomEvent('dataUpdated', { 
+          detail: latestData 
+        }));
+        
+        console.log('Sincronização forçada concluída com sucesso');
+      } else {
+        console.log('Nenhum dado encontrado para sincronização forçada');
+      }
+      
+      // Marcar o app como pronto para interação após a primeira sincronização
+      setAppReady();
+    } catch (error) {
+      console.error('Erro na sincronização forçada:', error);
+      
+      // Mesmo com erro, marcar o app como pronto para interação
+      setAppReady();
+    } finally {
+      isSyncInProgress = false;
+    }
+  }
 };
 
 export const loadInitialData = async (): Promise<StorageItems | null> => {
@@ -300,6 +496,12 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
   }
 
   try {
+    // Iniciar a marcação de tempo da sincronização
+    lastSyncTimestamp = Date.now();
+    
+    // Configurar os listeners de visibilidade para sincronização quando o app voltar do background
+    setupVisibilityListeners();
+    
     // Primeiro, verificar se existem dados no Supabase usando UUID compartilhado
     const { data, error } = await supabase
       .from('sync_data')
@@ -450,8 +652,12 @@ export const saveData = (data: StorageItems) => {
   
   // Sincronizar com Supabase
   if (supabase) {
-    syncService.sync(data).catch(error => {
-      console.error('Erro ao sincronizar dados:', error);
+    // Primeiro tentar sincronizar dados existentes
+    syncBeforeOperation().then(() => {
+      // Depois sincronizar os novos dados
+      syncService.sync(data).catch(error => {
+        console.error('Erro ao sincronizar dados:', error);
+      });
     });
   }
 }; 
