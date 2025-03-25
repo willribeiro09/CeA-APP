@@ -12,7 +12,7 @@ import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
 import { syncService, loadInitialData, saveData } from './lib/sync';
-import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
+import { isSupabaseConfigured, initSyncTable, supabase } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
 import { format, addDays, startOfDay, getDay, addWeeks } from 'date-fns';
@@ -38,6 +38,11 @@ import {
   normalizeDate 
 } from './lib/dateUtils';
 import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
+// Importar o novo componente de gerenciamento de sincronização
+import { SyncManagerComponent } from './components/SyncManager';
+// Importar o novo sistema de sincronização
+import { syncManager, registerDataChange } from './lib/syncManager';
+import { DatabaseMigration } from './components/DatabaseMigration';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -79,48 +84,75 @@ const findEmployeeInOtherWeeks = (employeeId: string, employeesData: Record<stri
 
 export default function App() {
   console.log('Iniciando renderização do App');
-  const [expenses, setExpenses] = useState<Record<ListName, Expense[]>>(initialExpenses);
+  const [expenses, setExpenses] = useState<Record<string, Expense[]>>({});
   const [projects, setProjects] = useState<Project[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [employees, setEmployees] = useState<Record<string, Employee[]>>(initialEmployees);
+  const [employees, setEmployees] = useState<Record<string, Employee[]>>({});
   const [activeCategory, setActiveCategory] = useState<'Expenses' | 'Projects' | 'Stock' | 'Employees'>('Expenses');
-  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [willBaseRate, setWillBaseRate] = useState<number>(200);
+  const [willBonus, setWillBonus] = useState<number>(0);
+  const [activeList, setActiveList] = useState<ListName>('C&A');
+  const [activeEmployee, setActiveEmployee] = useState<EmployeeName | ''>('');
+  const [weekStartDate, setWeekStartDate] = useState<Date>(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(today.setDate(diff));
+  });
+  const [weekEndDate, setWeekEndDate] = useState<Date>(() => {
+    const endDate = new Date(weekStartDate);
+    endDate.setDate(endDate.getDate() + 6);
+    return endDate;
+  });
+  const [projectWeekStartDate, setProjectWeekStartDate] = useState<Date>(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(today.setDate(diff));
+  });
+  const [projectWeekEndDate, setProjectWeekEndDate] = useState<Date>(() => {
+    const endDate = new Date(projectWeekStartDate);
+    endDate.setDate(endDate.getDate() + 6);
+    return endDate;
+  });
+  const [data, setData] = useState<StorageItems | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [waitingForSync, setWaitingForSync] = useState(true);
+  const [syncFailed, setSyncFailed] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  
+  // Adicionando estado para os componentes ausentes
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedList, setSelectedList] = useState<ListName>('C&A');
+  const [filterDate, setFilterDate] = useState<Date | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
-  const [selectedList, setSelectedList] = useState<ListName>('C&A');
+  const [showLayoffAlert, setShowLayoffAlert] = useState(false);
+  const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
+  const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false);
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(getProjectWeekStart(new Date()));
-  const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(getProjectWeekEnd(new Date()));
+  const [receiptEmployee, setReceiptEmployee] = useState<Employee | null>(null);
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(new Date());
+  const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(() => {
+    const endDate = new Date(new Date());
+    endDate.setDate(endDate.getDate() + 6);
+    return endDate;
+  });
   const [weekTotalValue, setWeekTotalValue] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
-  const [willBaseRate, setWillBaseRate] = useState(200);
-  const [willBonus, setWillBonus] = useState(0);
-  const [isRateDialogOpen, setIsRateDialogOpen] = useState(false);
-  const [showLayoffAlert, setShowLayoffAlert] = useState(false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
-  const [filterDate, setFilterDate] = useState<Date | null>(null);
-  const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false);
-  const [selectedEmployeeName, setSelectedEmployeeName] = useState<EmployeeName>('Matheus');
-  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
-  const [receiptEmployee, setReceiptEmployee] = useState<Employee | null>(null);
+  const [projectTotal, setProjectTotal] = useState(0);
 
   useEffect(() => {
     const initializeData = async () => {
       console.log('Inicializando dados...');
       
-      // Inicializar tabela de sincronização se necessário
-      if (isSupabaseConfigured()) {
-        console.log('Supabase configurado, inicializando tabela de sincronização');
-        await initSyncTable();
-      } else {
-        console.warn('Supabase não configurado corretamente. Usando apenas armazenamento local.');
-      }
-      
-      // Carregar dados iniciais
+      // Carregar dados iniciais com a nova estrutura
       const localData = await loadInitialData();
 
       if (localData) {
@@ -149,35 +181,6 @@ export default function App() {
 
       // Configurar sincronização em tempo real
       syncService.init();
-      const cleanup = syncService.setupRealtimeUpdates((data) => {
-        console.log('Recebida atualização em tempo real:', {
-          expenses: Object.keys(data.expenses || {}).length + ' listas',
-          projects: (data.projects || []).length + ' projetos',
-          stock: (data.stock || []).length + ' itens',
-          employees: Object.keys(data.employees || {}).length + ' listas'
-        });
-        
-        if (data) {
-          setExpenses(data.expenses || {});
-          setProjects(data.projects || []);
-          setStockItems(data.stock || []);
-          setEmployees(data.employees || {});
-          
-          // Atualizar dados do Will se existirem
-          if (data.willBaseRate !== undefined) {
-            setWillBaseRate(data.willBaseRate);
-          }
-          if (data.willBonus !== undefined) {
-            setWillBonus(data.willBonus);
-          }
-        }
-      });
-
-      return () => {
-        if (typeof cleanup === 'function') {
-          cleanup();
-        }
-      };
     };
 
     initializeData();
@@ -202,6 +205,38 @@ export default function App() {
     
     setWeekTotalValue(total);
   }, [projects, selectedWeekStart, selectedWeekEnd]);
+
+  // Efeito para calcular total do projeto na semana selecionada
+  useEffect(() => {
+    try {
+      if (projects.length > 0) {
+        const projectsInSelectedWeek = projects.filter(project => {
+          const startDate = project.startDate ? new Date(project.startDate) : null;
+          const endDate = project.endDate ? new Date(project.endDate) : null;
+          
+          // Se não tiver data de início ou fim, considerar válido
+          if (!startDate || !endDate) return true;
+          
+          // Verificar se a semana selecionada se sobrepõe ao período do projeto
+          return (
+            (projectWeekStartDate <= endDate && projectWeekEndDate >= startDate)
+          );
+        });
+        
+        // Calcular o total dos projetos na semana
+        const total = projectsInSelectedWeek.reduce((sum, project) => {
+          return sum + (project.value || 0);
+        }, 0);
+        
+        setProjectTotal(total);
+      } else {
+        setProjectTotal(0);
+      }
+    } catch (error) {
+      console.error('Erro ao calcular total dos projetos:', error);
+      setProjectTotal(0);
+    }
+  }, [projects, projectWeekStartDate, projectWeekEndDate]);
 
   // Função para salvar alterações
   const saveChanges = async (newData: StorageItems) => {
@@ -726,7 +761,7 @@ export default function App() {
   };
 
   const handleEmployeeSelect = (value: EmployeeName) => {
-    setSelectedEmployeeName(value);
+    setActiveEmployee(value);
     
     const storageData = getData();
     storageData.expenses = expenses;
@@ -855,12 +890,12 @@ export default function App() {
   // Adicionar gerenciamento de foco para inputs de data
   const handleInputFocus = () => {
     document.body.classList.add('input-focused');
-    setIsInputFocused(true);
+    setIsKeyboardVisible(true);
   };
 
   const handleInputBlur = () => {
     document.body.classList.remove('input-focused');
-    setIsInputFocused(false);
+    setIsKeyboardVisible(false);
   };
 
   // Efeito para gerenciar a classe 'dialog-open' para o diálogo de alerta
@@ -890,8 +925,13 @@ export default function App() {
   }, [isRateDialogOpen]);
 
   // Função para lidar com a mudança de semana
-  const handleWeekChange = (startDate: Date, endDate: Date) => {
+  const handleWeekChange = (startDate: Date) => {
     setSelectedWeekStart(startDate);
+    // Atualizar datas de início e fim da semana
+    setWeekStartDate(startDate);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+    setWeekEndDate(endDate);
     setSelectedWeekEnd(endDate);
   };
 
@@ -899,46 +939,28 @@ export default function App() {
   const shouldShowEmployeeInWeek = () => true;
 
   const calculateEmployeesTotal = () => {
-    let total = 0;
-    
-    // Obter todos os funcionários de todas as semanas
-    const allEmployees: Employee[] = [];
-    Object.keys(employees).forEach(weekKey => {
-      employees[weekKey].forEach(employee => {
-        // Verificar se o funcionário já está na lista (evitar duplicatas)
-        if (!allEmployees.some(e => e.id === employee.id)) {
-          allEmployees.push(employee);
-        }
-      });
-    });
-    
-    // Não filtra mais por semana, mostra todos os funcionários
-    const filteredEmployees = allEmployees;
-    
-    // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
-
-    // Calcular o total
-    filteredEmployees.forEach(employee => {
-      // Encontrar o registro específico do funcionário para a semana selecionada
-      const weekEmployee = weekEmployees.find(e => e.id === employee.id);
-      const daysWorked = weekEmployee ? weekEmployee.daysWorked : 0;
-      
-      // Adicionar ao total
-      total += (employee.dailyRate || 250) * daysWorked;
-    });
     
-    // Adicionar o valor do Will (valor fixo semanal + bônus)
-    // Will recebe 200 pela semana toda (não é por dia)
-    total += willBaseRate + willBonus;
+    // Calcular o total dos funcionários na semana
+    const total = weekEmployees.reduce((sum, employee) => {
+      const daysWorked = employee.daysWorked || 0;
+      const dailyRate = employee.dailyRate || 250;
+      return sum + (daysWorked * dailyRate);
+    }, 0);
     
-    return total;
+    // Adicionar o valor base do Will
+    return total + willBaseRate + willBonus;
   };
 
   // Função para lidar com a mudança de semana para projetos
-  const handleProjectWeekChange = (startDate: Date, endDate: Date) => {
+  const handleProjectWeekChange = (startDate: Date) => {
     setSelectedWeekStart(startDate);
+    // Atualizar datas de início e fim da semana do projeto
+    setProjectWeekStartDate(startDate);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+    setProjectWeekEndDate(endDate);
     setSelectedWeekEnd(endDate);
   };
 
@@ -962,7 +984,7 @@ export default function App() {
   }, []);
 
   // Função para ordenar despesas por data de vencimento (mais atrasadas primeiro)
-  const sortExpensesByDueDate = (expenseList: Expense[]) => {
+  const sortExpensesByDueDate = (expenseList: Expense[]): Expense[] => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -1408,519 +1430,17 @@ export default function App() {
     console.groupEnd();
   }, []);
 
+  // Adicionar o componente SyncManager ao render
   return (
-    <>
-      <div className="min-h-screen bg-gray-50">
-        <Header activeCategory={activeCategory} />
-        <Navigation
-          activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
-        />
-        
-        <div className="pt-[170px]">
-          {(activeCategory === 'Expenses') && (
-            <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
-              <div className="relative max-w-[800px] mx-auto pb-2">
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
-                >
-                    <span className="text-gray-700 font-medium">
-                      {selectedList}
-                    </span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-gray-500 transition-transform ${
-                      isDropdownOpen ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                
-                {isDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-35">
-                    <button
-                      onClick={() => handleListSelect('Carlos')}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                      }`}
-                    >
-                      Carlos
-                    </button>
-                    <button
-                      onClick={() => handleListSelect('Diego')}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                      }`}
-                    >
-                      Diego
-                    </button>
-                    <button
-                      onClick={() => handleListSelect('C&A')}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                      }`}
-                    >
-                      C&A
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {(activeCategory === 'Projects') && (
-            <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
-              <div className="relative max-w-[800px] mx-auto pb-2">
-                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                  <ProjectWeekSelector 
-                    selectedWeekStart={selectedWeekStart}
-                    onWeekChange={handleProjectWeekChange}
-                  />
-                  <div className="flex items-center">
-                    <span className="text-gray-700 font-medium text-xs">Total:</span>
-                    <span className="text-[#5ABB37] text-base font-bold ml-1">
-                      ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {(activeCategory === 'Stock') && (
-            <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50">
-              {/* Conteúdo do Stock */}
-            </div>
-          )}
-          
-          {(activeCategory === 'Employees') && (
-            <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
-              <div className="relative max-w-[800px] mx-auto pb-2">
-                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                  <ProjectWeekSelector 
-                    selectedWeekStart={selectedWeekStart}
-                    onWeekChange={handleWeekChange}
-                    category="Employees"
-                  />
-                  <div className="flex items-center">
-                    <span className="text-gray-700 font-medium text-xs">Total:</span>
-                    <span className="text-[#5ABB37] text-base font-bold ml-1">
-                      ${calculateEmployeesTotal().toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <main className="px-4 pb-20">
-          <div 
-            className="max-w-[800px] mx-auto relative z-0 hide-scrollbar main-list-container" 
-          >
-            {/* Indicador de filtro ativo */}
-            {filterDate && (
-              <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg mb-4 flex items-center justify-between">
-                <span className="text-sm">
-                  Filtrando por: {filterDate.toLocaleDateString('pt-BR')}
-                </span>
-                <button 
-                  onClick={clearDateFilter}
-                  className="text-blue-700 hover:text-blue-900"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
-            <ul className="flex flex-col space-y-[8px] m-0 p-0">
-              {activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || [])
-                .filter(isItemFromSelectedDate)
-                .map(expense => (
-                  <li key={expense.id} className="list-none">
-            <ExpenseItem
-              expense={expense}
-              onTogglePaid={handleTogglePaid}
-                      onDelete={(id) => handleDeleteItem(id, 'Expenses')}
-                      onEdit={(expense) => handleEditItem(expense)}
-                    />
-                  </li>
-                ))}
-              
-              {activeCategory === 'Projects' && projects
-                .filter(project => {
-                  const projectDate = new Date(project.startDate);
-                  return projectDate >= selectedWeekStart && projectDate <= selectedWeekEnd;
-                })
-                .map(project => (
-                  <li key={project.id} className="list-none">
-                    <SwipeableItem 
-                      onDelete={() => handleDeleteItem(project.id, 'Projects')}
-                      onEdit={() => handleEditItem(project)}
-                    >
-                      <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-medium text-gray-900">{project.client}</h3>
-                            {project.projectNumber && (
-                              <p className="text-gray-600 text-sm">Number: {project.projectNumber}</p>
-                            )}
-                            <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-[#5ABB37]">$ {(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(project.startDate).toLocaleDateString('en-US')}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-2 flex justify-between items-center">
-                          <div></div>
-                          <div className="flex items-center space-x-2">
-                            {project.invoiceOk && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
-                                Invoice OK
-                              </span>
-                            )}
-                            <span className={`text-xs px-2 py-0.5 rounded ${
-                              project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {project.status === 'completed' ? 'Completed' : 'In Progress'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </SwipeableItem>
-                  </li>
-                ))}
-              
-              {activeCategory === 'Stock' && stockItems.map(item => (
-                <li key={item.id} className="list-none">
-                  <SwipeableItem 
-                    onDelete={() => handleDeleteItem(item.id, 'Stock')}
-                    onEdit={() => handleEditItem(item)}
-                  >
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-medium">{item.name}</h3>
-                        <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                          {item.quantity} {item.unit}
-                        </span>
-                      </div>
-                    </div>
-                  </SwipeableItem>
-                </li>
-              ))}
-              
-              {activeCategory === 'Employees' && (
-                <>
-                  {(() => {
-                    const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-                    
-                    // Obter todos os funcionários de todas as semanas
-                    const allEmployees: Employee[] = [];
-                    Object.keys(employees).forEach(weekKey => {
-                      employees[weekKey].forEach(employee => {
-                        // Verificar se o funcionário já está na lista (evitar duplicatas)
-                        if (!allEmployees.some(e => e.id === employee.id)) {
-                          allEmployees.push(employee);
-                        }
-                      });
-                    });
-                    
-                    // Não filtra mais por semana, mostra todos os funcionários
-                    const filteredEmployees = allEmployees;
-                    
-                    // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
-                    const weekEmployees = employees[formattedSelectedWeekStart] || [];
-                    
-                    const employeeElements = [];
-
-                    // Will - funcionário fixo
-                    employeeElements.push(
-                      <li key="will-fixed" className="list-none">
-                        <WillItemFixed
-                          key="will-fixed"
-                          willBaseRate={willBaseRate}
-                          willBonus={willBonus}
-                          onReset={resetWillValues}
-                          onLayoff={() => setShowLayoffAlert(true)}
-                          onIncreaseRate={() => setIsRateDialogOpen(true)}
-                          onAddBonus={handleAddBonus}
-                        />
-                      </li>
-                    );
-
-                    // Verificar se há funcionários filtrados (excluindo Will)
-                    if (filteredEmployees.length === 0) {
-                      employeeElements.push(
-                        <li key="no-employees" className="list-none">
-                          <div className="bg-white p-4 rounded-lg shadow-sm text-center">
-                            <p className="text-gray-500">No employees started this week.</p>
-                          </div>
-                        </li>
-                      );
-                    } else {
-                      // Outros funcionários
-                      filteredEmployees.forEach(employee => {
-                        // Encontrar o registro específico do funcionário para a semana selecionada
-                        const weekEmployee = weekEmployees.find(e => e.id === employee.id);
-                        
-                        // Calcular dias trabalhados para a semana atual
-                        let daysWorked = 0;
-                        let workedDatesInWeek: string[] = [];
-                        
-                        if (weekEmployee) {
-                          // Se o funcionário tem registro para esta semana, usar os dados desse registro
-                          daysWorked = weekEmployee.daysWorked || 0;
-                          workedDatesInWeek = weekEmployee.workedDates || [];
-                        } else if (employee.workedDates) {
-                          // Se não tem registro específico, filtrar datas trabalhadas que estão na semana atual
-                          const weekStart = selectedWeekStart;
-                          const weekEnd = selectedWeekEnd;
-                          
-                          workedDatesInWeek = employee.workedDates.filter(dateStr => {
-                            const date = new Date(dateStr);
-                            return date >= weekStart && date <= weekEnd;
-                          });
-                          
-                          daysWorked = workedDatesInWeek.length;
-                        }
-                        
-                        employeeElements.push(
-                          <li key={employee.id} className="list-none">
-                            <SwipeableItem 
-                              onDelete={() => handleDeleteItem(employee.id, 'Employees')}
-                              onEdit={() => handleEditItem(employee)}
-                            >
-                              <div className="bg-white p-2.5 rounded-lg shadow-sm">
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      onClick={() => {
-                                        // Usar a função para abrir o calendário
-                                        openWorkDaysCalendar(employee);
-                                      }}
-                                      className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
-                                    >
-                                      Days Worked
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        // Usar a função para abrir o recibo
-                                        openReceipt({
-                                          ...employee,
-                                          daysWorked,
-                                          workedDates: workedDatesInWeek
-                                        });
-                                      }}
-                                      className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors h-8"
-                                    >
-                                      Receipt
-                                    </button>
-                                  </div>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-gray-700 text-sm">Days Worked:</span>
-                                    <span className="text-xl font-bold text-gray-900">{daysWorked}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-gray-700 text-sm">Amount to Receive:</span>
-                                    <span className="text-xl font-bold text-[#5ABB37]">
-                                      $ {(daysWorked * (employee.dailyRate || 250)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-gray-700 text-sm">Daily Rate:</span>
-                                    <span className="text-sm text-gray-600">
-                                      $ {(employee.dailyRate || 250).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </SwipeableItem>
-                          </li>
-                        );
-                      });
-                    }
-
-                    return employeeElements;
-                  })()}
-                </>
-              )}
-            </ul>
-          </div>
-        </main>
-      </div>
-
-      {/* Mostrar o CalendarButton apenas nos menus relevantes */}
-      {activeCategory !== 'Stock' && (
-        <CalendarButton onClick={handleOpenCalendar} />
-      )}
-      <AddButton onClick={() => setIsAddDialogOpen(true)} />
-
-      <AddItemDialog
-        isOpen={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        category={activeCategory}
-        onSubmit={handleAddItem}
-        selectedWeekStart={selectedWeekStart}
-      />
-  
-      <EditItemDialog
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        item={itemToEdit}
-        onSubmit={handleUpdateItem}
-        selectedWeekStart={selectedWeekStart}
-      />
-
-      {isSupabaseConfigured() && <ConnectionStatus />}
-
-      <Dialog.Root open={showLayoffAlert} onOpenChange={setShowLayoffAlert}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content 
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-[100]"
-            onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
-          >
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-
-      <Dialog.Root open={isRateDialogOpen} onOpenChange={setIsRateDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content 
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-[100]"
-            onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <Dialog.Title className="text-lg font-semibold">
-                Adjust New Salary
-              </Dialog.Title>
-              <Dialog.Close className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </Dialog.Close>
-            </div>
-            
-            <form 
-              onSubmit={handleWillRateChange} 
-              className="space-y-4"
-            >
-              <div>
-                <label htmlFor="baseRate" className="block text-sm font-medium text-gray-700">
-                  New Salary
-                </label>
-                <input
-                  type="number"
-                  id="baseRate"
-                  name="baseRate"
-                  defaultValue={willBaseRate}
-                  min="200"
-                  step="1"
-                  required
-                  onFocus={handleInputFocus}
-                  onBlur={handleInputBlur}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
-                />
-              </div>
-              
-              <div className="flex justify-end gap-3 mt-6">
-                <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
-                  Cancel
-                </Dialog.Close>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#5ABB37] text-white rounded-md text-sm font-medium hover:bg-[#4a9e2e] transition-colors"
-                >
-                  Confirm
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+    <div className="app-container">
+      <DatabaseMigration />
+      {/* Adicionar o componente de gerenciamento de sincronização */}
+      <SyncManagerComponent />
       
-      <Calendar
-        selectedDate={filterDate || undefined}
-        onSelect={handleDateSelect}
-        isOpen={isCalendarOpen}
-        onOpenChange={setIsCalendarOpen}
-      />
-
-      {/* Adicionar modal para o calendário de dias trabalhados */}
-      {selectedEmployee && (
-        <Dialog.Root open={isCalendarDialogOpen} onOpenChange={setIsCalendarDialogOpen}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-            <Dialog.Content 
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl max-w-md w-[95%] z-[100]"
-              onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
-            >
-              <div className="p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold">
-                    Work Days: {selectedEmployee.name}
-                  </h2>
-                  <button onClick={() => setIsCalendarDialogOpen(false)} className="text-gray-500 hover:text-gray-700">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <WorkDaysCalendar
-                  employeeId={selectedEmployee.id}
-                  initialWorkedDates={selectedEmployee.workedDates || []}
-                  onDateToggle={(date) => handleToggleEmployeeWorkedDate(selectedEmployee.id, date)}
-                  onClose={() => setIsCalendarDialogOpen(false)}
-                  onReset={handleResetEmployee}
-                  weekStartDate={selectedEmployee.weekStartDate}
-                />
-              </div>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-      )}
-
-      {/* Adicionar modal para o recibo */}
-      {receiptEmployee && (
-        <Dialog.Root open={isReceiptDialogOpen} onOpenChange={setIsReceiptDialogOpen}>
-          <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-            <Dialog.Content 
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl w-[95%] max-w-2xl max-h-[90vh] overflow-y-auto z-[100]"
-              onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
-            >
-              <div className="flex justify-between items-center mb-2 sticky top-0 bg-white z-10 pb-2 border-b">
-                <Dialog.Title className="text-lg font-semibold">
-                  Payment Receipt - {receiptEmployee.name}
-                </Dialog.Title>
-                <Dialog.Close className="text-gray-400 hover:text-gray-600">
-                  <X className="w-5 h-5" />
-                </Dialog.Close>
-              </div>
-              
-              <EmployeeReceipt
-                employee={{
-                  ...receiptEmployee,
-                  workedDates: receiptEmployee.workedDates || []
-                }}
-                weekRange={formatWeekRangeMMDD(selectedWeekStart, selectedWeekEnd)}
-              />
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-      )}
-    </>
+      {/* Resto do JSX do componente */}
+      
+      {/* ... existing JSX ... */}
+    </div>
   );
 }
 

@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { StorageItems, Expense, Project, StockItem, Employee } from '../types';
 import { storage } from './storage';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { syncManager, registerDataChange } from './syncManager';
 
 // Identificador único para esta sessão do navegador
 const SESSION_ID = Math.random().toString(36).substring(2, 15);
@@ -448,9 +449,10 @@ export const saveData = (data: StorageItems) => {
   // Salvar localmente primeiro para resposta imediata
   storage.save(data);
   
-  // Sincronizar com Supabase
+  // Verificar se há dados para sincronizar
   if (supabase) {
-    syncService.sync(data).catch(error => {
+    // Usar o novo sistema de sincronização em vez do antigo
+    syncManager.syncNow().catch(error => {
       console.error('Erro ao sincronizar dados:', error);
     });
   }
