@@ -11,7 +11,8 @@ import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems
 import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
-import { syncService, loadInitialData, saveData } from './lib/sync';
+import { syncService } from './lib/syncService';
+import { loadInitialData, saveData } from './lib/sync';
 import { isSupabaseConfigured, initSyncTable, supabase } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';

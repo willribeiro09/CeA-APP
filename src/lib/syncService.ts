@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { StorageItems, Expense, Project, StockItem, Employee } from '../types';
 import { storage } from './storage';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { SHARED_UUID } from './createSchemaDirect';
 
 // ID único para esta sessão do navegador
 const SESSION_ID = Math.random().toString(36).substring(2, 15);

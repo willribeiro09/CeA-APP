@@ -3,6 +3,7 @@ import { StorageItems, Expense, Project, StockItem, Employee } from '../types';
 import { storage } from './storage';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { syncManager, registerDataChange } from './syncManager';
+import { SHARED_UUID } from './createSchemaDirect';
 
 // Identificador único para esta sessão do navegador
 const SESSION_ID = Math.random().toString(36).substring(2, 15);
@@ -10,7 +11,7 @@ console.log('ID da sessão:', SESSION_ID);
 
 // ID FIXO compartilhado por todas as instalações do app
 // Usando um UUID fixo para garantir que todos os usuários vejam os mesmos dados
-const SHARED_UUID = "ce764a91-58e0-4c3d-a821-b52b16ca3e7c";
+// const SHARED_UUID = "ce764a91-58e0-4c3d-a821-b52b16ca3e7c";
 console.log('UUID compartilhado para sincronização:', SHARED_UUID);
 
 // Intervalo de sincronização em milissegundos (5 segundos)
