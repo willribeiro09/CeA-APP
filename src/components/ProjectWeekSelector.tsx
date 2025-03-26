@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Calendar } from 'lucide-react';
-import { format, addWeeks } from 'date-fns';
-import { enUS } from 'date-fns/locale';
+import { getNext5Weeks, getNext5ProjectWeeks } from '../lib/dateUtils';
 
 interface ProjectWeekSelectorProps {
   selectedWeekStart: Date;
@@ -9,94 +8,14 @@ interface ProjectWeekSelectorProps {
   category?: 'Projects' | 'Employees';
 }
 
-// Função para obter as próximas 5 semanas começando na quarta-feira (para Projects)
-const getNext5ProjectWeeks = () => {
-  // Obter a data atual
-  const today = new Date();
-  
-  // Encontrar a quarta-feira atual ou anterior mais próxima
-  const currentDay = today.getDay(); // 0 = domingo, 1 = segunda, 2 = terça, 3 = quarta, ...
-  const daysToSubtract = currentDay === 3 ? 0 : currentDay < 3 ? currentDay + 4 : currentDay - 3;
-  
-  const currentWednesday = new Date(today);
-  currentWednesday.setDate(today.getDate() - daysToSubtract);
-  currentWednesday.setHours(0, 0, 0, 0);
-  
-  // Gerar as próximas 5 semanas
-  const weeks = [];
-  
-  for (let i = 0; i < 5; i++) {
-    const startDate = new Date(currentWednesday);
-    startDate.setDate(startDate.getDate() + (i * 7));
-    
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6); // 6 dias depois da quarta = terça
-    endDate.setHours(23, 59, 59, 999);
-    
-    // Formatar as datas no estilo "March 19 to 25"
-    const formattedStartDate = format(startDate, 'MMMM d', { locale: enUS });
-    const formattedEndDate = format(endDate, 'd');
-    const label = `${formattedStartDate} to ${formattedEndDate}`;
-    
-    weeks.push({
-      value: startDate.toISOString().split('T')[0],
-      label: label,
-      startDate,
-      endDate
-    });
-  }
-  
-  return weeks;
-};
-
-// Função para obter as próximas 5 semanas começando na segunda-feira (para Employees)
-const getNext5EmployeeWeeks = () => {
-  // Obter a data atual
-  const today = new Date();
-  
-  // Encontrar a segunda-feira atual ou anterior mais próxima
-  const currentDay = today.getDay(); // 0 = domingo, 1 = segunda, ...
-  const daysToSubtract = currentDay === 1 ? 0 : currentDay === 0 ? 6 : currentDay - 1;
-  
-  const currentMonday = new Date(today);
-  currentMonday.setDate(today.getDate() - daysToSubtract);
-  currentMonday.setHours(0, 0, 0, 0);
-  
-  // Gerar as próximas 5 semanas
-  const weeks = [];
-  
-  for (let i = 0; i < 5; i++) {
-    const startDate = new Date(currentMonday);
-    startDate.setDate(startDate.getDate() + (i * 7));
-    
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 5); // 5 dias depois da segunda = sábado
-    endDate.setHours(23, 59, 59, 999);
-    
-    // Formatar as datas no estilo "March 17 to 22"
-    const formattedStartDate = format(startDate, 'MMMM d', { locale: enUS });
-    const formattedEndDate = format(endDate, 'd');
-    const label = `${formattedStartDate} to ${formattedEndDate}`;
-    
-    weeks.push({
-      value: startDate.toISOString().split('T')[0],
-      label: label,
-      startDate,
-      endDate
-    });
-  }
-  
-  return weeks;
-};
-
 export function ProjectWeekSelector({ selectedWeekStart, onWeekChange, category = 'Projects' }: ProjectWeekSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [weeks, setWeeks] = useState(category === 'Employees' ? getNext5EmployeeWeeks() : getNext5ProjectWeeks());
+  const [weeks, setWeeks] = useState(category === 'Employees' ? getNext5Weeks() : getNext5ProjectWeeks());
   const [selectedWeek, setSelectedWeek] = useState(weeks[0]);
 
   // Atualizar as semanas quando o componente montar ou a categoria mudar
   useEffect(() => {
-    const availableWeeks = category === 'Employees' ? getNext5EmployeeWeeks() : getNext5ProjectWeeks();
+    const availableWeeks = category === 'Employees' ? getNext5Weeks() : getNext5ProjectWeeks();
     setWeeks(availableWeeks);
     
     // Encontrar a semana que corresponde à data selecionada
