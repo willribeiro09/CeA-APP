@@ -355,7 +355,6 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
 }> {
   const weeks = [];
   
-  // Usar datas fixas em março de 2024 para exemplo
   // Semana anterior: 17 to 22
   const previousWeekStart = new Date(Date.UTC(2024, 2, 17, 12, 0, 0)); // 17 de março de 2024
   const previousWeekEnd = new Date(Date.UTC(2024, 2, 22, 23, 59, 59)); // 22 de março de 2024
@@ -376,20 +375,45 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
     value: formatDateToISO(currentWeekStart)
   });
 
-  // Próximas semanas (geradas automaticamente a partir da semana atual)
-  for (let i = 1; i < 5; i++) {
-    const weekStart = addWeeksSafe(currentWeekStart, i);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setUTCDate(weekStart.getUTCDate() + 5); // 5 dias depois = 6 dias no total
-    weekEnd.setUTCHours(23, 59, 59, 999);
-    
-    weeks.push({
-      startDate: weekStart,
-      endDate: weekEnd,
-      label: formatWeekRange(weekStart, weekEnd),
-      value: formatDateToISO(weekStart)
-    });
-  }
+  // Próxima semana: 31 to 5 (seguindo o mesmo padrão)
+  const nextWeekStart = new Date(Date.UTC(2024, 2, 31, 12, 0, 0)); // 31 de março de 2024
+  const nextWeekEnd = new Date(Date.UTC(2024, 3, 5, 23, 59, 59)); // 5 de abril de 2024
+  weeks.push({
+    startDate: nextWeekStart,
+    endDate: nextWeekEnd,
+    label: "March 31 to April 5",
+    value: formatDateToISO(nextWeekStart)
+  });
+
+  // Semana 4: 7 to 12 (começa numa segunda e termina num sábado)
+  const week4Start = new Date(Date.UTC(2024, 3, 7, 12, 0, 0)); // 7 de abril de 2024
+  const week4End = new Date(Date.UTC(2024, 3, 12, 23, 59, 59)); // 12 de abril de 2024
+  weeks.push({
+    startDate: week4Start,
+    endDate: week4End,
+    label: "April 7 to 12",
+    value: formatDateToISO(week4Start)
+  });
+
+  // Semana 5: 14 to 19 (começa numa segunda e termina num sábado)
+  const week5Start = new Date(Date.UTC(2024, 3, 14, 12, 0, 0)); // 14 de abril de 2024
+  const week5End = new Date(Date.UTC(2024, 3, 19, 23, 59, 59)); // 19 de abril de 2024
+  weeks.push({
+    startDate: week5Start,
+    endDate: week5End,
+    label: "April 14 to 19",
+    value: formatDateToISO(week5Start)
+  });
+
+  // Semana 6: 21 to 26 (começa numa segunda e termina num sábado)
+  const week6Start = new Date(Date.UTC(2024, 3, 21, 12, 0, 0)); // 21 de abril de 2024
+  const week6End = new Date(Date.UTC(2024, 3, 26, 23, 59, 59)); // 26 de abril de 2024
+  weeks.push({
+    startDate: week6Start,
+    endDate: week6End,
+    label: "April 21 to 26",
+    value: formatDateToISO(week6Start)
+  });
 
   return weeks;
 }
@@ -406,7 +430,6 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
 }> {
   const weeks = [];
   
-  // Usar datas fixas em março de 2024 para exemplo
   // Semana anterior: 19 to 25
   const previousWeekStart = new Date(Date.UTC(2024, 2, 19, 12, 0, 0)); // 19 de março de 2024
   const previousWeekEnd = new Date(Date.UTC(2024, 2, 25, 23, 59, 59)); // 25 de março de 2024
@@ -427,20 +450,45 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
     value: formatDateToISO(currentWeekStart)
   });
 
-  // Próximas semanas (geradas automaticamente a partir da semana atual)
-  for (let i = 1; i < 5; i++) {
-    const weekStart = addWeeksSafe(currentWeekStart, i);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setUTCDate(weekStart.getUTCDate() + 6); // 6 dias depois = 7 dias no total
-    weekEnd.setUTCHours(23, 59, 59, 999);
-    
-    weeks.push({
-      startDate: weekStart,
-      endDate: weekEnd,
-      label: formatWeekRange(weekStart, weekEnd),
-      value: formatDateToISO(weekStart)
-    });
-  }
+  // Próxima semana: 2 to 8 (começa numa terça e termina numa segunda)
+  const nextWeekStart = new Date(Date.UTC(2024, 3, 2, 12, 0, 0)); // 2 de abril de 2024
+  const nextWeekEnd = new Date(Date.UTC(2024, 3, 8, 23, 59, 59)); // 8 de abril de 2024
+  weeks.push({
+    startDate: nextWeekStart,
+    endDate: nextWeekEnd,
+    label: "April 2 to 8",
+    value: formatDateToISO(nextWeekStart)
+  });
+
+  // Semana 4: 9 to 15 (começa numa terça e termina numa segunda)
+  const week4Start = new Date(Date.UTC(2024, 3, 9, 12, 0, 0)); // 9 de abril de 2024
+  const week4End = new Date(Date.UTC(2024, 3, 15, 23, 59, 59)); // 15 de abril de 2024
+  weeks.push({
+    startDate: week4Start,
+    endDate: week4End,
+    label: "April 9 to 15",
+    value: formatDateToISO(week4Start)
+  });
+
+  // Semana 5: 16 to 22 (começa numa terça e termina numa segunda)
+  const week5Start = new Date(Date.UTC(2024, 3, 16, 12, 0, 0)); // 16 de abril de 2024
+  const week5End = new Date(Date.UTC(2024, 3, 22, 23, 59, 59)); // 22 de abril de 2024
+  weeks.push({
+    startDate: week5Start,
+    endDate: week5End,
+    label: "April 16 to 22",
+    value: formatDateToISO(week5Start)
+  });
+
+  // Semana 6: 23 to 29 (começa numa terça e termina numa segunda)
+  const week6Start = new Date(Date.UTC(2024, 3, 23, 12, 0, 0)); // 23 de abril de 2024
+  const week6End = new Date(Date.UTC(2024, 3, 29, 23, 59, 59)); // 29 de abril de 2024
+  weeks.push({
+    startDate: week6Start,
+    endDate: week6End,
+    label: "April 23 to 29",
+    value: formatDateToISO(week6Start)
+  });
 
   return weeks;
 }
