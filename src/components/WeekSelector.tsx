@@ -64,9 +64,12 @@ export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorPr
               <div className="flex flex-col">
                 <span className="font-medium text-sm">{week.label}</span>
                 {index === 0 && (
-                  <span className="text-xs text-gray-500">Current week</span>
+                  <span className="text-xs text-gray-500">Previous week</span>
                 )}
                 {index === 1 && (
+                  <span className="text-xs text-gray-500">Current week</span>
+                )}
+                {index === 2 && (
                   <span className="text-xs text-gray-500">Next week</span>
                 )}
               </div>

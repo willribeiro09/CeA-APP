@@ -350,21 +350,25 @@ export function getNext5Weeks(currentDate: Date = new Date()): Array<{
     value: formatDateToISO(previousWeekStart)
   });
 
-  // Semana atual e próximas
+  // Semana atual
   const currentWeekStart = getEmployeeWeekStart(currentDate);
   const currentWeekEnd = getEmployeeWeekEnd(currentWeekStart);
-  
-  for (let i = 0; i < 5; i++) {
-    const weekStart = addWeeksSafe(currentWeekStart, i);
-    const weekEnd = addWeeksSafe(currentWeekEnd, i);
-    
-    weeks.push({
-      startDate: weekStart,
-      endDate: weekEnd,
-      label: formatWeekRange(weekStart, weekEnd),
-      value: formatDateToISO(weekStart)
-    });
-  }
+  weeks.push({
+    startDate: currentWeekStart,
+    endDate: currentWeekEnd,
+    label: formatWeekRange(currentWeekStart, currentWeekEnd),
+    value: formatDateToISO(currentWeekStart)
+  });
+
+  // Próxima semana
+  const nextWeekStart = addWeeksSafe(currentWeekStart, 1);
+  const nextWeekEnd = addWeeksSafe(currentWeekEnd, 1);
+  weeks.push({
+    startDate: nextWeekStart,
+    endDate: nextWeekEnd,
+    label: formatWeekRange(nextWeekStart, nextWeekEnd),
+    value: formatDateToISO(nextWeekStart)
+  });
 
   return weeks;
 }
@@ -376,10 +380,11 @@ export function getNext5ProjectWeeks() {
   const today = new Date();
   const currentMonday = getProjectWeekStart(today);
   const previousMonday = getProjectWeekStart(addDays(today, -7));
+  const nextMonday = getProjectWeekStart(addDays(today, 7));
   
   const weeks = [];
   
-  // Adiciona a semana anterior
+  // Semana anterior
   weeks.push({
     value: format(previousMonday, 'yyyy-MM-dd'),
     label: formatWeekRange(previousMonday, getProjectWeekEnd(previousMonday)),
@@ -387,16 +392,21 @@ export function getNext5ProjectWeeks() {
     endDate: getProjectWeekEnd(previousMonday)
   });
 
-  // Adiciona a semana atual e as próximas 4 semanas
-  for (let i = 0; i < 5; i++) {
-    const monday = getProjectWeekStart(addWeeksSafe(today, i));
-    weeks.push({
-      value: format(monday, 'yyyy-MM-dd'),
-      label: formatWeekRange(monday, getProjectWeekEnd(monday)),
-      startDate: monday,
-      endDate: getProjectWeekEnd(monday)
-    });
-  }
+  // Semana atual
+  weeks.push({
+    value: format(currentMonday, 'yyyy-MM-dd'),
+    label: formatWeekRange(currentMonday, getProjectWeekEnd(currentMonday)),
+    startDate: currentMonday,
+    endDate: getProjectWeekEnd(currentMonday)
+  });
+
+  // Próxima semana
+  weeks.push({
+    value: format(nextMonday, 'yyyy-MM-dd'),
+    label: formatWeekRange(nextMonday, getProjectWeekEnd(nextMonday)),
+    startDate: nextMonday,
+    endDate: getProjectWeekEnd(nextMonday)
+  });
 
   return weeks;
 }
