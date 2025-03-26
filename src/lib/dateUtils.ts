@@ -241,12 +241,15 @@ export function getEmployeeWeekStart(date: Date): Date {
   const normalized = normalizeDate(date);
   const dayOfWeek = normalized.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
   
-  // Calcular dias para voltar até segunda-feira
+  // Para funcionários, a semana começa na segunda-feira
+  // Se for domingo (0), voltar 6 dias para a segunda anterior
+  // Se for outro dia, voltar até a segunda desta semana
   const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   
-  // Criar nova data com a segunda-feira da semana atual
+  // Criar nova data com a segunda-feira
   const weekStartDate = new Date(normalized);
   weekStartDate.setUTCDate(normalized.getUTCDate() - daysToSubtract);
+  weekStartDate.setUTCHours(12, 0, 0, 0); // Meio-dia UTC
   
   return weekStartDate;
 }
@@ -258,9 +261,10 @@ export function getEmployeeWeekStart(date: Date): Date {
 export function getEmployeeWeekEnd(date: Date): Date {
   const weekStart = getEmployeeWeekStart(date);
   
-  // Adicionar 5 dias ao início da semana (segunda + 5 = sábado)
+  // Para funcionários, a semana termina no sábado (5 dias após a segunda)
   const weekEndDate = new Date(weekStart);
   weekEndDate.setUTCDate(weekStart.getUTCDate() + 5);
+  weekEndDate.setUTCHours(23, 59, 59, 999);
   
   return weekEndDate;
 }
@@ -273,13 +277,22 @@ export function getProjectWeekStart(date: Date): Date {
   const normalized = normalizeDate(date);
   const dayOfWeek = normalized.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
   
-  // 3 = quarta-feira
-  // Calcular dias para voltar até quarta-feira
-  const daysToAdjust = dayOfWeek === 3 ? 0 : dayOfWeek < 3 ? dayOfWeek + 4 : dayOfWeek - 3;
+  // Para projetos, a semana começa na quarta-feira
+  // Se for antes de quarta (0,1,2), voltar para quarta anterior
+  // Se for depois de quarta (4,5,6), voltar para quarta desta semana
+  let daysToAdjust;
+  if (dayOfWeek === 3) {
+    daysToAdjust = 0;
+  } else if (dayOfWeek < 3) {
+    daysToAdjust = dayOfWeek + 4; // Voltar para quarta anterior
+  } else {
+    daysToAdjust = dayOfWeek - 3; // Voltar para quarta desta semana
+  }
   
-  // Criar nova data com a quarta-feira da semana atual ou anterior
+  // Criar nova data com a quarta-feira
   const weekStartDate = new Date(normalized);
   weekStartDate.setUTCDate(normalized.getUTCDate() - daysToAdjust);
+  weekStartDate.setUTCHours(12, 0, 0, 0); // Meio-dia UTC
   
   return weekStartDate;
 }
@@ -291,9 +304,10 @@ export function getProjectWeekStart(date: Date): Date {
 export function getProjectWeekEnd(date: Date): Date {
   const weekStart = getProjectWeekStart(date);
   
-  // Adicionar 6 dias ao início da semana (quarta + 6 = terça)
+  // Para projetos, a semana termina na terça-feira (6 dias após a quarta)
   const weekEndDate = new Date(weekStart);
   weekEndDate.setUTCDate(weekStart.getUTCDate() + 6);
+  weekEndDate.setUTCHours(23, 59, 59, 999);
   
   return weekEndDate;
 }
@@ -308,13 +322,32 @@ export function formatWeekRange(startDate: Date, endDate: Date): string {
   const startDay = normStart.getUTCDate().toString();
   const endDay = normEnd.getUTCDate().toString();
   
-  const startMonth = format(normStart, 'MMMM', { locale: enUS });
-  const endMonth = format(normEnd, 'MMMM', { locale: enUS });
+  const startMonth = format(normStart, 'MMMM', { locale: enUS }).toLowerCase();
+  const endMonth = format(normEnd, 'MMMM', { locale: enUS }).toLowerCase();
+  
+  // Traduzir os meses para português
+  const monthTranslations: { [key: string]: string } = {
+    'january': 'janeiro',
+    'february': 'fevereiro',
+    'march': 'março',
+    'april': 'abril',
+    'may': 'maio',
+    'june': 'junho',
+    'july': 'julho',
+    'august': 'agosto',
+    'september': 'setembro',
+    'october': 'outubro',
+    'november': 'novembro',
+    'december': 'dezembro'
+  };
+  
+  const startMonthPt = monthTranslations[startMonth] || startMonth;
+  const endMonthPt = monthTranslations[endMonth] || endMonth;
   
   if (startMonth === endMonth) {
-    return `${startMonth} ${startDay} to ${endDay}`;
+    return `${startDay} a ${endDay} de ${startMonthPt}`;
   } else {
-    return `${startMonth} ${startDay} to ${endMonth} ${endDay}`;
+    return `${startDay} de ${startMonthPt} a ${endDay} de ${endMonthPt}`;
   }
 }
 
@@ -340,8 +373,11 @@ export function getNext5Weeks(currentDate: Date = new Date()): Array<{
 }> {
   const weeks = [];
   
+  // Encontrar a segunda-feira da semana atual
+  const currentWeekStart = getEmployeeWeekStart(currentDate);
+  
   // Semana anterior
-  const previousWeekStart = addWeeksSafe(getEmployeeWeekStart(currentDate), -1);
+  const previousWeekStart = addWeeksSafe(currentWeekStart, -1);
   const previousWeekEnd = getEmployeeWeekEnd(previousWeekStart);
   weeks.push({
     startDate: previousWeekStart,
@@ -351,7 +387,6 @@ export function getNext5Weeks(currentDate: Date = new Date()): Array<{
   });
 
   // Semana atual
-  const currentWeekStart = getEmployeeWeekStart(currentDate);
   const currentWeekEnd = getEmployeeWeekEnd(currentWeekStart);
   weeks.push({
     startDate: currentWeekStart,
@@ -362,7 +397,7 @@ export function getNext5Weeks(currentDate: Date = new Date()): Array<{
 
   // Próxima semana
   const nextWeekStart = addWeeksSafe(currentWeekStart, 1);
-  const nextWeekEnd = addWeeksSafe(currentWeekEnd, 1);
+  const nextWeekEnd = getEmployeeWeekEnd(nextWeekStart);
   weeks.push({
     startDate: nextWeekStart,
     endDate: nextWeekEnd,
@@ -378,34 +413,39 @@ export function getNext5Weeks(currentDate: Date = new Date()): Array<{
  */
 export function getNext5ProjectWeeks() {
   const today = new Date();
-  const currentMonday = getProjectWeekStart(today);
-  const previousMonday = getProjectWeekStart(addDays(today, -7));
-  const nextMonday = getProjectWeekStart(addDays(today, 7));
+  
+  // Encontrar a quarta-feira da semana atual
+  const currentWednesday = getProjectWeekStart(today);
   
   const weeks = [];
-  
+
   // Semana anterior
+  const previousWednesday = addWeeksSafe(currentWednesday, -1);
+  const previousWeekEnd = getProjectWeekEnd(previousWednesday);
   weeks.push({
-    value: format(previousMonday, 'yyyy-MM-dd'),
-    label: formatWeekRange(previousMonday, getProjectWeekEnd(previousMonday)),
-    startDate: previousMonday,
-    endDate: getProjectWeekEnd(previousMonday)
+    value: format(previousWednesday, 'yyyy-MM-dd'),
+    label: formatWeekRange(previousWednesday, previousWeekEnd),
+    startDate: previousWednesday,
+    endDate: previousWeekEnd
   });
 
   // Semana atual
+  const currentWeekEnd = getProjectWeekEnd(currentWednesday);
   weeks.push({
-    value: format(currentMonday, 'yyyy-MM-dd'),
-    label: formatWeekRange(currentMonday, getProjectWeekEnd(currentMonday)),
-    startDate: currentMonday,
-    endDate: getProjectWeekEnd(currentMonday)
+    value: format(currentWednesday, 'yyyy-MM-dd'),
+    label: formatWeekRange(currentWednesday, currentWeekEnd),
+    startDate: currentWednesday,
+    endDate: currentWeekEnd
   });
 
   // Próxima semana
+  const nextWednesday = addWeeksSafe(currentWednesday, 1);
+  const nextWeekEnd = getProjectWeekEnd(nextWednesday);
   weeks.push({
-    value: format(nextMonday, 'yyyy-MM-dd'),
-    label: formatWeekRange(nextMonday, getProjectWeekEnd(nextMonday)),
-    startDate: nextMonday,
-    endDate: getProjectWeekEnd(nextMonday)
+    value: format(nextWednesday, 'yyyy-MM-dd'),
+    label: formatWeekRange(nextWednesday, nextWeekEnd),
+    startDate: nextWednesday,
+    endDate: nextWeekEnd
   });
 
   return weeks;
