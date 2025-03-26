@@ -340,12 +340,21 @@ export function getNext5Weeks(currentDate: Date = new Date()): Array<{
 }> {
   const weeks = [];
   
-  // Semana atual
+  // Semana anterior
+  const previousWeekStart = addWeeksSafe(getEmployeeWeekStart(currentDate), -1);
+  const previousWeekEnd = getEmployeeWeekEnd(previousWeekStart);
+  weeks.push({
+    startDate: previousWeekStart,
+    endDate: previousWeekEnd,
+    label: formatWeekRange(previousWeekStart, previousWeekEnd),
+    value: formatDateToISO(previousWeekStart)
+  });
+
+  // Semana atual e próximas
   const currentWeekStart = getEmployeeWeekStart(currentDate);
   const currentWeekEnd = getEmployeeWeekEnd(currentWeekStart);
   
   for (let i = 0; i < 5; i++) {
-    // Usar função segura para adicionar semanas
     const weekStart = addWeeksSafe(currentWeekStart, i);
     const weekEnd = addWeeksSafe(currentWeekEnd, i);
     
@@ -356,7 +365,39 @@ export function getNext5Weeks(currentDate: Date = new Date()): Array<{
       value: formatDateToISO(weekStart)
     });
   }
+
+  return weeks;
+}
+
+/**
+ * Função para gerar as próximas 5 semanas de projetos
+ */
+export function getNext5ProjectWeeks() {
+  const today = new Date();
+  const currentMonday = getProjectWeekStart(today);
+  const previousMonday = getProjectWeekStart(addDays(today, -7));
   
+  const weeks = [];
+  
+  // Adiciona a semana anterior
+  weeks.push({
+    value: format(previousMonday, 'yyyy-MM-dd'),
+    label: formatWeekRange(previousMonday, getProjectWeekEnd(previousMonday)),
+    startDate: previousMonday,
+    endDate: getProjectWeekEnd(previousMonday)
+  });
+
+  // Adiciona a semana atual e as próximas 4 semanas
+  for (let i = 0; i < 5; i++) {
+    const monday = getProjectWeekStart(addWeeksSafe(today, i));
+    weeks.push({
+      value: format(monday, 'yyyy-MM-dd'),
+      label: formatWeekRange(monday, getProjectWeekEnd(monday)),
+      startDate: monday,
+      endDate: getProjectWeekEnd(monday)
+    });
+  }
+
   return weeks;
 }
 

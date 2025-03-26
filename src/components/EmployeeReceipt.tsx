@@ -454,9 +454,6 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
       <div className="mb-3 worked-days-section">
         <div className="flex justify-between items-center mb-1">
           <h2 className="text-md font-semibold">Worked Days</h2>
-          <div className="flex items-center">
-            <span className="text-gray-500 text-sm">{weekRange || 'Current Week'}</span>
-          </div>
         </div>
         <div className="bg-gray-50 rounded-md p-2 print:bg-gray-50">
           {renderWorkDays()}
