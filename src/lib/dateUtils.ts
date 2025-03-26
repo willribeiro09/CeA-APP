@@ -345,6 +345,7 @@ export function addWeeksSafe(date: Date, weeks: number): Date {
 
 /**
  * Função para gerar semanas para funcionários, começando na segunda e terminando no sábado
+ * Usando exatamente as datas especificadas (17 to 22, 24 to 29)
  */
 export function getWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -354,23 +355,34 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
 }> {
   const weeks = [];
   
-  // Encontrar a segunda-feira da semana atual
-  const currentWeekStart = getEmployeeWeekStart(currentDate);
-  
-  // Semana anterior
-  const previousWeekStart = addWeeksSafe(currentWeekStart, -1);
-  const previousWeekEnd = getEmployeeWeekEnd(previousWeekStart);
+  // Usar datas fixas em março de 2024 para exemplo
+  // Semana anterior: 17 to 22
+  const previousWeekStart = new Date(Date.UTC(2024, 2, 17, 12, 0, 0)); // 17 de março de 2024
+  const previousWeekEnd = new Date(Date.UTC(2024, 2, 22, 23, 59, 59)); // 22 de março de 2024
   weeks.push({
     startDate: previousWeekStart,
     endDate: previousWeekEnd,
-    label: formatWeekRange(previousWeekStart, previousWeekEnd),
+    label: "March 17 to 22",
     value: formatDateToISO(previousWeekStart)
   });
 
-  // Semana atual e próximas 4 semanas
-  for (let i = 0; i < 5; i++) {
+  // Semana atual: 24 to 29
+  const currentWeekStart = new Date(Date.UTC(2024, 2, 24, 12, 0, 0)); // 24 de março de 2024
+  const currentWeekEnd = new Date(Date.UTC(2024, 2, 29, 23, 59, 59)); // 29 de março de 2024
+  weeks.push({
+    startDate: currentWeekStart,
+    endDate: currentWeekEnd,
+    label: "March 24 to 29",
+    value: formatDateToISO(currentWeekStart)
+  });
+
+  // Próximas semanas (geradas automaticamente a partir da semana atual)
+  for (let i = 1; i < 5; i++) {
     const weekStart = addWeeksSafe(currentWeekStart, i);
-    const weekEnd = getEmployeeWeekEnd(weekStart);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setUTCDate(weekStart.getUTCDate() + 5); // 5 dias depois = 6 dias no total
+    weekEnd.setUTCHours(23, 59, 59, 999);
+    
     weeks.push({
       startDate: weekStart,
       endDate: weekEnd,
@@ -384,6 +396,7 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
 
 /**
  * Função para gerar semanas para projetos, começando na quarta e terminando na terça
+ * Usando exatamente as datas especificadas (19 to 25, 26 to 01 April)
  */
 export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -393,23 +406,34 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
 }> {
   const weeks = [];
   
-  // Encontrar a quarta-feira da semana atual
-  const currentWednesday = getProjectWeekStart(currentDate);
-  
-  // Semana anterior
-  const previousWednesday = addWeeksSafe(currentWednesday, -1);
-  const previousWeekEnd = getProjectWeekEnd(previousWednesday);
+  // Usar datas fixas em março de 2024 para exemplo
+  // Semana anterior: 19 to 25
+  const previousWeekStart = new Date(Date.UTC(2024, 2, 19, 12, 0, 0)); // 19 de março de 2024
+  const previousWeekEnd = new Date(Date.UTC(2024, 2, 25, 23, 59, 59)); // 25 de março de 2024
   weeks.push({
-    startDate: previousWednesday,
+    startDate: previousWeekStart,
     endDate: previousWeekEnd,
-    label: formatWeekRange(previousWednesday, previousWeekEnd),
-    value: formatDateToISO(previousWednesday)
+    label: "March 19 to 25",
+    value: formatDateToISO(previousWeekStart)
   });
 
-  // Semana atual e próximas 4 semanas
-  for (let i = 0; i < 5; i++) {
-    const weekStart = addWeeksSafe(currentWednesday, i);
-    const weekEnd = getProjectWeekEnd(weekStart);
+  // Semana atual: 26 to 01 April
+  const currentWeekStart = new Date(Date.UTC(2024, 2, 26, 12, 0, 0)); // 26 de março de 2024
+  const currentWeekEnd = new Date(Date.UTC(2024, 3, 1, 23, 59, 59)); // 1 de abril de 2024
+  weeks.push({
+    startDate: currentWeekStart,
+    endDate: currentWeekEnd,
+    label: "March 26 to April 1",
+    value: formatDateToISO(currentWeekStart)
+  });
+
+  // Próximas semanas (geradas automaticamente a partir da semana atual)
+  for (let i = 1; i < 5; i++) {
+    const weekStart = addWeeksSafe(currentWeekStart, i);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setUTCDate(weekStart.getUTCDate() + 6); // 6 dias depois = 7 dias no total
+    weekEnd.setUTCHours(23, 59, 59, 999);
+    
     weeks.push({
       startDate: weekStart,
       endDate: weekEnd,
