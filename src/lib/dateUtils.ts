@@ -332,17 +332,18 @@ export function addWeeksSafe(date: Date, weeks: number): Date {
 /**
  * Função para gerar as próximas 5 semanas
  */
-export function getNext5Weeks(currentDate: Date = new Date()): Array<{
+export function getWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
   endDate: Date;
   label: string;
   value: string;
 }> {
   const weeks = [];
+  const today = normalizeDate(currentDate);
   
-  // Semana anterior
-  const previousWeekStart = addWeeksSafe(getEmployeeWeekStart(currentDate), -1);
-  const previousWeekEnd = getEmployeeWeekEnd(previousWeekStart);
+  // Adicionar semana anterior
+  const previousWeekStart = addWeeksSafe(today, -1);
+  const previousWeekEnd = addDays(previousWeekStart, 6);
   weeks.push({
     startDate: previousWeekStart,
     endDate: previousWeekEnd,
@@ -350,14 +351,10 @@ export function getNext5Weeks(currentDate: Date = new Date()): Array<{
     value: formatDateToISO(previousWeekStart)
   });
 
-  // Semana atual e próximas
-  const currentWeekStart = getEmployeeWeekStart(currentDate);
-  const currentWeekEnd = getEmployeeWeekEnd(currentWeekStart);
-  
+  // Adicionar semana atual e próximas 4 semanas
   for (let i = 0; i < 5; i++) {
-    const weekStart = addWeeksSafe(currentWeekStart, i);
-    const weekEnd = addWeeksSafe(currentWeekEnd, i);
-    
+    const weekStart = addWeeksSafe(today, i);
+    const weekEnd = addDays(weekStart, 6);
     weeks.push({
       startDate: weekStart,
       endDate: weekEnd,
@@ -372,29 +369,34 @@ export function getNext5Weeks(currentDate: Date = new Date()): Array<{
 /**
  * Função para gerar as próximas 5 semanas de projetos
  */
-export function getNext5ProjectWeeks() {
-  const today = new Date();
-  const currentMonday = getProjectWeekStart(today);
-  const previousMonday = getProjectWeekStart(addDays(today, -7));
-  
+export function getProjectWeeks(currentDate: Date = new Date()): Array<{
+  startDate: Date;
+  endDate: Date;
+  label: string;
+  value: string;
+}> {
   const weeks = [];
+  const today = normalizeDate(currentDate);
   
-  // Adiciona a semana anterior
+  // Adicionar semana anterior
+  const previousWeekStart = getProjectWeekStart(addWeeksSafe(today, -1));
+  const previousWeekEnd = getProjectWeekEnd(previousWeekStart);
   weeks.push({
-    value: format(previousMonday, 'yyyy-MM-dd'),
-    label: formatWeekRange(previousMonday, getProjectWeekEnd(previousMonday)),
-    startDate: previousMonday,
-    endDate: getProjectWeekEnd(previousMonday)
+    startDate: previousWeekStart,
+    endDate: previousWeekEnd,
+    label: formatWeekRange(previousWeekStart, previousWeekEnd),
+    value: formatDateToISO(previousWeekStart)
   });
 
-  // Adiciona a semana atual e as próximas 4 semanas
+  // Adicionar semana atual e próximas 4 semanas
   for (let i = 0; i < 5; i++) {
-    const monday = getProjectWeekStart(addWeeksSafe(today, i));
+    const weekStart = getProjectWeekStart(addWeeksSafe(today, i));
+    const weekEnd = getProjectWeekEnd(weekStart);
     weeks.push({
-      value: format(monday, 'yyyy-MM-dd'),
-      label: formatWeekRange(monday, getProjectWeekEnd(monday)),
-      startDate: monday,
-      endDate: getProjectWeekEnd(monday)
+      startDate: weekStart,
+      endDate: weekEnd,
+      label: formatWeekRange(weekStart, weekEnd),
+      value: formatDateToISO(weekStart)
     });
   }
 
