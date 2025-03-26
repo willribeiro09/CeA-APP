@@ -24,18 +24,19 @@ import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover
 import { Calendar as CalendarIcon } from 'lucide-react';
 import 'react-day-picker/dist/style.css';
 import { ProjectWeekSelector } from './components/ProjectWeekSelector';
+import { WeekSelector } from './components/WeekSelector';
 import EmployeeReceipt from './components/EmployeeReceipt';
 import WorkDaysCalendar from './components/WorkDaysCalendar';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   formatDateToISO, 
-  formatWeekRange, 
-  getNext5Weeks, 
+  parseISODate, 
   getEmployeeWeekStart, 
-  getEmployeeWeekEnd, 
+  getEmployeeWeekEnd,
   getProjectWeekStart, 
   getProjectWeekEnd,
-  normalizeDate 
+  normalizeDate,
+  testWeekRanges 
 } from './lib/dateUtils';
 import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
 
@@ -889,10 +890,30 @@ export default function App() {
     };
   }, [isRateDialogOpen]);
 
-  // Função para lidar com a mudança de semana
+  /**
+   * Manipulador para mudança de semana para funcionários
+   */
   const handleWeekChange = (startDate: Date, endDate: Date) => {
     setSelectedWeekStart(startDate);
     setSelectedWeekEnd(endDate);
+    console.log("Employee Week Changed:", {
+      start: startDate.toISOString(), 
+      end: endDate.toISOString(),
+      formattedStart: format(startDate, 'yyyy-MM-dd')
+    });
+  };
+
+  /**
+   * Manipulador para mudança de semana para projetos
+   */
+  const handleProjectWeekChange = (startDate: Date, endDate: Date) => {
+    setSelectedWeekStart(startDate);
+    setSelectedWeekEnd(endDate);
+    console.log("Project Week Changed:", {
+      start: startDate.toISOString(), 
+      end: endDate.toISOString(),
+      formattedStart: format(startDate, 'yyyy-MM-dd')
+    });
   };
 
   // Função para verificar se um funcionário deve ser exibido na semana selecionada
@@ -934,12 +955,6 @@ export default function App() {
     total += willBaseRate + willBonus;
     
     return total;
-  };
-
-  // Função para lidar com a mudança de semana para projetos
-  const handleProjectWeekChange = (startDate: Date, endDate: Date) => {
-    setSelectedWeekStart(startDate);
-    setSelectedWeekEnd(endDate);
   };
 
   // Função para atualizar as datas da semana com base na categoria
@@ -1408,6 +1423,12 @@ export default function App() {
     console.groupEnd();
   }, []);
 
+  // Adicionar na função App ou em algum efeito
+  useEffect(() => {
+    // Executar teste das semanas
+    testWeekRanges();
+  }, []);
+
   return (
     <>
       <div className="min-h-screen bg-gray-50">
@@ -1496,10 +1517,9 @@ export default function App() {
             <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
               <div className="relative max-w-[800px] mx-auto pb-2">
                 <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                  <ProjectWeekSelector 
+                  <WeekSelector 
                     selectedWeekStart={selectedWeekStart}
                     onWeekChange={handleWeekChange}
-                    category="Employees"
                   />
                   <div className="flex items-center">
                     <span className="text-gray-700 font-medium text-xs">Total:</span>

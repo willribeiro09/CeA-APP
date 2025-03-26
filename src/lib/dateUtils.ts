@@ -241,12 +241,15 @@ export function getEmployeeWeekStart(date: Date): Date {
   const normalized = normalizeDate(date);
   const dayOfWeek = normalized.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
   
-  // Calcular dias para voltar até segunda-feira
+  // Para funcionários, a semana começa na segunda-feira
+  // Se for domingo (0), voltar 6 dias para a segunda anterior
+  // Se for outro dia, voltar até a segunda desta semana
   const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   
-  // Criar nova data com a segunda-feira da semana atual
+  // Criar nova data com a segunda-feira
   const weekStartDate = new Date(normalized);
   weekStartDate.setUTCDate(normalized.getUTCDate() - daysToSubtract);
+  weekStartDate.setUTCHours(12, 0, 0, 0); // Meio-dia UTC
   
   return weekStartDate;
 }
@@ -258,9 +261,10 @@ export function getEmployeeWeekStart(date: Date): Date {
 export function getEmployeeWeekEnd(date: Date): Date {
   const weekStart = getEmployeeWeekStart(date);
   
-  // Adicionar 5 dias ao início da semana (segunda + 5 = sábado)
+  // Para funcionários, a semana termina no sábado (5 dias após a segunda)
   const weekEndDate = new Date(weekStart);
   weekEndDate.setUTCDate(weekStart.getUTCDate() + 5);
+  weekEndDate.setUTCHours(23, 59, 59, 999);
   
   return weekEndDate;
 }
@@ -273,13 +277,22 @@ export function getProjectWeekStart(date: Date): Date {
   const normalized = normalizeDate(date);
   const dayOfWeek = normalized.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
   
-  // 3 = quarta-feira
-  // Calcular dias para voltar até quarta-feira
-  const daysToAdjust = dayOfWeek === 3 ? 0 : dayOfWeek < 3 ? dayOfWeek + 4 : dayOfWeek - 3;
+  // Para projetos, a semana começa na quarta-feira
+  // Se for antes de quarta (0,1,2), voltar para quarta anterior
+  // Se for depois de quarta (4,5,6), voltar para quarta desta semana
+  let daysToAdjust;
+  if (dayOfWeek === 3) {
+    daysToAdjust = 0;
+  } else if (dayOfWeek < 3) {
+    daysToAdjust = dayOfWeek + 4; // Voltar para quarta anterior
+  } else {
+    daysToAdjust = dayOfWeek - 3; // Voltar para quarta desta semana
+  }
   
-  // Criar nova data com a quarta-feira da semana atual ou anterior
+  // Criar nova data com a quarta-feira
   const weekStartDate = new Date(normalized);
   weekStartDate.setUTCDate(normalized.getUTCDate() - daysToAdjust);
+  weekStartDate.setUTCHours(12, 0, 0, 0); // Meio-dia UTC
   
   return weekStartDate;
 }
@@ -291,15 +304,16 @@ export function getProjectWeekStart(date: Date): Date {
 export function getProjectWeekEnd(date: Date): Date {
   const weekStart = getProjectWeekStart(date);
   
-  // Adicionar 6 dias ao início da semana (quarta + 6 = terça)
+  // Para projetos, a semana termina na terça-feira (6 dias após a quarta)
   const weekEndDate = new Date(weekStart);
   weekEndDate.setUTCDate(weekStart.getUTCDate() + 6);
+  weekEndDate.setUTCHours(23, 59, 59, 999);
   
   return weekEndDate;
 }
 
 /**
- * Função para formatar a data no formato "March 10 to 15"
+ * Função para formatar a data no formato "March 19 to 25"
  */
 export function formatWeekRange(startDate: Date, endDate: Date): string {
   const normStart = normalizeDate(startDate);
@@ -330,7 +344,7 @@ export function addWeeksSafe(date: Date, weeks: number): Date {
 }
 
 /**
- * Função para gerar as próximas 5 semanas
+ * Função para gerar semanas para funcionários, começando na segunda e terminando no sábado
  */
 export function getWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -339,11 +353,13 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
   value: string;
 }> {
   const weeks = [];
-  const today = normalizeDate(currentDate);
   
-  // Adicionar semana anterior
-  const previousWeekStart = addWeeksSafe(today, -1);
-  const previousWeekEnd = addDays(previousWeekStart, 6);
+  // Encontrar a segunda-feira da semana atual
+  const currentWeekStart = getEmployeeWeekStart(currentDate);
+  
+  // Semana anterior
+  const previousWeekStart = addWeeksSafe(currentWeekStart, -1);
+  const previousWeekEnd = getEmployeeWeekEnd(previousWeekStart);
   weeks.push({
     startDate: previousWeekStart,
     endDate: previousWeekEnd,
@@ -351,10 +367,10 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
     value: formatDateToISO(previousWeekStart)
   });
 
-  // Adicionar semana atual e próximas 4 semanas
+  // Semana atual e próximas 4 semanas
   for (let i = 0; i < 5; i++) {
-    const weekStart = addWeeksSafe(today, i);
-    const weekEnd = addDays(weekStart, 6);
+    const weekStart = addWeeksSafe(currentWeekStart, i);
+    const weekEnd = getEmployeeWeekEnd(weekStart);
     weeks.push({
       startDate: weekStart,
       endDate: weekEnd,
@@ -367,7 +383,7 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
 }
 
 /**
- * Função para gerar as próximas 5 semanas de projetos
+ * Função para gerar semanas para projetos, começando na quarta e terminando na terça
  */
 export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -376,21 +392,23 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   value: string;
 }> {
   const weeks = [];
-  const today = normalizeDate(currentDate);
   
-  // Adicionar semana anterior
-  const previousWeekStart = getProjectWeekStart(addWeeksSafe(today, -1));
-  const previousWeekEnd = getProjectWeekEnd(previousWeekStart);
+  // Encontrar a quarta-feira da semana atual
+  const currentWednesday = getProjectWeekStart(currentDate);
+  
+  // Semana anterior
+  const previousWednesday = addWeeksSafe(currentWednesday, -1);
+  const previousWeekEnd = getProjectWeekEnd(previousWednesday);
   weeks.push({
-    startDate: previousWeekStart,
+    startDate: previousWednesday,
     endDate: previousWeekEnd,
-    label: formatWeekRange(previousWeekStart, previousWeekEnd),
-    value: formatDateToISO(previousWeekStart)
+    label: formatWeekRange(previousWednesday, previousWeekEnd),
+    value: formatDateToISO(previousWednesday)
   });
 
-  // Adicionar semana atual e próximas 4 semanas
+  // Semana atual e próximas 4 semanas
   for (let i = 0; i < 5; i++) {
-    const weekStart = getProjectWeekStart(addWeeksSafe(today, i));
+    const weekStart = addWeeksSafe(currentWednesday, i);
     const weekEnd = getProjectWeekEnd(weekStart);
     weeks.push({
       startDate: weekStart,
@@ -529,4 +547,51 @@ export function formatEmployeeDateForDisplay(date: Date | string, formatString: 
     console.error("Erro ao formatar data para exibição:", error);
     return '';
   }
+}
+
+/**
+ * Função de teste para verificar se as semanas estão sendo geradas corretamente
+ */
+export function testWeekRanges(): void {
+  console.group("=== TESTE DE GERAÇÃO DE SEMANAS ===");
+  
+  // Testar semanas de funcionários (segunda a sábado)
+  const employeeWeeks = getWeeks();
+  console.log("Semanas de Funcionários (segunda a sábado):");
+  employeeWeeks.forEach((week, index) => {
+    const start = week.startDate;
+    const end = week.endDate;
+    const startDay = start.getUTCDay(); // 0 = domingo, 1 = segunda, ...
+    const endDay = end.getUTCDay(); // 0 = domingo, 1 = segunda, ...
+    console.log(`Week ${index}:`, {
+      label: week.label,
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+      startDay: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][startDay],
+      endDay: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][endDay],
+      isStartMonday: startDay === 1,
+      isEndSaturday: endDay === 6
+    });
+  });
+  
+  // Testar semanas de projetos (quarta a terça)
+  const projectWeeks = getProjectWeeks();
+  console.log("\nSemanas de Projetos (quarta a terça):");
+  projectWeeks.forEach((week, index) => {
+    const start = week.startDate;
+    const end = week.endDate;
+    const startDay = start.getUTCDay(); // 0 = domingo, 1 = segunda, ...
+    const endDay = end.getUTCDay(); // 0 = domingo, 1 = segunda, ...
+    console.log(`Week ${index}:`, {
+      label: week.label,
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+      startDay: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][startDay],
+      endDay: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][endDay],
+      isStartWednesday: startDay === 3,
+      isEndTuesday: endDay === 2
+    });
+  });
+  
+  console.groupEnd();
 } 
