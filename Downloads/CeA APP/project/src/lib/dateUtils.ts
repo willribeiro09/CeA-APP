@@ -86,27 +86,38 @@ export function formatWeekRange(startDate: Date, endDate: Date): string {
   return `${formattedStart} - ${formattedEnd}`;
 }
 
-// Função para gerar as próximas 5 semanas a partir da data atual
-export function getNext5Weeks(currentDate: Date = new Date()): Array<{ startDate: Date; endDate: Date; label: string; value: string; }> {
+// Função para gerar as semanas disponíveis (anterior + atual + próxima)
+export function getWeeks(currentDate: Date = new Date()): Array<{ startDate: Date; endDate: Date; label: string; value: string; }> {
   const weeks: Array<{ startDate: Date; endDate: Date; label: string; value: string; }> = [];
   
   // Obter o início da semana atual (segunda-feira)
   let weekStart = getEmployeeWeekStart(currentDate);
   
-  // Gerar as próximas 5 semanas
-  for (let i = 0; i < 5; i++) {
-    const startDate = addWeeks(weekStart, i);
-    const endDate = getEmployeeWeekEnd(startDate);
-    
-    const label = formatWeekRange(startDate, endDate);
-    
-    weeks.push({
-      startDate,
-      endDate,
-      label,
-      value: formatDateToISO(startDate)
-    });
-  }
+  // Adicionar a semana anterior
+  const previousWeekStart = addWeeks(weekStart, -1);
+  weeks.push({
+    startDate: previousWeekStart,
+    endDate: getEmployeeWeekEnd(previousWeekStart),
+    label: formatWeekRange(previousWeekStart, getEmployeeWeekEnd(previousWeekStart)),
+    value: formatDateToISO(previousWeekStart)
+  });
+  
+  // Adicionar a semana atual
+  weeks.push({
+    startDate: weekStart,
+    endDate: getEmployeeWeekEnd(weekStart),
+    label: formatWeekRange(weekStart, getEmployeeWeekEnd(weekStart)),
+    value: formatDateToISO(weekStart)
+  });
+  
+  // Adicionar a próxima semana
+  const nextWeekStart = addWeeks(weekStart, 1);
+  weeks.push({
+    startDate: nextWeekStart,
+    endDate: getEmployeeWeekEnd(nextWeekStart),
+    label: formatWeekRange(nextWeekStart, getEmployeeWeekEnd(nextWeekStart)),
+    value: formatDateToISO(nextWeekStart)
+  });
   
   return weeks;
 } 

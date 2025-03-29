@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Calendar } from 'lucide-react';
-import { getNext5Weeks } from '../lib/dateUtils';
+import { getWeeks } from '../lib/dateUtils';
 
 interface WeekSelectorProps {
   selectedWeekStart: Date;
@@ -9,18 +9,18 @@ interface WeekSelectorProps {
 
 export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [weeks, setWeeks] = useState(getNext5Weeks());
-  const [selectedWeek, setSelectedWeek] = useState(weeks[0]);
+  const [weeks, setWeeks] = useState(getWeeks());
+  const [selectedWeek, setSelectedWeek] = useState(weeks[1]); // Começar na semana atual (índice 1)
 
   // Atualizar as semanas quando o componente montar
   useEffect(() => {
-    const availableWeeks = getNext5Weeks();
+    const availableWeeks = getWeeks();
     setWeeks(availableWeeks);
     
     // Encontrar a semana que corresponde à data selecionada
     const matchingWeek = availableWeeks.find(
       week => week.value === selectedWeekStart.toISOString().split('T')[0]
-    ) || availableWeeks[0];
+    ) || availableWeeks[1]; // Usar semana atual como fallback
     
     setSelectedWeek(matchingWeek);
   }, [selectedWeekStart]);
@@ -64,9 +64,12 @@ export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorPr
               <div className="flex flex-col">
                 <span className="font-medium text-sm">{week.label}</span>
                 {index === 0 && (
-                  <span className="text-xs text-gray-500">Current week</span>
+                  <span className="text-xs text-gray-500">Previous week</span>
                 )}
                 {index === 1 && (
+                  <span className="text-xs text-gray-500">Current week</span>
+                )}
+                {index === 2 && (
                   <span className="text-xs text-gray-500">Next week</span>
                 )}
               </div>

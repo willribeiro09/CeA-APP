@@ -1,71 +1,72 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Calendar } from 'lucide-react';
-import { format, addWeeks } from 'date-fns';
-import { enUS } from 'date-fns/locale';
+import { format } from 'date-fns';
+import { getProjectWeekStart, getProjectWeekEnd, formatDateToISO } from '../lib/dateUtils';
 
 interface ProjectWeekSelectorProps {
   selectedWeekStart: Date;
   onWeekChange: (startDate: Date, endDate: Date) => void;
 }
 
-// Função para obter as próximas 5 semanas começando na terça-feira
-const getNext5ProjectWeeks = () => {
+// Função para obter as semanas disponíveis (anterior + atual + próxima)
+const getProjectWeeks = () => {
   // Obter a data atual
   const today = new Date();
   
-  // Encontrar a terça-feira atual ou anterior mais próxima
-  const currentDay = today.getDay(); // 0 = domingo, 1 = segunda, 2 = terça, ...
-  const daysToSubtract = currentDay === 2 ? 0 : currentDay < 2 ? currentDay + 5 : currentDay - 2;
+  // Encontrar a quarta-feira atual
+  const currentWeekStart = getProjectWeekStart(today);
   
-  const currentTuesday = new Date(today);
-  currentTuesday.setDate(today.getDate() - daysToSubtract);
-  currentTuesday.setHours(0, 0, 0, 0);
-  
-  // Gerar as próximas 5 semanas
+  // Gerar as semanas (anterior + atual + próxima)
   const weeks = [];
+
+  // Adicionar a semana anterior
+  const previousWeekStart = new Date(currentWeekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  const previousWeekEnd = getProjectWeekEnd(previousWeekStart);
+  weeks.push({
+    value: formatDateToISO(previousWeekStart),
+    label: `${format(previousWeekStart, 'MMMM d')} to ${format(previousWeekEnd, 'd')}`,
+    startDate: previousWeekStart,
+    endDate: previousWeekEnd
+  });
   
-  for (let i = 0; i < 5; i++) {
-    const startDate = new Date(currentTuesday);
-    startDate.setDate(startDate.getDate() + (i * 7));
-    
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6); // 6 dias depois da terça = segunda
-    endDate.setHours(23, 59, 59, 999);
-    
-    // Formatar as datas no estilo "March 11 to 17"
-    const formattedStartDate = format(startDate, 'MMMM d');
-    const formattedEndDate = format(endDate, 'd');
-    const label = `${formattedStartDate} to ${formattedEndDate}`;
-    
-    weeks.push({
-      value: startDate.toISOString().split('T')[0],
-      label: label,
-      startDate,
-      endDate
-    });
-  }
+  // Adicionar a semana atual
+  const currentWeekEnd = getProjectWeekEnd(currentWeekStart);
+  weeks.push({
+    value: formatDateToISO(currentWeekStart),
+    label: `${format(currentWeekStart, 'MMMM d')} to ${format(currentWeekEnd, 'd')}`,
+    startDate: currentWeekStart,
+    endDate: currentWeekEnd
+  });
+  
+  // Adicionar a próxima semana
+  const nextWeekStart = new Date(currentWeekStart);
+  nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+  const nextWeekEnd = getProjectWeekEnd(nextWeekStart);
+  weeks.push({
+    value: formatDateToISO(nextWeekStart),
+    label: `${format(nextWeekStart, 'MMMM d')} to ${format(nextWeekEnd, 'd')}`,
+    startDate: nextWeekStart,
+    endDate: nextWeekEnd
+  });
   
   return weeks;
 };
 
 export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: ProjectWeekSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [weeks, setWeeks] = useState(getNext5ProjectWeeks());
-  const [selectedWeek, setSelectedWeek] = useState(weeks[0]);
+  const [weeks, setWeeks] = useState(getProjectWeeks());
+  const [selectedWeek, setSelectedWeek] = useState(weeks[1]); // Começar na semana atual (índice 1)
 
   // Atualizar as semanas quando o componente montar
   useEffect(() => {
-    const availableWeeks = getNext5ProjectWeeks();
+    const availableWeeks = getProjectWeeks();
     setWeeks(availableWeeks);
     
     // Encontrar a semana que corresponde à data selecionada
     const matchingWeek = availableWeeks.find(
-      week => {
-        const weekStartStr = week.startDate.toISOString().split('T')[0];
-        const selectedStartStr = selectedWeekStart.toISOString().split('T')[0];
-        return weekStartStr === selectedStartStr;
-      }
-    ) || availableWeeks[0];
+      week => week.value === formatDateToISO(selectedWeekStart)
+    ) || availableWeeks[1]; // Usar semana atual como fallback
     
     setSelectedWeek(matchingWeek);
   }, [selectedWeekStart]);
@@ -109,9 +110,12 @@ export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: Project
               <div className="flex flex-col">
                 <span className="font-medium text-sm">{week.label}</span>
                 {index === 0 && (
-                  <span className="text-xs text-gray-500">Current week</span>
+                  <span className="text-xs text-gray-500">Previous week</span>
                 )}
                 {index === 1 && (
+                  <span className="text-xs text-gray-500">Current week</span>
+                )}
+                {index === 2 && (
                   <span className="text-xs text-gray-500">Next week</span>
                 )}
               </div>
