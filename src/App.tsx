@@ -231,60 +231,86 @@ export default function App() {
     console.log('IDs dos projetos:', dataCopy.projects.map((p: any) => p.id).join(', '));
     
     setIsSaving(true);
+    
+    // Definir um contador de tentativas
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    const attemptSave = async (): Promise<boolean> => {
+      try {
+        // Salvar dados
+        const result = await saveData(dataCopy);
+        
+        if (result) {
+          console.log('Dados salvos com sucesso');
+          setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
+          return true;
+        } else {
+          throw new Error('Falha na sincronização');
+        }
+      } catch (error) {
+        console.error(`Tentativa ${attempts+1}/${maxAttempts} falhou:`, error);
+        
+        if (attempts < maxAttempts - 1) {
+          attempts++;
+          console.log(`Tentando novamente em 1 segundo... (${attempts}/${maxAttempts})`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return attemptSave();
+        }
+        
+        console.error('Todas as tentativas falharam. Salvando apenas localmente.');
+        setShowFeedback({ show: true, message: 'Erro ao sincronizar com o servidor!', type: 'error' });
+        
+        // Mesmo com erro, atualizar o estado local para evitar perda de dados
+        localStorage.setItem('expenses-app-data', JSON.stringify(dataCopy));
+        return false;
+      }
+    };
+    
     try {
-      // Salvar dados
-      await saveData(dataCopy);
-      console.log('Dados salvos com sucesso');
-      setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
+      const success = await attemptSave();
       
-      // Atualizar o estado de projetos para garantir consistência
+      // Garantir que o estado de projetos seja atualizado mesmo em caso de falha
       setProjects(dataCopy.projects);
       
-      // Garantir que o estado local seja atualizado mesmo se houver problemas com o Supabase
-      localStorage.setItem('expenses-app-data', JSON.stringify(dataCopy));
-    } catch (error) {
-      console.error('Erro ao salvar alterações:', error);
-      setShowFeedback({ show: true, message: 'Erro ao salvar dados!', type: 'error' });
-      
-      // Mesmo com erro, atualizar o estado local para evitar perda de dados
-      localStorage.setItem('expenses-app-data', JSON.stringify(dataCopy));
-    } finally {
       setIsSaving(false);
-      // Esconder o feedback após 3 segundos
-      setTimeout(() => {
-        setShowFeedback({ show: false, message: '', type: 'success' });
-      }, 3000);
+    } catch (finalError) {
+      console.error('Erro fatal ao salvar:', finalError);
+      setIsSaving(false);
     }
   };
 
   const handleTogglePaid = (id: string) => {
-    if (activeCategory === 'Expenses') {
-      setExpenses(prevExpenses => {
-        const newExpenses = { ...prevExpenses };
-        
-        Object.keys(newExpenses).forEach(listName => {
-          const list = newExpenses[listName as ListName];
-          const index = list.findIndex(expense => expense.id === id);
-          
-          if (index !== -1) {
-            const updatedExpense = { ...list[index], paid: !list[index].paid };
-            newExpenses[listName as ListName] = [
-              ...list.slice(0, index),
-              updatedExpense,
-              ...list.slice(index + 1)
-            ];
-          }
-        });
-        
-        saveChanges(createStorageData({
-          expenses: newExpenses,
-          projects,
-          stock: stockItems,
-          employees
-        }));
-        
-        return newExpenses;
-      });
+    const selectedExpenses = [...expenses[selectedList]];
+    const index = selectedExpenses.findIndex(expense => expense.id === id);
+    
+    if (index !== -1) {
+      const updatedExpenses = [...selectedExpenses];
+      updatedExpenses[index] = {
+        ...updatedExpenses[index],
+        is_paid: !updatedExpenses[index].is_paid
+      };
+      
+      const newExpenses = {
+        ...expenses,
+        [selectedList]: updatedExpenses
+      };
+      
+      setExpenses(newExpenses);
+      
+      // Salvar alterações
+      const storageData: StorageItems = {
+        expenses: newExpenses,
+        projects,
+        stock: stockItems,
+        employees,
+        willBaseRate,
+        willBonus,
+        lastSync: Date.now()
+      };
+      
+      // Verificar se há alterações pendentes
+      saveChanges(storageData);
     }
   };
 
