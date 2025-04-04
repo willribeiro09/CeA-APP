@@ -254,6 +254,42 @@ export const syncService = {
     try {
       console.log('Processando itens marcados para exclusão antes da sincronização');
       this.processDeletedItems(data);
+      
+      // Garantir novamente que todos os itens com __deleted__ sejam filtrados
+      if (Array.isArray(data.projects)) {
+        data.projects = data.projects.filter(project => project.__deleted__ !== true);
+      }
+      
+      if (Array.isArray(data.stock)) {
+        data.stock = data.stock.filter(item => item.__deleted__ !== true);
+      }
+      
+      // Para despesas e funcionários, processar cada lista
+      if (data.expenses) {
+        Object.keys(data.expenses).forEach(listName => {
+          if (listName !== '__deleted_items__' && Array.isArray(data.expenses[listName])) {
+            data.expenses[listName] = data.expenses[listName].filter(expense => expense.__deleted__ !== true);
+          }
+        });
+        
+        // Limpar a lista de itens excluídos após processamento
+        if (data.expenses['__deleted_items__'] && Array.isArray(data.expenses['__deleted_items__'])) {
+          data.expenses['__deleted_items__'] = [];
+        }
+      }
+      
+      if (data.employees) {
+        Object.keys(data.employees).forEach(weekKey => {
+          if (weekKey !== '__deleted_items__' && Array.isArray(data.employees[weekKey])) {
+            data.employees[weekKey] = data.employees[weekKey].filter(employee => employee.__deleted__ !== true);
+          }
+        });
+        
+        // Limpar a lista de itens excluídos após processamento
+        if (data.employees['__deleted_items__'] && Array.isArray(data.employees['__deleted_items__'])) {
+          data.employees['__deleted_items__'] = [];
+        }
+      }
     } catch (error) {
       console.error('Erro ao processar itens excluídos:', error);
       // Continuar com a sincronização mesmo se houver erro no processamento de exclusões
@@ -395,6 +431,11 @@ export const syncService = {
         if (projectsWithDeleted.length > 0) {
           console.log(`Encontrados ${projectsWithDeleted.length} projetos marcados para exclusão:`, 
             projectsWithDeleted.map(p => p.id));
+          
+          // Enviar itens para exclusão definitiva no Supabase (se estiver configurado)
+          if (supabase) {
+            this.permanentlyDeleteItems('projects', projectsWithDeleted);
+          }
         }
         
         // Filtrar apenas os projetos não marcados como excluídos para manter na lista normal
@@ -408,6 +449,11 @@ export const syncService = {
         if (stockWithDeleted.length > 0) {
           console.log(`Encontrados ${stockWithDeleted.length} itens de estoque marcados para exclusão:`, 
             stockWithDeleted.map(s => s.id));
+          
+          // Enviar itens para exclusão definitiva no Supabase (se estiver configurado)
+          if (supabase) {
+            this.permanentlyDeleteItems('stock', stockWithDeleted);
+          }
         }
         
         // Filtrar apenas os itens não marcados como excluídos para manter na lista normal
@@ -417,10 +463,18 @@ export const syncService = {
       // Processar e remover completamente as despesas marcadas para exclusão
       if (data.expenses) {
         let totalExpensesWithDeleted = 0;
+        let expensesToDelete: any[] = [];
         
-        // Verificar e criar a lista de itens excluídos se não existir
-        if (!data.expenses['__deleted_items__']) {
-          data.expenses['__deleted_items__'] = [];
+        // Verificar a lista especial de itens excluídos
+        if (data.expenses['__deleted_items__'] && Array.isArray(data.expenses['__deleted_items__'])) {
+          const deletedItems = data.expenses['__deleted_items__'];
+          if (deletedItems.length > 0) {
+            console.log(`Processando ${deletedItems.length} itens na lista especial __deleted_items__`);
+            expensesToDelete = [...deletedItems];
+            
+            // Limpar a lista depois de processar
+            data.expenses['__deleted_items__'] = [];
+          }
         }
         
         // Processar cada lista de despesas
@@ -435,12 +489,20 @@ export const syncService = {
             if (expensesWithDeleted.length > 0) {
               console.log(`Encontrados ${expensesWithDeleted.length} despesas em "${listName}" marcadas para exclusão:`, 
                 expensesWithDeleted.map(e => e.id));
+              
+              // Adicionar à lista para exclusão definitiva
+              expensesToDelete = [...expensesToDelete, ...expensesWithDeleted];
             }
             
             // Filtrar apenas as despesas não marcadas como excluídas para manter na lista normal
             data.expenses[listName] = data.expenses[listName].filter(expense => expense.__deleted__ !== true);
           }
         });
+        
+        // Enviar despesas para exclusão definitiva no Supabase (se estiver configurado)
+        if (supabase && expensesToDelete.length > 0) {
+          this.permanentlyDeleteItems('expenses', expensesToDelete);
+        }
         
         if (totalExpensesWithDeleted > 0) {
           console.log(`Total de ${totalExpensesWithDeleted} despesas marcadas para exclusão processadas`);
@@ -450,10 +512,18 @@ export const syncService = {
       // Processar e remover completamente os funcionários marcados para exclusão
       if (data.employees) {
         let totalEmployeesWithDeleted = 0;
+        let employeesToDelete: any[] = [];
         
-        // Verificar e criar a lista de itens excluídos se não existir
-        if (!data.employees['__deleted_items__']) {
-          data.employees['__deleted_items__'] = [];
+        // Verificar a lista especial de itens excluídos
+        if (data.employees['__deleted_items__'] && Array.isArray(data.employees['__deleted_items__'])) {
+          const deletedItems = data.employees['__deleted_items__'];
+          if (deletedItems.length > 0) {
+            console.log(`Processando ${deletedItems.length} funcionários na lista especial __deleted_items__`);
+            employeesToDelete = [...deletedItems];
+            
+            // Limpar a lista depois de processar
+            data.employees['__deleted_items__'] = [];
+          }
         }
         
         // Processar cada semana de funcionários
@@ -468,6 +538,9 @@ export const syncService = {
             if (employeesWithDeleted.length > 0) {
               console.log(`Encontrados ${employeesWithDeleted.length} funcionários na semana "${weekKey}" marcados para exclusão:`, 
                 employeesWithDeleted.map(e => e.id));
+              
+              // Adicionar à lista para exclusão definitiva
+              employeesToDelete = [...employeesToDelete, ...employeesWithDeleted];
             }
             
             // Filtrar apenas os funcionários não marcados como excluídos para manter na lista normal
@@ -475,12 +548,146 @@ export const syncService = {
           }
         });
         
+        // Enviar funcionários para exclusão definitiva no Supabase (se estiver configurado)
+        if (supabase && employeesToDelete.length > 0) {
+          this.permanentlyDeleteItems('employees', employeesToDelete);
+        }
+        
         if (totalEmployeesWithDeleted > 0) {
           console.log(`Total de ${totalEmployeesWithDeleted} funcionários marcados para exclusão processados`);
         }
       }
     } catch (error) {
       console.error('Erro ao processar itens excluídos:', error);
+    }
+  },
+  
+  // Função auxiliar para exclusão definitiva de itens no Supabase
+  async permanentlyDeleteItems(category: string, items: any[]) {
+    if (!supabase || items.length === 0) return;
+    
+    try {
+      console.log(`Enviando ${items.length} itens de ${category} para exclusão definitiva no Supabase`);
+      
+      // Como a tabela deleted_items pode não existir, vamos remover diretamente do sync_data
+      // Primeiro, buscar os dados atuais
+      const { data: syncData, error: fetchError } = await supabase
+        .from('sync_data')
+        .select('*')
+        .eq('id', SHARED_UUID)
+        .single();
+      
+      if (fetchError) {
+        console.error(`Erro ao buscar dados para exclusão definitiva de ${category}:`, fetchError);
+        return;
+      }
+      
+      if (!syncData) {
+        console.error(`Não foram encontrados dados para exclusão definitiva de ${category}`);
+        return;
+      }
+      
+      console.log(`Dados encontrados para remoção de itens: ${category}`);
+      
+      // Realizar a remoção com base na categoria
+      let updatedData = { ...syncData };
+      let dataModified = false;
+      
+      if (category === 'projects' && Array.isArray(updatedData.projects)) {
+        const itemIds = items.map(item => item.id);
+        updatedData.projects = updatedData.projects.filter((item: {id: string}) => !itemIds.includes(item.id));
+        dataModified = true;
+        console.log(`Removidos ${itemIds.length} projetos do sync_data`);
+      } 
+      else if (category === 'stock' && Array.isArray(updatedData.stock)) {
+        const itemIds = items.map(item => item.id);
+        updatedData.stock = updatedData.stock.filter((item: {id: string}) => !itemIds.includes(item.id));
+        dataModified = true;
+        console.log(`Removidos ${itemIds.length} itens de estoque do sync_data`);
+      }
+      else if (category === 'expenses' && updatedData.expenses) {
+        const itemIds = items.map(item => item.id);
+        
+        // Remover das listas regulares
+        Object.keys(updatedData.expenses).forEach(listName => {
+          if (listName !== '__deleted_items__' && Array.isArray(updatedData.expenses[listName])) {
+            const initialLength = updatedData.expenses[listName].length;
+            updatedData.expenses[listName] = updatedData.expenses[listName].filter(item => !itemIds.includes(item.id));
+            if (initialLength !== updatedData.expenses[listName].length) {
+              dataModified = true;
+              console.log(`Removidas ${initialLength - updatedData.expenses[listName].length} despesas da lista ${listName}`);
+            }
+          }
+        });
+        
+        // Limpar a lista de itens excluídos
+        if (updatedData.expenses['__deleted_items__'] && Array.isArray(updatedData.expenses['__deleted_items__'])) {
+          updatedData.expenses['__deleted_items__'] = [];
+          dataModified = true;
+        }
+      }
+      else if (category === 'employees' && updatedData.employees) {
+        const itemIds = items.map(item => item.id);
+        
+        // Remover das semanas
+        Object.keys(updatedData.employees).forEach(weekKey => {
+          if (weekKey !== '__deleted_items__' && Array.isArray(updatedData.employees[weekKey])) {
+            const initialLength = updatedData.employees[weekKey].length;
+            updatedData.employees[weekKey] = updatedData.employees[weekKey].filter(item => !itemIds.includes(item.id));
+            if (initialLength !== updatedData.employees[weekKey].length) {
+              dataModified = true;
+              console.log(`Removidos ${initialLength - updatedData.employees[weekKey].length} funcionários da semana ${weekKey}`);
+            }
+          }
+        });
+        
+        // Limpar a lista de itens excluídos
+        if (updatedData.employees['__deleted_items__'] && Array.isArray(updatedData.employees['__deleted_items__'])) {
+          updatedData.employees['__deleted_items__'] = [];
+          dataModified = true;
+        }
+      }
+      
+      // Atualizar os dados no Supabase se houve modificação
+      if (dataModified) {
+        // Atualizar o timestamp
+        updatedData.last_sync_timestamp = Date.now().toString();
+        
+        const { error: updateError } = await supabase
+          .from('sync_data')
+          .update(updatedData)
+          .eq('id', SHARED_UUID);
+        
+        if (updateError) {
+          console.error(`Erro ao atualizar dados após remoção de ${category}:`, updateError);
+        } else {
+          console.log(`Itens de ${category} removidos com sucesso do sync_data`);
+        }
+      } else {
+        console.log(`Nenhuma modificação necessária para itens de ${category}`);
+      }
+      
+      // Tentativa de registrar exclusões em uma tabela separada para rastreamento (se existir)
+      try {
+        const { error } = await supabase
+          .from('deleted_items')
+          .insert(items.map(item => ({
+            id: item.id,
+            item_type: category,
+            deleted_at: new Date(),
+            item_data: item
+          })));
+        
+        if (error) {
+          console.log(`Nota: Tabela deleted_items pode não existir ou erro ao registrar exclusões`);
+        } else {
+          console.log(`Items de ${category} registrados para exclusão definitiva com sucesso`);
+        }
+      } catch (error) {
+        console.log(`Nota: Tabela deleted_items provavelmente não existe no banco de dados`);
+      }
+    } catch (error) {
+      console.error(`Erro ao processar exclusão definitiva de ${category}:`, error);
     }
   }
 };

@@ -219,78 +219,56 @@ export default function App() {
   }, [projects, selectedWeekStart, selectedWeekEnd]);
 
   // Função para salvar alterações
-  const saveChanges = async (newData: StorageItems) => {
+  const saveChanges = (data: StorageItems) => {
     console.log('Salvando alterações...');
     
-    // Deep clone para evitar problemas de referência
-    const dataCopy = JSON.parse(JSON.stringify(newData));
-    
-    // Verificar se os projetos estão presentes
-    if (!dataCopy.projects || !Array.isArray(dataCopy.projects)) {
-      console.error('Erro: projects não está definido ou não é um array', dataCopy);
-      dataCopy.projects = [];
-    }
-    
-    // Verificar projetos com dados incompletos
-    dataCopy.projects.forEach((project: any, index: number) => {
-      if (!project.id) {
-        console.error(`Projeto ${index} sem ID:`, project);
-        // Tenta corrigir o problema
-        project.id = uuidv4();
-        console.log(`ID gerado para projeto sem ID: ${project.id}`);
-      }
-    });
-    
-    console.log('Número de projetos a salvar:', dataCopy.projects.length);
-    console.log('IDs dos projetos:', dataCopy.projects.map((p: any) => p.id).join(', '));
-    
-    setIsSaving(true);
-    
-    // Definir um contador de tentativas
-    let attempts = 0;
-    const maxAttempts = 3;
-    
-    const attemptSave = async (): Promise<boolean> => {
-      try {
-        // Salvar dados
-        const result = await saveData(dataCopy);
-        
-        if (result) {
-          console.log('Dados salvos com sucesso');
-          setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
-          return true;
-        } else {
-          throw new Error('Falha na sincronização');
-        }
-      } catch (error) {
-        console.error(`Tentativa ${attempts+1}/${maxAttempts} falhou:`, error);
-        
-        if (attempts < maxAttempts - 1) {
-          attempts++;
-          console.log(`Tentando novamente em 1 segundo... (${attempts}/${maxAttempts})`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return attemptSave();
-        }
-        
-        console.error('Todas as tentativas falharam. Salvando apenas localmente.');
-        setShowFeedback({ show: true, message: 'Erro ao sincronizar com o servidor!', type: 'error' });
-        
-        // Mesmo com erro, atualizar o estado local para evitar perda de dados
-        localStorage.setItem('expenses-app-data', JSON.stringify(dataCopy));
-        return false;
-      }
-    };
-    
     try {
-      const success = await attemptSave();
+      // Verificar estrutura de dados do objeto
+      if (!data.expenses) data.expenses = {};
+      if (!data.projects) data.projects = [];
+      if (!data.stock) data.stock = [];
+      if (!data.employees) data.employees = {};
       
-      // Garantir que o estado de projetos seja atualizado mesmo em caso de falha
-      setProjects(dataCopy.projects);
+      // Certificar-se de que as listas __deleted_items__ existam
+      if (!data.expenses['__deleted_items__']) data.expenses['__deleted_items__'] = [];
+      if (!data.employees['__deleted_items__']) data.employees['__deleted_items__'] = [];
       
-      setIsSaving(false);
-    } catch (finalError) {
-      console.error('Erro fatal ao salvar:', finalError);
-      setIsSaving(false);
+      // Adicionar timestamp para rastreamento das alterações
+      data.lastSync = Date.now();
+      
+      // Remover definitivamente os itens marcados como excluídos nas listas
+      if (Array.isArray(data.projects)) {
+        data.projects = data.projects.filter(project => project.__deleted__ !== true);
+      }
+      
+      if (Array.isArray(data.stock)) {
+        data.stock = data.stock.filter(item => item.__deleted__ !== true);
+      }
+      
+      // Para despesas e funcionários, lidar com cada objeto de lista separadamente
+      if (data.expenses) {
+        Object.keys(data.expenses).forEach(listName => {
+          if (listName !== '__deleted_items__' && Array.isArray(data.expenses[listName])) {
+            data.expenses[listName] = data.expenses[listName].filter(expense => expense.__deleted__ !== true);
+          }
+        });
+      }
+      
+      if (data.employees) {
+        Object.keys(data.employees).forEach(weekKey => {
+          if (weekKey !== '__deleted_items__' && Array.isArray(data.employees[weekKey])) {
+            data.employees[weekKey] = data.employees[weekKey].filter(employee => employee.__deleted__ !== true);
+          }
+        });
+      }
+      
+      console.log('Número de projetos a salvar:', data.projects.length);
+      console.log('IDs dos projetos:', data.projects.map(p => p.id).join(', '));
+      
+      // Sincronizar com Supabase e salvar localmente
+      saveData(data);
+    } catch (error) {
+      console.error('Erro ao salvar alterações:', error);
     }
   };
 
@@ -338,6 +316,26 @@ export default function App() {
         alert(`Erro ao excluir item: ${error.message || 'Erro desconhecido'}. O item será removido localmente.`);
       };
       
+      // Função para garantir que a sincronização seja forçada após exclusão
+      const forceSyncAfterDelete = (data: StorageItems) => {
+        console.log('Forçando sincronização após exclusão...');
+        
+        // Salvar imediatamente e forçar uma sincronização completa
+        try {
+          saveChanges(data);
+          
+          // Adicionar um segundo timeout para garantir que os dados foram para o servidor
+          setTimeout(() => {
+            console.log('Verificando sincronização de exclusão...');
+            saveChanges(data);
+          }, 2000);
+          
+          console.log('Dados de exclusão encaminhados para sincronização');
+        } catch (error) {
+          handleDeletionError(error);
+        }
+      };
+      
       if (category === 'Expenses') {
         const newExpenses = { ...expenses };
         let itemDeleted = false;
@@ -352,6 +350,7 @@ export default function App() {
             const expenseToDelete = {...newExpenses[listName as ListName][index], __deleted__: true};
             console.log(`Item marcado para exclusão:`, expenseToDelete);
             
+            // Remover completamente da lista visível
             newExpenses[listName as ListName].splice(index, 1);
             itemDeleted = true;
             
@@ -371,17 +370,13 @@ export default function App() {
           console.log(`Atualizando estado das despesas após exclusão`);
           setExpenses(newExpenses);
           
-          try {
-            saveChanges(createStorageData({
-              expenses: newExpenses,
-              projects,
-              stock: stockItems,
-              employees
-            }));
-            console.log('Dados de exclusão salvos com sucesso');
-          } catch (error) {
-            handleDeletionError(error);
-          }
+          // Força uma sincronização completa
+          forceSyncAfterDelete(createStorageData({
+            expenses: newExpenses,
+            projects,
+            stock: stockItems,
+            employees
+          }));
         } else {
           console.log(`Despesa com ID ${id} não encontrada em nenhuma lista`);
         }
@@ -406,18 +401,13 @@ export default function App() {
           console.log(`Atualizando estado dos projetos após exclusão`);
           setProjects(newProjects);
           
-          try {
-            // Salvar incluindo o projeto marcado como deletado para sincronização
-            saveChanges(createStorageData({
-              expenses,
-              projects: [...newProjects, projectToDelete],
-              stock: stockItems,
-              employees
-            }));
-            console.log('Dados de exclusão de projeto salvos com sucesso');
-          } catch (error) {
-            handleDeletionError(error);
-          }
+          // Força uma sincronização completa
+          forceSyncAfterDelete(createStorageData({
+            expenses,
+            projects: [...newProjects, projectToDelete],
+            stock: stockItems,
+            employees
+          }));
         } else {
           console.log(`Projeto com ID ${id} não encontrado`);
         }
@@ -442,18 +432,13 @@ export default function App() {
           console.log(`Atualizando estado dos itens de estoque após exclusão`);
           setStockItems(newStockItems);
           
-          try {
-            // Salvar incluindo o item marcado como deletado para sincronização
-            saveChanges(createStorageData({
-              expenses,
-              projects,
-              stock: [...newStockItems, itemToDelete],
-              employees
-            }));
-            console.log('Dados de exclusão de item de estoque salvos com sucesso');
-          } catch (error) {
-            handleDeletionError(error);
-          }
+          // Força uma sincronização completa
+          forceSyncAfterDelete(createStorageData({
+            expenses,
+            projects,
+            stock: [...newStockItems, itemToDelete],
+            employees
+          }));
         } else {
           console.log(`Item de estoque com ID ${id} não encontrado`);
         }
@@ -490,19 +475,15 @@ export default function App() {
           console.log(`Atualizando estado dos funcionários após exclusão`);
           setEmployees(newEmployees);
           
-          try {
-            saveChanges(createStorageData({
-              expenses,
-              projects,
-              stock: stockItems,
-              employees: newEmployees,
-              willBaseRate,
-              willBonus
-            }));
-            console.log('Dados de exclusão de funcionário salvos com sucesso');
-          } catch (error) {
-            handleDeletionError(error);
-          }
+          // Força uma sincronização completa
+          forceSyncAfterDelete(createStorageData({
+            expenses,
+            projects,
+            stock: stockItems,
+            employees: newEmployees,
+            willBaseRate,
+            willBonus
+          }));
         } else {
           console.log(`Funcionário com ID ${id} não encontrado em nenhuma semana`);
         }
