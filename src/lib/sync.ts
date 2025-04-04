@@ -269,32 +269,91 @@ export const syncService = {
       console.log('Sincronizando dados com Supabase usando UUID compartilhado:', SHARED_UUID);
       console.log('Valores do Will a serem sincronizados:', willValues.willBaseRate, willValues.willBonus);
       
-      // Salvar diretamente na tabela sync_data
+      // Usar a função SQL sync_client_data para sincronizar com merge
       const currentTime = new Date().getTime();
       
-      const dataToSave = {
-        id: SHARED_UUID,
-        expenses: data.expenses || {},
-        projects: data.projects || [],
-        stock: data.stock || [],
-        employees: data.employees || {},
-        willbaserate: willValues.willBaseRate,
-        willbonus: willValues.willBonus,
-        last_sync_timestamp: currentTime
-      };
+      const { data: syncResult, error: syncError } = await supabase
+        .rpc('sync_client_data', {
+          p_id: SHARED_UUID,
+          p_expenses: data.expenses || {},
+          p_projects: data.projects || [],
+          p_stock: data.stock || [],
+          p_employees: data.employees || {},
+          p_willbaserate: willValues.willBaseRate,
+          p_willbonus: willValues.willBonus,
+          p_client_timestamp: currentTime,
+          p_device_id: SESSION_ID
+        });
       
-      // Salvar no Supabase
-      const { error } = await supabase
-        .from('sync_data')
-        .upsert(dataToSave);
+      if (syncError) {
+        console.error('Erro ao sincronizar com sync_client_data:', syncError);
+        
+        // Fallback para método tradicional
+        console.log('Tentando método tradicional como fallback...');
+        
+        // Primeiro, carregamos os dados existentes para garantir que não sobrescrevemos nada
+        const { data: existingData, error: fetchError } = await supabase
+          .from('sync_data')
+          .select('*')
+          .eq('id', SHARED_UUID)
+          .limit(1);
+        
+        if (fetchError) {
+          console.error('Erro ao buscar dados existentes:', fetchError);
+          // Mesmo com erro, tentamos salvar no armazenamento local
+          storage.save(data);
+          return false;
+        }
+        
+        let dataToSave;
+        
+        if (existingData && existingData.length > 0) {
+          // Mesclamos os dados existentes com os novos dados
+          console.log('Dados existentes encontrados, mesclando com novos dados');
+          
+          dataToSave = {
+            id: SHARED_UUID,
+            expenses: { ...existingData[0].expenses, ...data.expenses },
+            projects: data.projects || existingData[0].projects || [],
+            stock: data.stock || existingData[0].stock || [],
+            employees: { ...existingData[0].employees, ...data.employees },
+            willbaserate: willValues.willBaseRate,
+            willbonus: willValues.willBonus,
+            last_sync_timestamp: currentTime
+          };
+        } else {
+          // Não encontramos dados existentes, salvamos os novos dados
+          console.log('Nenhum dado existente encontrado, salvando novos dados');
+          
+          dataToSave = {
+            id: SHARED_UUID,
+            expenses: data.expenses || {},
+            projects: data.projects || [],
+            stock: data.stock || [],
+            employees: data.employees || {},
+            willbaserate: willValues.willBaseRate,
+            willbonus: willValues.willBonus,
+            last_sync_timestamp: currentTime
+          };
+        }
+        
+        console.log('Dados a serem salvos:', dataToSave);
+        
+        // Salvar no Supabase
+        const { error } = await supabase
+          .from('sync_data')
+          .upsert(dataToSave);
 
-      if (error) {
-        console.error('Erro ao sincronizar com Supabase:', error);
-        return false;
+        if (error) {
+          console.error('Erro ao sincronizar com Supabase:', error);
+          return false;
+        }
+      } else {
+        console.log('Sincronização bem-sucedida via sync_client_data:', syncResult);
+        
+        // Atualizar timestamp local
+        data.lastSync = currentTime;
       }
-      
-      // Atualizar timestamp local
-      data.lastSync = currentTime;
 
       // Salvar localmente
       storage.save(data);
