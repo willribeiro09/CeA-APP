@@ -1475,7 +1475,13 @@ export default function App() {
       console.log(`Starting receipt upload: ${description}, size: ${(file.size/1024).toFixed(1)}KB`);
       
       // Fazer upload da imagem
-      const imageUrl = await uploadReceipt(file);
+      let imageUrl;
+      try {
+        imageUrl = await uploadReceipt(file);
+      } catch (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error('Failed to upload image. Please check your connection and try again.');
+      }
       
       if (!imageUrl) {
         throw new Error('Failed to upload image. Please check your connection and try again.');
@@ -1514,7 +1520,7 @@ export default function App() {
       setShowAddReceipt(false);
     } catch (error) {
       console.error('Error adding receipt:', error);
-      throw new Error('An error occurred while saving the receipt. Please check your connection and try again.');
+      throw error; // Re-throw the error to be handled by the form
     }
   };
   

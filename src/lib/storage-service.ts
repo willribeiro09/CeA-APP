@@ -9,7 +9,7 @@ const RECEIPTS_BUCKET = 'receipts';
  */
 export const initReceiptStorage = async (): Promise<boolean> => {
   if (!supabase) {
-    console.error('Supabase não está configurado');
+    console.error('Supabase is not configured');
     return false;
   }
   
@@ -18,13 +18,13 @@ export const initReceiptStorage = async (): Promise<boolean> => {
     const { data: buckets, error: getBucketsError } = await supabase.storage.listBuckets();
     
     if (getBucketsError) {
-      console.error('Erro ao listar buckets:', getBucketsError.message);
+      console.error('Error listing buckets:', getBucketsError.message);
       return false;
     }
     
     // Se o bucket já existe, retornar sucesso
     if (buckets?.some(bucket => bucket.name === RECEIPTS_BUCKET)) {
-      console.log('Bucket de recibos já existe');
+      console.log('Receipts bucket already exists');
       return true;
     }
     
@@ -38,14 +38,14 @@ export const initReceiptStorage = async (): Promise<boolean> => {
     );
     
     if (createBucketError) {
-      console.error('Erro ao criar bucket de recibos:', createBucketError.message);
+      console.error('Error creating receipts bucket:', createBucketError.message);
       return false;
     }
     
-    console.log('Bucket de recibos criado com sucesso');
+    console.log('Receipts bucket created successfully');
     return true;
   } catch (error) {
-    console.error('Erro ao inicializar armazenamento de recibos:', error);
+    console.error('Error initializing receipt storage:', error);
     return false;
   }
 };
@@ -57,7 +57,7 @@ const reduceImageSize = async (file: File): Promise<File> => {
   return new Promise((resolve, reject) => {
     // Se não for uma imagem, retornar o arquivo original
     if (!file.type.startsWith('image/')) {
-      console.log('Arquivo não é uma imagem, retornando original');
+      console.log('File is not an image, returning original');
       return resolve(file);
     }
 
@@ -78,7 +78,7 @@ const reduceImageSize = async (file: File): Promise<File> => {
           let height = img.height;
           const MAX_SIZE = 800;
 
-          console.log(`Tamanho original da imagem: ${width}x${height}`);
+          console.log(`Original image size: ${width}x${height}`);
 
           // Redimensionar mantendo a proporção
           if (width > height) {
@@ -93,7 +93,7 @@ const reduceImageSize = async (file: File): Promise<File> => {
             }
           }
 
-          console.log(`Novo tamanho da imagem: ${width}x${height}`);
+          console.log(`New image size: ${width}x${height}`);
 
           canvas.width = width;
           canvas.height = height;
@@ -101,7 +101,7 @@ const reduceImageSize = async (file: File): Promise<File> => {
           // Desenhar imagem redimensionada no canvas
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            console.error('Não foi possível obter contexto 2D do canvas');
+            console.error('Could not get 2D context from canvas');
             return resolve(file);
           }
           
@@ -111,7 +111,7 @@ const reduceImageSize = async (file: File): Promise<File> => {
           canvas.toBlob(
             (blob) => {
               if (!blob) {
-                console.error('Falha ao converter canvas para blob');
+                console.error('Failed to convert canvas to blob');
                 return resolve(file);
               }
 
@@ -121,29 +121,77 @@ const reduceImageSize = async (file: File): Promise<File> => {
                 lastModified: Date.now(),
               });
 
-              console.log(`Imagem redimensionada: ${width}x${height}, tamanho: ${(newFile.size / 1024).toFixed(1)}KB`);
+              console.log(`Resized image: ${width}x${height}, size: ${(newFile.size / 1024).toFixed(1)}KB`);
               resolve(newFile);
             },
             'image/jpeg',
             0.6 // Qualidade 60% para melhor compressão
           );
         } catch (error) {
-          console.error('Erro ao processar imagem:', error);
+          console.error('Error processing image:', error);
           resolve(file); // Em caso de erro, usar arquivo original
         }
       };
 
       img.onerror = (e) => {
-        console.error('Erro ao carregar imagem para reduzir tamanho:', e);
+        console.error('Error loading image for resizing:', e);
         resolve(file);
       };
     };
 
     reader.onerror = (e) => {
-      console.error('Erro ao ler arquivo para reduzir tamanho:', e);
+      console.error('Error reading file for resizing:', e);
       resolve(file);
     };
   });
+};
+
+/**
+ * Verifica se o bucket existe e cria se necessário
+ */
+const checkAndCreateBucket = async (): Promise<boolean> => {
+  if (!supabase) {
+    console.error('Supabase is not configured');
+    return false;
+  }
+  
+  try {
+    // Verificar se o bucket existe
+    const { data: buckets, error: getBucketsError } = await supabase.storage.listBuckets();
+    
+    if (getBucketsError) {
+      console.error('Error listing buckets:', getBucketsError.message);
+      return false;
+    }
+    
+    // Se o bucket já existe, retornar sucesso
+    if (buckets?.some(bucket => bucket.name === RECEIPTS_BUCKET)) {
+      console.log('Receipts bucket exists');
+      return true;
+    }
+    
+    console.log('Bucket not found, creating...');
+    
+    // Criar o bucket
+    const { error: createBucketError } = await supabase.storage.createBucket(
+      RECEIPTS_BUCKET,
+      {
+        public: true, 
+        fileSizeLimit: 10485760, // 10MB
+      }
+    );
+    
+    if (createBucketError) {
+      console.error('Error creating bucket:', createBucketError.message);
+      return false;
+    }
+    
+    console.log('Bucket created successfully');
+    return true;
+  } catch (error) {
+    console.error('Error checking/creating bucket:', error);
+    return false;
+  }
 };
 
 /**
@@ -151,25 +199,29 @@ const reduceImageSize = async (file: File): Promise<File> => {
  */
 export const uploadReceipt = async (file: File): Promise<string | null> => {
   if (!supabase) {
-    console.error('Supabase não está configurado');
+    console.error('Supabase is not configured');
     return null;
   }
   
   try {
-    console.log(`Iniciando processamento de recibo. Tamanho original: ${(file.size / 1024).toFixed(1)}KB`);
+    console.log(`Starting receipt processing. Original size: ${(file.size / 1024).toFixed(1)}KB`);
     
     // Verificar bucket antes do upload
-    await checkAndCreateBucket();
+    const bucketReady = await checkAndCreateBucket();
+    if (!bucketReady) {
+      console.error('Failed to prepare storage bucket');
+      throw new Error('Storage preparation failed');
+    }
     
     // Reduzir o tamanho da imagem
     const optimizedFile = await reduceImageSize(file);
-    console.log(`Imagem processada. Tamanho final: ${(optimizedFile.size / 1024).toFixed(1)}KB`);
+    console.log(`Image processed. Final size: ${(optimizedFile.size / 1024).toFixed(1)}KB`);
     
     // Gerar um nome único para o arquivo
     const fileExt = optimizedFile.type.startsWith('image/') ? 'jpg' : (file.name.split('.').pop() || 'jpg');
     const fileName = `${uuidv4()}.${fileExt}`;
     
-    console.log(`Enviando arquivo para Supabase: ${fileName}`);
+    console.log(`Uploading file to Supabase: ${fileName}`);
     
     // Fazer upload do arquivo
     const { data, error } = await supabase.storage
@@ -180,67 +232,32 @@ export const uploadReceipt = async (file: File): Promise<string | null> => {
       });
     
     if (error) {
-      console.error('Erro ao fazer upload do recibo:', error.message);
-      return null;
+      console.error('Error uploading receipt:', error.message);
+      throw new Error(`Upload failed: ${error.message}`);
     }
     
-    console.log('Upload realizado com sucesso. Obtendo URL pública...');
+    if (!data || !data.path) {
+      console.error('Upload succeeded but no data returned');
+      throw new Error('No file data returned from upload');
+    }
+    
+    console.log('Upload completed successfully. Getting public URL...');
     
     // Obter a URL pública do arquivo
     const { data: urlData } = supabase.storage
       .from(RECEIPTS_BUCKET)
       .getPublicUrl(fileName);
     
-    console.log('URL pública obtida:', urlData.publicUrl);
+    if (!urlData || !urlData.publicUrl) {
+      console.error('Failed to get public URL');
+      throw new Error('Could not generate public URL');
+    }
+    
+    console.log('Public URL obtained:', urlData.publicUrl);
     return urlData.publicUrl;
   } catch (error) {
-    console.error('Erro durante o processo de upload:', error);
-    return null;
-  }
-};
-
-/**
- * Verifica se o bucket existe e cria se necessário
- */
-const checkAndCreateBucket = async (): Promise<boolean> => {
-  if (!supabase) return false;
-  
-  try {
-    // Verificar se o bucket existe
-    const { data: buckets, error: getBucketsError } = await supabase.storage.listBuckets();
-    
-    if (getBucketsError) {
-      console.error('Erro ao listar buckets:', getBucketsError.message);
-      return false;
-    }
-    
-    // Se o bucket já existe, retornar sucesso
-    if (buckets?.some(bucket => bucket.name === RECEIPTS_BUCKET)) {
-      console.log('Bucket de recibos existe');
-      return true;
-    }
-    
-    console.log('Bucket não encontrado, criando...');
-    
-    // Criar o bucket
-    const { error: createBucketError } = await supabase.storage.createBucket(
-      RECEIPTS_BUCKET,
-      {
-        public: true, 
-        fileSizeLimit: 5242880, // 5MB
-      }
-    );
-    
-    if (createBucketError) {
-      console.error('Erro ao criar bucket:', createBucketError.message);
-      return false;
-    }
-    
-    console.log('Bucket criado com sucesso');
-    return true;
-  } catch (error) {
-    console.error('Erro ao verificar/criar bucket:', error);
-    return false;
+    console.error('Error during upload process:', error);
+    throw error; // Re-throw to let calling code handle it
   }
 };
 
@@ -249,7 +266,7 @@ const checkAndCreateBucket = async (): Promise<boolean> => {
  */
 export const deleteReceipt = async (url: string): Promise<boolean> => {
   if (!supabase) {
-    console.error('Supabase não está configurado');
+    console.error('Supabase is not configured');
     return false;
   }
   
@@ -258,11 +275,11 @@ export const deleteReceipt = async (url: string): Promise<boolean> => {
     const fileName = url.split('/').pop();
     
     if (!fileName) {
-      console.error('Nome de arquivo inválido:', url);
+      console.error('Invalid file name:', url);
       return false;
     }
     
-    console.log('Removendo recibo:', fileName);
+    console.log('Removing receipt:', fileName);
     
     // Remover o arquivo
     const { error } = await supabase.storage
@@ -270,14 +287,14 @@ export const deleteReceipt = async (url: string): Promise<boolean> => {
       .remove([fileName]);
     
     if (error) {
-      console.error('Erro ao remover recibo:', error.message);
+      console.error('Error removing receipt:', error.message);
       return false;
     }
     
-    console.log('Recibo removido com sucesso');
+    console.log('Receipt removed successfully');
     return true;
   } catch (error) {
-    console.error('Erro ao remover recibo:', error);
+    console.error('Error removing receipt:', error);
     return false;
   }
 }; 
