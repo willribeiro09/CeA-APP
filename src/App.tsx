@@ -1473,12 +1473,16 @@ export default function App() {
   // Função para adicionar um recibo independente
   const handleAddReceiptToExpense = async (description: string, amount: number, date: string, file: File) => {
     try {
+      console.log(`Iniciando upload de recibo: ${description}, tamanho: ${(file.size/1024).toFixed(1)}KB`);
+      
       // Fazer upload da imagem
       const imageUrl = await uploadReceipt(file);
       
       if (!imageUrl) {
-        throw new Error('Falha ao fazer upload da imagem');
+        throw new Error('Falha ao fazer upload da imagem. Verifique sua conexão e tente novamente.');
       }
+      
+      console.log('Upload de imagem concluído com sucesso');
       
       // Criar nova despesa com recibo anexado
       const newExpense: Expense = {
@@ -1500,36 +1504,43 @@ export default function App() {
       setExpenses(updatedExpenses);
       
       // Salvar alterações
+      console.log('Salvando nova despesa com recibo no armazenamento');
       const storageData = getData();
       storageData.expenses = updatedExpenses;
       await saveChanges(createStorageData(storageData));
+      
+      console.log('Recibo salvo com sucesso');
       
       // Fechar modal
       setShowAddReceipt(false);
     } catch (error) {
       console.error('Erro ao adicionar recibo:', error);
-      alert('Ocorreu um erro ao salvar o recibo');
+      throw new Error('Ocorreu um erro ao salvar o recibo. Verifique sua conexão e tente novamente.');
     }
   };
   
   // Função para adicionar recibo a uma despesa existente
   const handleAddReceiptToExistingExpense = async (file: File) => {
     try {
+      console.log(`Iniciando upload de recibo, tamanho: ${(file.size/1024).toFixed(1)}KB`);
+      
       // Fazer upload da imagem
       const imageUrl = await uploadReceipt(file);
       
       if (!imageUrl) {
-        throw new Error('Falha ao fazer upload da imagem');
+        throw new Error('Falha ao fazer upload da imagem. Verifique sua conexão e tente novamente.');
       }
+      
+      console.log('Upload de imagem concluído com sucesso');
       
       // Se não há despesas, criar uma nova
       if (!expenses.Receipts || expenses.Receipts.length === 0) {
+        console.log('Não há despesas existentes. Abrindo diálogo para criar nova.');
         setShowAddReceipt(true);
         return;
       }
       
       // Temporariamente usando a primeira despesa na lista
-      // Em uma versão mais completa, você permitiria selecionar a despesa
       const targetExpense = expenses.Receipts[0];
       
       // Atualizar a despesa com o novo recibo
@@ -1552,12 +1563,15 @@ export default function App() {
       setExpenses(updatedExpenses);
       
       // Salvar alterações
+      console.log('Salvando despesa atualizada com novo recibo');
       const storageData = getData();
       storageData.expenses = updatedExpenses;
       await saveChanges(createStorageData(storageData));
+      
+      console.log('Recibo adicionado com sucesso');
     } catch (error) {
       console.error('Erro ao adicionar recibo:', error);
-      alert('Ocorreu um erro ao salvar o recibo');
+      throw new Error('Ocorreu um erro ao salvar o recibo. Verifique sua conexão e tente novamente.');
     }
   };
   
