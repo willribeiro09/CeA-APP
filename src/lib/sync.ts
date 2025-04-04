@@ -86,6 +86,9 @@ const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number 
 export const syncService = {
   channel: null as RealtimeChannel | null,
   isInitialized: false,
+  syncIntervalId: null as NodeJS.Timeout | null,
+  lastSyncTime: 0,
+  isSyncing: false,
 
   init() {
     if (!supabase || this.isInitialized) return;
@@ -96,6 +99,11 @@ export const syncService = {
     // Limpar inscrição anterior se existir
     if (this.channel) {
       this.channel.unsubscribe();
+    }
+    
+    // Limpar intervalo de sincronização anterior se existir
+    if (this.syncIntervalId) {
+      clearInterval(this.syncIntervalId);
     }
 
     // Criar nova inscrição
@@ -160,6 +168,10 @@ export const syncService = {
       if (this.channel) {
         this.channel.unsubscribe();
         this.isInitialized = false;
+      }
+      if (this.syncIntervalId) {
+        clearInterval(this.syncIntervalId);
+        this.syncIntervalId = null;
       }
     };
   },
@@ -257,8 +269,60 @@ export const syncService = {
       console.log('Sincronizando dados com Supabase usando UUID compartilhado:', SHARED_UUID);
       console.log('Valores do Will a serem sincronizados:', willValues.willBaseRate, willValues.willBonus);
       
-      // Usar a função SQL sync_client_data para sincronizar com merge
+      // Usar diretamente o método upsert para evitar problemas com RLS na tabela sync_history
+      // Esse é um bypass temporário até que as políticas de RLS sejam configuradas corretamente
       const currentTime = new Date().getTime();
+      
+      const dataToSave = {
+        id: SHARED_UUID,
+        expenses: data.expenses || {},
+        projects: data.projects || [],
+        stock: data.stock || [],
+        employees: data.employees || {},
+        willbaserate: willValues.willBaseRate,
+        willbonus: willValues.willBonus,
+        last_sync_timestamp: currentTime
+      };
+      
+      console.log('Tentando salvar diretamente sem usar a função RPC...');
+      const { error: directSaveError } = await supabase
+        .from('sync_data')
+        .upsert(dataToSave);
+      
+      if (directSaveError) {
+        console.error('Erro ao salvar diretamente na tabela sync_data:', directSaveError);
+        console.error('Detalhes completos do erro:', JSON.stringify(directSaveError));
+        
+        // Tentar o método original com RPC
+        console.log('Tentando método original como fallback...');
+        return await this.syncWithRPC(data);
+      } else {
+        console.log('Dados salvos com sucesso diretamente na tabela sync_data');
+        
+        // Atualizar timestamp local
+        data.lastSync = currentTime;
+        
+        // Salvar localmente
+        storage.save(data);
+        return true;
+      }
+    } catch (error) {
+      console.error('Erro na sincronização:', error);
+      return false;
+    }
+  },
+  
+  async syncWithRPC(data: StorageItems): Promise<boolean> {
+    try {
+      const willValues = ensureWillValues(data);
+      const currentTime = new Date().getTime();
+      
+      // Usar a função SQL sync_client_data para sincronizar com merge
+      if (!supabase) {
+        console.log('Supabase não configurado, salvando apenas localmente');
+        storage.save(data);
+        return true;
+      }
       
       const { data: syncResult, error: syncError } = await supabase
         .rpc('sync_client_data', {
@@ -275,6 +339,7 @@ export const syncService = {
       
       if (syncError) {
         console.error('Erro ao sincronizar com sync_client_data:', syncError);
+        console.error('Detalhes completos do erro:', JSON.stringify(syncError));
         
         // Fallback para método tradicional
         console.log('Tentando método tradicional como fallback...');
@@ -334,6 +399,7 @@ export const syncService = {
 
         if (error) {
           console.error('Erro ao sincronizar com Supabase:', error);
+          console.error('Detalhes completos do erro:', JSON.stringify(error));
           return false;
         }
       } else {
@@ -347,8 +413,62 @@ export const syncService = {
       storage.save(data);
       return true;
     } catch (error) {
-      console.error('Erro na sincronização:', error);
+      console.error('Erro na sincronização via RPC:', error);
       return false;
+    }
+  },
+
+  startAutoSync(interval = 1000) {
+    // Parar sincronização automática anterior se existir
+    this.stopAutoSync();
+    
+    console.log(`Iniciando sincronização automática a cada ${interval}ms`);
+    
+    // Iniciar nova sincronização automática
+    this.syncIntervalId = setInterval(async () => {
+      try {
+        // Evitar múltiplas sincronizações simultâneas
+        if (this.isSyncing) {
+          console.log('Sincronização já em andamento, pulando...');
+          return;
+        }
+        
+        // Evitar sincronizações muito frequentes (menos de 500ms entre elas)
+        const now = Date.now();
+        if (now - this.lastSyncTime < 500) {
+          console.log('Sincronização muito recente, pulando...');
+          return;
+        }
+        
+        this.isSyncing = true;
+        
+        // Carregar dados atuais do armazenamento local
+        const currentData = storage.load();
+        if (!currentData) {
+          console.log('Nenhum dado local para sincronizar');
+          this.isSyncing = false;
+          return;
+        }
+        
+        // Sincronizar dados
+        console.log('Sincronização automática executando...');
+        await this.sync(currentData);
+        
+        // Atualizar timestamp da última sincronização
+        this.lastSyncTime = Date.now();
+      } catch (error) {
+        console.error('Erro na sincronização automática:', error);
+      } finally {
+        this.isSyncing = false;
+      }
+    }, interval);
+  },
+  
+  stopAutoSync() {
+    if (this.syncIntervalId) {
+      console.log('Parando sincronização automática');
+      clearInterval(this.syncIntervalId);
+      this.syncIntervalId = null;
     }
   }
 };

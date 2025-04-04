@@ -8,7 +8,7 @@ import { Calendar } from './components/Calendar';
 import { AddItemDialog } from './components/AddItemDialog';
 import { EditItemDialog } from './components/EditItemDialog';
 import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems, SyncData } from './types';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X, Plus } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
 import { syncService, loadInitialData, saveData } from './lib/sync';
@@ -39,13 +39,18 @@ import {
   testWeekRanges 
 } from './lib/dateUtils';
 import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
+import { ReceiptList } from './components/ReceiptList';
+import { AddReceipt } from './components/AddReceipt';
+import { ImageViewer } from './components/ImageViewer';
+import { initReceiptStorage, uploadReceipt, deleteReceipt } from './lib/storage-service';
 
-type ListName = 'Carlos' | 'Diego' | 'C&A';
+type ListName = 'Carlos' | 'Diego' | 'C&A' | 'Receipts';
 
 const initialExpenses: Record<ListName, Expense[]> = {
   'Carlos': [],
   'Diego': [],
-  'C&A': []
+  'C&A': [],
+  'Receipts': []
 };
 
 const initialEmployees: Record<string, Employee[]> = {};
@@ -108,15 +113,19 @@ export default function App() {
   const [selectedEmployeeName, setSelectedEmployeeName] = useState<EmployeeName>('Matheus');
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
   const [receiptEmployee, setReceiptEmployee] = useState<Employee | null>(null);
+  const [showAddReceipt, setShowAddReceipt] = useState(false);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [scanReceiptMode, setScanReceiptMode] = useState(false);
 
   useEffect(() => {
-    const initializeData = async () => {
+    const initializeApp = async () => {
       console.log('Inicializando dados...');
       
       // Inicializar tabela de sincronização se necessário
       if (isSupabaseConfigured()) {
         console.log('Supabase configurado, inicializando tabela de sincronização');
         await initSyncTable();
+        await initReceiptStorage(); // Inicializar o bucket de recibos
       } else {
         console.warn('Supabase não configurado corretamente. Usando apenas armazenamento local.');
       }
@@ -150,6 +159,10 @@ export default function App() {
 
       // Configurar sincronização em tempo real
       syncService.init();
+      
+      // Iniciar sincronização automática a cada 1 segundo
+      syncService.startAutoSync(1000);
+      
       const cleanup = syncService.setupRealtimeUpdates((data) => {
         console.log('Recebida atualização em tempo real:', {
           expenses: Object.keys(data.expenses || {}).length + ' listas',
@@ -178,10 +191,12 @@ export default function App() {
         if (typeof cleanup === 'function') {
           cleanup();
         }
+        // Parar sincronização automática quando o componente for desmontado
+        syncService.stopAutoSync();
       };
     };
 
-    initializeData();
+    initializeApp();
   }, []);
 
   // Adicione este useEffect para calcular o total dos projetos na semana selecionada
@@ -1455,6 +1470,165 @@ export default function App() {
     testWeekRanges();
   }, []);
 
+  // Função para adicionar um recibo independente
+  const handleAddReceiptToExpense = async (description: string, amount: number, date: string, file: File) => {
+    try {
+      // Fazer upload da imagem
+      const imageUrl = await uploadReceipt(file);
+      
+      if (!imageUrl) {
+        throw new Error('Falha ao fazer upload da imagem');
+      }
+      
+      // Criar nova despesa com recibo anexado
+      const newExpense: Expense = {
+        id: uuidv4(),
+        description,
+        amount,
+        date,
+        category: 'Receipts',
+        receipts_urls: [imageUrl],
+      };
+      
+      // Adicionar à lista de recibos
+      const updatedExpenses = {
+        ...expenses,
+        Receipts: [...(expenses.Receipts || []), newExpense]
+      };
+      
+      // Atualizar estado
+      setExpenses(updatedExpenses);
+      
+      // Salvar alterações
+      const storageData = getData();
+      storageData.expenses = updatedExpenses;
+      await saveChanges(createStorageData(storageData));
+      
+      // Fechar modal
+      setShowAddReceipt(false);
+    } catch (error) {
+      console.error('Erro ao adicionar recibo:', error);
+      alert('Ocorreu um erro ao salvar o recibo');
+    }
+  };
+  
+  // Função para adicionar recibo a uma despesa existente
+  const handleAddReceiptToExistingExpense = async (file: File) => {
+    try {
+      // Fazer upload da imagem
+      const imageUrl = await uploadReceipt(file);
+      
+      if (!imageUrl) {
+        throw new Error('Falha ao fazer upload da imagem');
+      }
+      
+      // Se não há despesas, criar uma nova
+      if (!expenses.Receipts || expenses.Receipts.length === 0) {
+        setShowAddReceipt(true);
+        return;
+      }
+      
+      // Temporariamente usando a primeira despesa na lista
+      // Em uma versão mais completa, você permitiria selecionar a despesa
+      const targetExpense = expenses.Receipts[0];
+      
+      // Atualizar a despesa com o novo recibo
+      const updatedExpense = {
+        ...targetExpense,
+        receipts_urls: [...(targetExpense.receipts_urls || []), imageUrl]
+      };
+      
+      // Atualizar a lista de despesas
+      const updatedReceipts = expenses.Receipts.map(exp => 
+        exp.id === targetExpense.id ? updatedExpense : exp
+      );
+      
+      const updatedExpenses = {
+        ...expenses,
+        Receipts: updatedReceipts
+      };
+      
+      // Atualizar estado
+      setExpenses(updatedExpenses);
+      
+      // Salvar alterações
+      const storageData = getData();
+      storageData.expenses = updatedExpenses;
+      await saveChanges(createStorageData(storageData));
+    } catch (error) {
+      console.error('Erro ao adicionar recibo:', error);
+      alert('Ocorreu um erro ao salvar o recibo');
+    }
+  };
+  
+  // Função para remover um recibo
+  const handleDeleteReceipt = async (expenseId: string, receiptUrl: string) => {
+    try {
+      // Remover a imagem do armazenamento
+      await deleteReceipt(receiptUrl);
+      
+      // Encontrar a despesa correspondente
+      const expense = expenses.Receipts.find(exp => exp.id === expenseId);
+      
+      if (!expense) {
+        throw new Error('Despesa não encontrada');
+      }
+      
+      // Remover o recibo da lista
+      const updatedReceiptsUrls = expense.receipts_urls?.filter(url => url !== receiptUrl) || [];
+      
+      // Se não há mais recibos, remover a despesa
+      if (updatedReceiptsUrls.length === 0) {
+        const updatedReceipts = expenses.Receipts.filter(exp => exp.id !== expenseId);
+        
+        const updatedExpenses = {
+          ...expenses,
+          Receipts: updatedReceipts
+        };
+        
+        // Atualizar estado
+        setExpenses(updatedExpenses);
+        
+        // Salvar alterações
+        const storageData = getData();
+        storageData.expenses = updatedExpenses;
+        await saveChanges(createStorageData(storageData));
+      } else {
+        // Atualizar a despesa com os recibos restantes
+        const updatedExpense = {
+          ...expense,
+          receipts_urls: updatedReceiptsUrls
+        };
+        
+        // Atualizar a lista de despesas
+        const updatedReceipts = expenses.Receipts.map(exp => 
+          exp.id === expenseId ? updatedExpense : exp
+        );
+        
+        const updatedExpenses = {
+          ...expenses,
+          Receipts: updatedReceipts
+        };
+        
+        // Atualizar estado
+        setExpenses(updatedExpenses);
+        
+        // Salvar alterações
+        const storageData = getData();
+        storageData.expenses = updatedExpenses;
+        await saveChanges(createStorageData(storageData));
+      }
+    } catch (error) {
+      console.error('Erro ao remover recibo:', error);
+      alert('Ocorreu um erro ao remover o recibo');
+    }
+  };
+  
+  // Função para visualizar um recibo
+  const handleViewReceipt = (url: string) => {
+    setViewingImage(url);
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gray-50">
@@ -1507,6 +1681,14 @@ export default function App() {
                       }`}
                     >
                       C&A
+                    </button>
+                    <button
+                      onClick={() => handleListSelect('Receipts')}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        selectedList === 'Receipts' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                      }`}
+                    >
+                      Receipts
                     </button>
                   </div>
                 )}
@@ -1579,18 +1761,31 @@ export default function App() {
             )}
 
             <ul className="flex flex-col space-y-[8px] m-0 p-0">
-              {activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || [])
-                .filter(isItemFromSelectedDate)
-                .map(expense => (
-                  <li key={expense.id} className="list-none">
-            <ExpenseItem
-              expense={expense}
-              onTogglePaid={handleTogglePaid}
-                      onDelete={(id) => handleDeleteItem(id, 'Expenses')}
-                      onEdit={(expense) => handleEditItem(expense)}
-                    />
-                  </li>
-                ))}
+              {activeCategory === 'Expenses' && selectedList === 'Receipts' ? (
+                // Componente de lista de recibos
+                <li className="list-none">
+                  <ReceiptList
+                    expenses={expenses.Receipts || []}
+                    onAddReceipt={handleAddReceiptToExistingExpense}
+                    onDeleteReceipt={handleDeleteReceipt}
+                    onViewReceipt={handleViewReceipt}
+                  />
+                </li>
+              ) : (
+                // Lista normal de despesas
+                activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || [])
+                  .filter(isItemFromSelectedDate)
+                  .map(expense => (
+                    <li key={expense.id} className="list-none">
+                      <ExpenseItem
+                        expense={expense}
+                        onTogglePaid={handleTogglePaid}
+                        onDelete={(id) => handleDeleteItem(id, 'Expenses')}
+                        onEdit={(expense) => handleEditItem(expense)}
+                      />
+                    </li>
+                  ))
+              )}
               
               {activeCategory === 'Projects' && projects
                 .filter(project => {
@@ -1799,13 +1994,56 @@ export default function App() {
             </ul>
           </div>
         </main>
+        
+        {/* Floating action button para adicionar recibos */}
+        {activeCategory === 'Expenses' && selectedList === 'Receipts' && (
+          <button
+            onClick={() => setShowAddReceipt(true)}
+            className="fixed bottom-20 right-4 bg-[#5ABB37] text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg z-40"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+        )}
+        
+        {/* Modal para adicionar recibo */}
+        {showAddReceipt && (
+          <AddReceipt
+            onSubmit={handleAddReceiptToExpense}
+            onCancel={() => {
+              setShowAddReceipt(false);
+              setScanReceiptMode(false);
+            }}
+            scanMode={scanReceiptMode}
+          />
+        )}
+        
+        {/* Visualizador de imagem */}
+        {viewingImage && (
+          <ImageViewer
+            imageUrl={viewingImage}
+            onClose={() => setViewingImage(null)}
+          />
+        )}
       </div>
 
       {/* Mostrar o CalendarButton apenas nos menus relevantes */}
       {activeCategory !== 'Stock' && (
         <CalendarButton onClick={handleOpenCalendar} />
       )}
-      <AddButton onClick={() => setIsAddDialogOpen(true)} />
+      <AddButton 
+        onClick={() => setIsAddDialogOpen(true)} 
+        onScanReceipt={() => {
+          if (activeCategory === 'Expenses') {
+            // Trocar para a lista de Receipts
+            setSelectedList('Receipts');
+            // Ativar o modo de escaneamento
+            setScanReceiptMode(true);
+            // Abrir o modal para adicionar recibo
+            setShowAddReceipt(true);
+          }
+        }}
+        activeCategory={activeCategory}
+      />
 
       <AddItemDialog
         isOpen={isAddDialogOpen}

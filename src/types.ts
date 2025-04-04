@@ -13,6 +13,7 @@ export interface Expense {
   notes?: string;
   is_paid?: boolean;
   paid?: boolean;
+  receipts_urls?: string[];
 }
 
 export interface Project {
@@ -80,3 +81,5 @@ export interface NavItem {
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
 }
 export type EmployeeName = 'Matheus' | 'João' | 'Pedro' | 'Lucas';
+
+export type ListName = 'Carlos' | 'Diego' | 'C&A' | 'Receipts';
