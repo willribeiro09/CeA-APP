@@ -159,8 +159,8 @@ export default function App() {
       // Configurar sincronização em tempo real
       syncService.init();
       
-      // Iniciar sincronização automática a cada 1 segundo
-      syncService.startAutoSync(1000);
+      // Remover a inicialização da sincronização automática
+      // syncService.startAutoSync(1000);
       
       const cleanup = syncService.setupRealtimeUpdates((data) => {
         console.log('Recebida atualização em tempo real:', {
@@ -190,8 +190,8 @@ export default function App() {
         if (typeof cleanup === 'function') {
           cleanup();
         }
-        // Parar sincronização automática quando o componente for desmontado
-        syncService.stopAutoSync();
+        // Remover a parada da sincronização automática
+        // syncService.stopAutoSync();
       };
     };
 

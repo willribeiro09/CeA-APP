@@ -269,8 +269,7 @@ export const syncService = {
       console.log('Sincronizando dados com Supabase usando UUID compartilhado:', SHARED_UUID);
       console.log('Valores do Will a serem sincronizados:', willValues.willBaseRate, willValues.willBonus);
       
-      // Usar diretamente o método upsert para evitar problemas com RLS na tabela sync_history
-      // Esse é um bypass temporário até que as políticas de RLS sejam configuradas corretamente
+      // Salvar diretamente na tabela sync_data
       const currentTime = new Date().getTime();
       
       const dataToSave = {
@@ -284,192 +283,36 @@ export const syncService = {
         last_sync_timestamp: currentTime
       };
       
-      console.log('Tentando salvar diretamente sem usar a função RPC...');
-      const { error: directSaveError } = await supabase
+      // Salvar no Supabase
+      const { error } = await supabase
         .from('sync_data')
         .upsert(dataToSave);
-      
-      if (directSaveError) {
-        console.error('Erro ao salvar diretamente na tabela sync_data:', directSaveError);
-        console.error('Detalhes completos do erro:', JSON.stringify(directSaveError));
-        
-        // Tentar o método original com RPC
-        console.log('Tentando método original como fallback...');
-        return await this.syncWithRPC(data);
-      } else {
-        console.log('Dados salvos com sucesso diretamente na tabela sync_data');
-        
-        // Atualizar timestamp local
-        data.lastSync = currentTime;
-        
-        // Salvar localmente
-        storage.save(data);
-        return true;
-      }
-    } catch (error) {
-      console.error('Erro na sincronização:', error);
-      return false;
-    }
-  },
-  
-  async syncWithRPC(data: StorageItems): Promise<boolean> {
-    try {
-      const willValues = ensureWillValues(data);
-      const currentTime = new Date().getTime();
-      
-      // Usar a função SQL sync_client_data para sincronizar com merge
-      if (!supabase) {
-        console.log('Supabase não configurado, salvando apenas localmente');
-        storage.save(data);
-        return true;
-      }
-      
-      const { data: syncResult, error: syncError } = await supabase
-        .rpc('sync_client_data', {
-          p_id: SHARED_UUID,
-          p_expenses: data.expenses || {},
-          p_projects: data.projects || [],
-          p_stock: data.stock || [],
-          p_employees: data.employees || {},
-          p_willbaserate: willValues.willBaseRate,
-          p_willbonus: willValues.willBonus,
-          p_client_timestamp: currentTime,
-          p_device_id: SESSION_ID
-        });
-      
-      if (syncError) {
-        console.error('Erro ao sincronizar com sync_client_data:', syncError);
-        console.error('Detalhes completos do erro:', JSON.stringify(syncError));
-        
-        // Fallback para método tradicional
-        console.log('Tentando método tradicional como fallback...');
-        
-        // Primeiro, carregamos os dados existentes para garantir que não sobrescrevemos nada
-        const { data: existingData, error: fetchError } = await supabase
-          .from('sync_data')
-          .select('*')
-          .eq('id', SHARED_UUID)
-          .limit(1);
-        
-        if (fetchError) {
-          console.error('Erro ao buscar dados existentes:', fetchError);
-          // Mesmo com erro, tentamos salvar no armazenamento local
-          storage.save(data);
-          return false;
-        }
-        
-        let dataToSave;
-        
-        if (existingData && existingData.length > 0) {
-          // Mesclamos os dados existentes com os novos dados
-          console.log('Dados existentes encontrados, mesclando com novos dados');
-          
-          dataToSave = {
-            id: SHARED_UUID,
-            expenses: { ...existingData[0].expenses, ...data.expenses },
-            projects: data.projects || existingData[0].projects || [],
-            stock: data.stock || existingData[0].stock || [],
-            employees: { ...existingData[0].employees, ...data.employees },
-            willbaserate: willValues.willBaseRate,
-            willbonus: willValues.willBonus,
-            last_sync_timestamp: currentTime
-          };
-        } else {
-          // Não encontramos dados existentes, salvamos os novos dados
-          console.log('Nenhum dado existente encontrado, salvando novos dados');
-          
-          dataToSave = {
-            id: SHARED_UUID,
-            expenses: data.expenses || {},
-            projects: data.projects || [],
-            stock: data.stock || [],
-            employees: data.employees || {},
-            willbaserate: willValues.willBaseRate,
-            willbonus: willValues.willBonus,
-            last_sync_timestamp: currentTime
-          };
-        }
-        
-        console.log('Dados a serem salvos:', dataToSave);
-        
-        // Salvar no Supabase
-        const { error } = await supabase
-          .from('sync_data')
-          .upsert(dataToSave);
 
-        if (error) {
-          console.error('Erro ao sincronizar com Supabase:', error);
-          console.error('Detalhes completos do erro:', JSON.stringify(error));
-          return false;
-        }
-      } else {
-        console.log('Sincronização bem-sucedida via sync_client_data:', syncResult);
-        
-        // Atualizar timestamp local
-        data.lastSync = currentTime;
+      if (error) {
+        console.error('Erro ao sincronizar com Supabase:', error);
+        return false;
       }
+      
+      // Atualizar timestamp local
+      data.lastSync = currentTime;
 
       // Salvar localmente
       storage.save(data);
       return true;
     } catch (error) {
-      console.error('Erro na sincronização via RPC:', error);
+      console.error('Erro na sincronização:', error);
       return false;
     }
   },
 
-  startAutoSync(interval = 1000) {
-    // Parar sincronização automática anterior se existir
-    this.stopAutoSync();
-    
-    console.log(`Iniciando sincronização automática a cada ${interval}ms`);
-    
-    // Iniciar nova sincronização automática
-    this.syncIntervalId = setInterval(async () => {
-      try {
-        // Evitar múltiplas sincronizações simultâneas
-        if (this.isSyncing) {
-          console.log('Sincronização já em andamento, pulando...');
-          return;
-        }
-        
-        // Evitar sincronizações muito frequentes (menos de 500ms entre elas)
-        const now = Date.now();
-        if (now - this.lastSyncTime < 500) {
-          console.log('Sincronização muito recente, pulando...');
-          return;
-        }
-        
-        this.isSyncing = true;
-        
-        // Carregar dados atuais do armazenamento local
-        const currentData = storage.load();
-        if (!currentData) {
-          console.log('Nenhum dado local para sincronizar');
-          this.isSyncing = false;
-          return;
-        }
-        
-        // Sincronizar dados
-        console.log('Sincronização automática executando...');
-        await this.sync(currentData);
-        
-        // Atualizar timestamp da última sincronização
-        this.lastSyncTime = Date.now();
-      } catch (error) {
-        console.error('Erro na sincronização automática:', error);
-      } finally {
-        this.isSyncing = false;
-      }
-    }, interval);
+  startAutoSync() {
+    // Implementação vazia para manter compatibilidade
+    console.log('Método startAutoSync chamado, mas não está implementado para evitar sincronização constante');
   },
   
   stopAutoSync() {
-    if (this.syncIntervalId) {
-      console.log('Parando sincronização automática');
-      clearInterval(this.syncIntervalId);
-      this.syncIntervalId = null;
-    }
+    // Implementação vazia para manter compatibilidade
+    console.log('Método stopAutoSync chamado, mas não está implementado');
   }
 };
 
