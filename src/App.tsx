@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { ExpenseItem } from './components/ExpenseItem';
 import { Navigation } from './components/Navigation';
-import { CalendarButton } from './components/CalendarButton';
 import { AddButton } from './components/AddButton';
 import { Calendar } from './components/Calendar';
 import { AddItemDialog } from './components/AddItemDialog';
@@ -1473,22 +1472,22 @@ export default function App() {
   // Função para adicionar um recibo independente
   const handleAddReceiptToExpense = async (description: string, amount: number, date: string, file: File) => {
     try {
-      console.log(`Iniciando upload de recibo: ${description}, tamanho: ${(file.size/1024).toFixed(1)}KB`);
+      console.log(`Starting receipt upload: ${description}, size: ${(file.size/1024).toFixed(1)}KB`);
       
       // Fazer upload da imagem
       const imageUrl = await uploadReceipt(file);
       
       if (!imageUrl) {
-        throw new Error('Falha ao fazer upload da imagem. Verifique sua conexão e tente novamente.');
+        throw new Error('Failed to upload image. Please check your connection and try again.');
       }
       
-      console.log('Upload de imagem concluído com sucesso');
+      console.log('Image upload completed successfully');
       
       // Criar nova despesa com recibo anexado
       const newExpense: Expense = {
         id: uuidv4(),
         description,
-        amount,
+        amount: 0, // Fixed amount to 0 since we removed the amount field
         date,
         category: 'Receipts',
         receipts_urls: [imageUrl],
@@ -1504,18 +1503,18 @@ export default function App() {
       setExpenses(updatedExpenses);
       
       // Salvar alterações
-      console.log('Salvando nova despesa com recibo no armazenamento');
+      console.log('Saving new receipt to storage');
       const storageData = getData();
       storageData.expenses = updatedExpenses;
       await saveChanges(createStorageData(storageData));
       
-      console.log('Recibo salvo com sucesso');
+      console.log('Receipt saved successfully');
       
       // Fechar modal
       setShowAddReceipt(false);
     } catch (error) {
-      console.error('Erro ao adicionar recibo:', error);
-      throw new Error('Ocorreu um erro ao salvar o recibo. Verifique sua conexão e tente novamente.');
+      console.error('Error adding receipt:', error);
+      throw new Error('An error occurred while saving the receipt. Please check your connection and try again.');
     }
   };
   
@@ -2013,7 +2012,7 @@ export default function App() {
         {activeCategory === 'Expenses' && selectedList === 'Receipts' && (
           <button
             onClick={() => setShowAddReceipt(true)}
-            className="fixed bottom-20 right-4 bg-[#5ABB37] text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg z-40"
+            className="fixed bottom-5 right-5 bg-[#5ABB37] text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg z-40"
           >
             <Plus className="w-6 h-6" />
           </button>
@@ -2041,23 +2040,21 @@ export default function App() {
       </div>
 
       {/* Mostrar o CalendarButton apenas nos menus relevantes */}
-      {activeCategory !== 'Stock' && (
-        <CalendarButton onClick={handleOpenCalendar} />
+      {/* Botão de calendário removido conforme solicitado */}
+      {!(activeCategory === 'Expenses' && selectedList === 'Receipts') && (
+        <AddButton 
+          onClick={() => setIsAddDialogOpen(true)} 
+          onScanReceipt={() => {
+            if (activeCategory === 'Expenses' && selectedList === 'Receipts') {
+              // Ativar o modo de escaneamento
+              setScanReceiptMode(true);
+              // Abrir o modal para adicionar recibo
+              setShowAddReceipt(true);
+            }
+          }}
+          activeCategory={activeCategory}
+        />
       )}
-      <AddButton 
-        onClick={() => setIsAddDialogOpen(true)} 
-        onScanReceipt={() => {
-          if (activeCategory === 'Expenses') {
-            // Trocar para a lista de Receipts
-            setSelectedList('Receipts');
-            // Ativar o modo de escaneamento
-            setScanReceiptMode(true);
-            // Abrir o modal para adicionar recibo
-            setShowAddReceipt(true);
-          }
-        }}
-        activeCategory={activeCategory}
-      />
 
       <AddItemDialog
         isOpen={isAddDialogOpen}

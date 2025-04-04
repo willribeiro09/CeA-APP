@@ -1,6 +1,6 @@
 import React from 'react';
 import { Expense } from '../types';
-import { Camera, X, Eye, Upload } from 'lucide-react';
+import { X, Eye } from 'lucide-react';
 
 interface ReceiptListProps {
   expenses: Expense[];
@@ -16,51 +16,21 @@ export function ReceiptList({ expenses, onAddReceipt, onDeleteReceipt, onViewRec
     const files = e.target.files;
     if (files && files.length > 0) {
       await onAddReceipt(files[0]);
-      // Limpar input de arquivo
+      // Clean file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
   
-  const handleCameraClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-  
-  const handleUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-  
-  // Filtrar apenas despesas com recibos
+  // Filter only expenses with receipts
   const receiptsExpenses = expenses.filter(expense => expense.receipts_urls && expense.receipts_urls.length > 0);
   
   if (receiptsExpenses.length === 0) {
     return (
       <div className="p-4">
         <div className="bg-white rounded-lg shadow-sm p-4 mb-4 text-center">
-          <p className="text-gray-500 mb-4">Nenhum recibo encontrado</p>
-          
-          <div className="flex justify-center space-x-4">
-            <button
-              onClick={handleCameraClick}
-              className="bg-[#5ABB37] text-white px-4 py-2 rounded-md flex items-center"
-            >
-              <Camera className="w-5 h-5 mr-2" />
-              Câmera
-            </button>
-            
-            <button
-              onClick={handleUploadClick}
-              className="bg-blue-500 text-white px-4 py-2 rounded-md flex items-center"
-            >
-              <Upload className="w-5 h-5 mr-2" />
-              Upload
-            </button>
-          </div>
+          <p className="text-gray-500">No receipts found</p>
           
           <input
             type="file"
@@ -79,23 +49,7 @@ export function ReceiptList({ expenses, onAddReceipt, onDeleteReceipt, onViewRec
     <div className="p-4">
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-medium text-lg">Recibos</h3>
-          
-          <div className="flex space-x-2">
-            <button
-              onClick={handleCameraClick}
-              className="bg-[#5ABB37] text-white p-2 rounded-md"
-            >
-              <Camera className="w-5 h-5" />
-            </button>
-            
-            <button
-              onClick={handleUploadClick}
-              className="bg-blue-500 text-white p-2 rounded-md"
-            >
-              <Upload className="w-5 h-5" />
-            </button>
-          </div>
+          <h3 className="font-medium text-lg">Receipts</h3>
         </div>
         
         <input
@@ -114,7 +68,7 @@ export function ReceiptList({ expenses, onAddReceipt, onDeleteReceipt, onViewRec
                 <div>
                   <p className="font-medium">{expense.description}</p>
                   <p className="text-sm text-gray-500">
-                    {new Date(expense.date).toLocaleDateString('pt-BR')}
+                    {new Date(expense.date).toLocaleDateString('en-US')}
                   </p>
                 </div>
                 <p className="font-semibold text-[#5ABB37]">

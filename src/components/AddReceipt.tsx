@@ -4,12 +4,11 @@ import { X, Upload, Camera, Loader } from 'lucide-react';
 interface AddReceiptProps {
   onSubmit: (description: string, amount: number, date: string, file: File) => Promise<void>;
   onCancel: () => void;
-  scanMode?: boolean; // Novo parâmetro para indicar modo de escaneamento
+  scanMode?: boolean;
 }
 
 export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptProps) {
   const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [file, setFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -17,7 +16,7 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
-  // Se estiver no modo de escaneamento, abrir a câmera automaticamente
+  // Automatically open camera in scan mode
   useEffect(() => {
     if (scanMode && fileInputRef.current) {
       fileInputRef.current.setAttribute('capture', 'environment');
@@ -30,15 +29,15 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      // Limpar mensagem de erro anterior
+      // Clear previous error message
       setErrorMessage(null);
       
       const selectedFile = files[0];
-      console.log(`Arquivo selecionado: ${selectedFile.name}, tipo: ${selectedFile.type}, tamanho: ${(selectedFile.size / 1024).toFixed(1)}KB`);
+      console.log(`Selected file: ${selectedFile.name}, type: ${selectedFile.type}, size: ${(selectedFile.size / 1024).toFixed(1)}KB`);
       
-      // Verificar tamanho do arquivo
+      // Check file size
       if (selectedFile.size > 10 * 1024 * 1024) { // 10MB
-        setErrorMessage('Arquivo muito grande. Por favor, selecione uma imagem menor que 10MB.');
+        setErrorMessage('File too large. Please select an image smaller than 10MB.');
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -47,14 +46,14 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
       
       setFile(selectedFile);
       
-      // Criar preview da imagem
+      // Create image preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
       };
       reader.onerror = (e) => {
-        console.error("Erro ao ler arquivo:", e);
-        setErrorMessage('Erro ao processar imagem. Tente novamente.');
+        console.error("Error reading file:", e);
+        setErrorMessage('Error processing image. Please try again.');
       };
       reader.readAsDataURL(selectedFile);
     }
@@ -63,8 +62,8 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!description || !amount || !date || !file) {
-      setErrorMessage('Por favor, preencha todos os campos e adicione uma imagem');
+    if (!date || !file) {
+      setErrorMessage('Please add a date and an image');
       return;
     }
     
@@ -72,13 +71,14 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
       setIsLoading(true);
       setErrorMessage(null);
       
-      console.log('Iniciando envio do recibo...');
-      await onSubmit(description, parseFloat(amount), date, file);
+      console.log('Starting receipt upload...');
+      // Using 0 as amount since it's being removed from the UI
+      await onSubmit(description, 0, date, file);
       
-      console.log('Recibo enviado com sucesso!');
+      console.log('Receipt uploaded successfully!');
     } catch (error) {
-      console.error('Erro ao adicionar recibo:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Ocorreu um erro ao salvar o recibo');
+      console.error('Error adding receipt:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'An error occurred while saving the receipt');
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +103,7 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
       <div className="bg-white rounded-lg p-4 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium">
-            {scanMode ? 'Escanear Recibo' : 'Adicionar Recibo'}
+            {scanMode ? 'Scan Receipt' : 'Add Receipt'}
           </h2>
           <button onClick={onCancel} className="text-gray-500" disabled={isLoading}>
             <X className="w-6 h-6" />
@@ -119,38 +119,21 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Descrição
+              Description (Optional)
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="Descrição da despesa"
+              placeholder="Receipt description"
               disabled={isLoading}
-              required
             />
           </div>
           
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Valor
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="0.00"
-              disabled={isLoading}
-              required
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Data
+              Date
             </label>
             <input
               type="date"
@@ -164,7 +147,7 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
           
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Imagem do Recibo
+              Receipt Image
             </label>
             
             {!imagePreview ? (
@@ -176,7 +159,7 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
                   disabled={isLoading}
                 >
                   <Camera className="w-5 h-5 mr-2" />
-                  Câmera
+                  Camera
                 </button>
                 
                 <button
@@ -231,7 +214,7 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700"
               disabled={isLoading}
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
@@ -241,10 +224,10 @@ export function AddReceipt({ onSubmit, onCancel, scanMode = false }: AddReceiptP
               {isLoading ? (
                 <>
                   <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Enviando...
+                  Saving...
                 </>
               ) : (
-                "Salvar"
+                "Save"
               )}
             </button>
           </div>
