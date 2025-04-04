@@ -334,63 +334,59 @@ export default function App() {
     if (category === 'Expenses') {
       setExpenses(prevExpenses => {
         const newExpenses = { ...prevExpenses };
+        let itemDeleted = false;
         
-        // Marcar a despesa como deletada em todas as listas
+        // Marcar a despesa como deletada em todas as listas e remover da UI
         Object.keys(newExpenses).forEach(listName => {
-          const index = newExpenses[listName as ListName].findIndex(expense => expense.id === id);
-          if (index !== -1) {
-            // Marcar como deletado em vez de remover
-            newExpenses[listName as ListName][index] = {
-              ...newExpenses[listName as ListName][index],
-              __deleted__: true
-            };
+          const expenseToDelete = newExpenses[listName as ListName].find(expense => expense.id === id);
+          if (expenseToDelete) {
+            // Marcar como deletado
+            expenseToDelete.__deleted__ = true;
+            itemDeleted = true;
+            
+            // Remover da UI
+            newExpenses[listName as ListName] = newExpenses[listName as ListName].filter(
+              expense => expense.id !== id
+            );
           }
         });
         
-        // Remover da UI
-        Object.keys(newExpenses).forEach(listName => {
-          newExpenses[listName as ListName] = newExpenses[listName as ListName].filter(
-            expense => !expense.__deleted__
-          );
-        });
-        
-        // Salvar as alterações
-        saveChanges(createStorageData({
-          expenses: newExpenses,
-          projects,
-          stock: stockItems,
-          employees
-        }));
+        if (itemDeleted) {
+          // Salvar as alterações, incluindo o item marcado como deletado
+          saveChanges(createStorageData({
+            expenses: newExpenses,
+            projects,
+            stock: stockItems,
+            employees
+          }));
+        }
         
         return newExpenses;
       });
     } else if (category === 'Projects') {
       setProjects(prevProjects => {
         // Encontrar o projeto
-        const index = prevProjects.findIndex(project => project.id === id);
+        const projectToDelete = prevProjects.find(project => project.id === id);
         
-        if (index !== -1) {
-          // Criar uma cópia do array de projetos
-          const newProjects = [...prevProjects];
-          
+        if (projectToDelete) {
           // Marcar o projeto como deletado
-          newProjects[index] = {
-            ...newProjects[index],
-            __deleted__: true
-          };
+          projectToDelete.__deleted__ = true;
           
-          // Filtrar para a UI (remover da visualização)
-          const filteredProjects = newProjects.filter(project => !project.__deleted__);
+          // Criar cópia dos projetos, mantendo o deletado mas removendo da UI
+          const newProjects = prevProjects.filter(project => project.id !== id);
           
-          // Salvar as alterações (incluindo os marcados como deletados)
+          // Adicionar o projeto marcado como deletado para sincronização
+          const projectsForSync = [...newProjects, projectToDelete];
+          
+          // Salvar as alterações, incluindo o item marcado como deletado
           saveChanges(createStorageData({
             expenses,
-            projects: newProjects,
+            projects: projectsForSync,
             stock: stockItems,
             employees
           }));
           
-          return filteredProjects;
+          return newProjects;
         }
         
         return prevProjects;
@@ -398,30 +394,27 @@ export default function App() {
     } else if (category === 'Stock') {
       setStockItems(prevStockItems => {
         // Encontrar o item
-        const index = prevStockItems.findIndex(item => item.id === id);
+        const itemToDelete = prevStockItems.find(item => item.id === id);
         
-        if (index !== -1) {
-          // Criar uma cópia do array de itens
-          const newStockItems = [...prevStockItems];
-          
+        if (itemToDelete) {
           // Marcar o item como deletado
-          newStockItems[index] = {
-            ...newStockItems[index],
-            __deleted__: true
-          };
+          itemToDelete.__deleted__ = true;
           
-          // Filtrar para a UI (remover da visualização)
-          const filteredStockItems = newStockItems.filter(item => !item.__deleted__);
+          // Criar cópia dos itens, mantendo o deletado mas removendo da UI
+          const newStockItems = prevStockItems.filter(item => item.id !== id);
           
-          // Salvar as alterações (incluindo os marcados como deletados)
+          // Adicionar o item marcado como deletado para sincronização
+          const stockItemsForSync = [...newStockItems, itemToDelete];
+          
+          // Salvar as alterações, incluindo o item marcado como deletado
           saveChanges(createStorageData({
             expenses,
             projects,
-            stock: newStockItems,
+            stock: stockItemsForSync,
             employees
           }));
           
-          return filteredStockItems;
+          return newStockItems;
         }
         
         return prevStockItems;
@@ -429,35 +422,34 @@ export default function App() {
     } else if (category === 'Employees') {
       setEmployees(prevEmployees => {
         const newEmployees = { ...prevEmployees };
+        let itemDeleted = false;
         
-        // Marcar o funcionário como deletado em todas as semanas
+        // Marcar o funcionário como deletado em todas as semanas e remover da UI
         Object.keys(newEmployees).forEach(weekStartDate => {
-          const index = newEmployees[weekStartDate].findIndex(employee => employee.id === id);
-          if (index !== -1) {
-            // Marcar como deletado em vez de remover
-            newEmployees[weekStartDate][index] = {
-              ...newEmployees[weekStartDate][index],
-              __deleted__: true
-            };
+          const employeeToDelete = newEmployees[weekStartDate].find(employee => employee.id === id);
+          if (employeeToDelete) {
+            // Marcar como deletado
+            employeeToDelete.__deleted__ = true;
+            itemDeleted = true;
+            
+            // Remover da UI
+            newEmployees[weekStartDate] = newEmployees[weekStartDate].filter(
+              employee => employee.id !== id
+            );
           }
         });
         
-        // Remover da UI
-        Object.keys(newEmployees).forEach(weekStartDate => {
-          newEmployees[weekStartDate] = newEmployees[weekStartDate].filter(
-            employee => !employee.__deleted__
-          );
-        });
-        
-        // Salvar as alterações
-        saveChanges(createStorageData({
-          expenses,
-          projects,
-          stock: stockItems,
-          employees: newEmployees,
-          willBaseRate,
-          willBonus
-        }));
+        if (itemDeleted) {
+          // Salvar as alterações, incluindo o item marcado como deletado
+          saveChanges(createStorageData({
+            expenses,
+            projects,
+            stock: stockItems,
+            employees: newEmployees,
+            willBaseRate,
+            willBonus
+          }));
+        }
         
         return newEmployees;
       });

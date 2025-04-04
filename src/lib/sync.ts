@@ -12,9 +12,6 @@ console.log('ID da sessão:', SESSION_ID);
 const SHARED_UUID = "00000000-0000-0000-0000-000000000000";
 console.log('UUID compartilhado para sincronização:', SHARED_UUID);
 
-// Flag para identificar itens deletados no sistema
-const DELETED_FLAG = '__deleted__';
-
 // Intervalo de sincronização em milissegundos (5 segundos)
 const SYNC_INTERVAL = 5000;
 
@@ -266,8 +263,7 @@ export const syncService = {
           data.projects.map(p => `${p.id}: ${p.client}`).join(', '));
       }
       
-      // Marcar itens deletados (itens com o flag __deleted__)
-      // Processamos itens deletados antes da sincronização
+      // Processar e remover completamente os itens marcados como deletados
       this.processDeletedItems(data);
       
       // Garantir que os valores do Will estejam definidos
@@ -383,36 +379,60 @@ export const syncService = {
 
   // Função para processar itens marcados para exclusão
   processDeletedItems(data: StorageItems) {
-    // Processar projetos marcados para exclusão
+    console.log('Processando itens marcados para exclusão');
+    
+    // Processar e remover completamente os projetos marcados para exclusão
     if (Array.isArray(data.projects)) {
-      data.projects = data.projects.filter(project => !project[DELETED_FLAG]);
+      console.log(`Verificando ${data.projects.length} projetos para exclusão`);
+      const projectsBeforeFilter = data.projects.length;
+      data.projects = data.projects.filter(project => !project.__deleted__);
+      const projectsAfterFilter = data.projects.length;
+      if (projectsBeforeFilter !== projectsAfterFilter) {
+        console.log(`Removidos ${projectsBeforeFilter - projectsAfterFilter} projetos marcados como deletados`);
+      }
     }
     
-    // Processar itens de estoque marcados para exclusão
+    // Processar e remover completamente os itens de estoque marcados para exclusão
     if (Array.isArray(data.stock)) {
-      data.stock = data.stock.filter(item => !item[DELETED_FLAG]);
+      console.log(`Verificando ${data.stock.length} itens de estoque para exclusão`);
+      const stockBeforeFilter = data.stock.length;
+      data.stock = data.stock.filter(item => !item.__deleted__);
+      const stockAfterFilter = data.stock.length;
+      if (stockBeforeFilter !== stockAfterFilter) {
+        console.log(`Removidos ${stockBeforeFilter - stockAfterFilter} itens de estoque marcados como deletados`);
+      }
     }
     
-    // Processar despesas marcadas para exclusão
+    // Processar e remover completamente as despesas marcadas para exclusão
     if (data.expenses) {
+      let totalRemoved = 0;
       Object.keys(data.expenses).forEach(listName => {
         if (Array.isArray(data.expenses[listName])) {
-          data.expenses[listName] = data.expenses[listName].filter(
-            expense => !expense[DELETED_FLAG]
-          );
+          const expensesBeforeFilter = data.expenses[listName].length;
+          data.expenses[listName] = data.expenses[listName].filter(expense => !expense.__deleted__);
+          const expensesAfterFilter = data.expenses[listName].length;
+          totalRemoved += (expensesBeforeFilter - expensesAfterFilter);
         }
       });
+      if (totalRemoved > 0) {
+        console.log(`Removidas ${totalRemoved} despesas marcadas como deletadas`);
+      }
     }
     
-    // Processar funcionários marcados para exclusão
+    // Processar e remover completamente os funcionários marcados para exclusão
     if (data.employees) {
+      let totalRemoved = 0;
       Object.keys(data.employees).forEach(weekKey => {
         if (Array.isArray(data.employees[weekKey])) {
-          data.employees[weekKey] = data.employees[weekKey].filter(
-            employee => !employee[DELETED_FLAG]
-          );
+          const employeesBeforeFilter = data.employees[weekKey].length;
+          data.employees[weekKey] = data.employees[weekKey].filter(employee => !employee.__deleted__);
+          const employeesAfterFilter = data.employees[weekKey].length;
+          totalRemoved += (employeesBeforeFilter - employeesAfterFilter);
         }
       });
+      if (totalRemoved > 0) {
+        console.log(`Removidos ${totalRemoved} funcionários marcados como deletados`);
+      }
     }
   }
 };
