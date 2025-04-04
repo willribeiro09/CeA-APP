@@ -249,6 +249,15 @@ export const syncService = {
       storage.save(data);
       return true;
     }
+    
+    // Processar itens marcados para exclusão antes da sincronização
+    try {
+      console.log('Processando itens marcados para exclusão antes da sincronização');
+      this.processDeletedItems(data);
+    } catch (error) {
+      console.error('Erro ao processar itens excluídos:', error);
+      // Continuar com a sincronização mesmo se houver erro no processamento de exclusões
+    }
 
     try {
       // Verificar e validar os dados antes de sincronizar
@@ -262,9 +271,6 @@ export const syncService = {
         console.log(`Sincronizando ${data.projects.length} projetos:`, 
           data.projects.map(p => `${p.id}: ${p.client}`).join(', '));
       }
-      
-      // Processar e remover completamente os itens marcados como deletados
-      this.processDeletedItems(data);
       
       // Garantir que os valores do Will estejam definidos
       const willValues = ensureWillValues(data);
@@ -381,58 +387,100 @@ export const syncService = {
   processDeletedItems(data: StorageItems) {
     console.log('Processando itens marcados para exclusão');
     
-    // Processar e remover completamente os projetos marcados para exclusão
-    if (Array.isArray(data.projects)) {
-      console.log(`Verificando ${data.projects.length} projetos para exclusão`);
-      const projectsBeforeFilter = data.projects.length;
-      data.projects = data.projects.filter(project => !project.__deleted__);
-      const projectsAfterFilter = data.projects.length;
-      if (projectsBeforeFilter !== projectsAfterFilter) {
-        console.log(`Removidos ${projectsBeforeFilter - projectsAfterFilter} projetos marcados como deletados`);
-      }
-    }
-    
-    // Processar e remover completamente os itens de estoque marcados para exclusão
-    if (Array.isArray(data.stock)) {
-      console.log(`Verificando ${data.stock.length} itens de estoque para exclusão`);
-      const stockBeforeFilter = data.stock.length;
-      data.stock = data.stock.filter(item => !item.__deleted__);
-      const stockAfterFilter = data.stock.length;
-      if (stockBeforeFilter !== stockAfterFilter) {
-        console.log(`Removidos ${stockBeforeFilter - stockAfterFilter} itens de estoque marcados como deletados`);
-      }
-    }
-    
-    // Processar e remover completamente as despesas marcadas para exclusão
-    if (data.expenses) {
-      let totalRemoved = 0;
-      Object.keys(data.expenses).forEach(listName => {
-        if (Array.isArray(data.expenses[listName])) {
-          const expensesBeforeFilter = data.expenses[listName].length;
-          data.expenses[listName] = data.expenses[listName].filter(expense => !expense.__deleted__);
-          const expensesAfterFilter = data.expenses[listName].length;
-          totalRemoved += (expensesBeforeFilter - expensesAfterFilter);
+    try {
+      // Processar e remover completamente os projetos marcados para exclusão
+      if (Array.isArray(data.projects)) {
+        console.log(`Verificando ${data.projects.length} projetos para exclusão`);
+        const projectsWithDeleted = data.projects.filter(project => project.__deleted__ === true);
+        if (projectsWithDeleted.length > 0) {
+          console.log(`Encontrados ${projectsWithDeleted.length} projetos marcados para exclusão:`, 
+            projectsWithDeleted.map(p => p.id));
         }
-      });
-      if (totalRemoved > 0) {
-        console.log(`Removidas ${totalRemoved} despesas marcadas como deletadas`);
+        
+        // Filtrar apenas os projetos não marcados como excluídos para manter na lista normal
+        data.projects = data.projects.filter(project => project.__deleted__ !== true);
       }
-    }
-    
-    // Processar e remover completamente os funcionários marcados para exclusão
-    if (data.employees) {
-      let totalRemoved = 0;
-      Object.keys(data.employees).forEach(weekKey => {
-        if (Array.isArray(data.employees[weekKey])) {
-          const employeesBeforeFilter = data.employees[weekKey].length;
-          data.employees[weekKey] = data.employees[weekKey].filter(employee => !employee.__deleted__);
-          const employeesAfterFilter = data.employees[weekKey].length;
-          totalRemoved += (employeesBeforeFilter - employeesAfterFilter);
+      
+      // Processar e remover completamente os itens de estoque marcados para exclusão
+      if (Array.isArray(data.stock)) {
+        console.log(`Verificando ${data.stock.length} itens de estoque para exclusão`);
+        const stockWithDeleted = data.stock.filter(item => item.__deleted__ === true);
+        if (stockWithDeleted.length > 0) {
+          console.log(`Encontrados ${stockWithDeleted.length} itens de estoque marcados para exclusão:`, 
+            stockWithDeleted.map(s => s.id));
         }
-      });
-      if (totalRemoved > 0) {
-        console.log(`Removidos ${totalRemoved} funcionários marcados como deletados`);
+        
+        // Filtrar apenas os itens não marcados como excluídos para manter na lista normal
+        data.stock = data.stock.filter(item => item.__deleted__ !== true);
       }
+      
+      // Processar e remover completamente as despesas marcadas para exclusão
+      if (data.expenses) {
+        let totalExpensesWithDeleted = 0;
+        
+        // Verificar e criar a lista de itens excluídos se não existir
+        if (!data.expenses['__deleted_items__']) {
+          data.expenses['__deleted_items__'] = [];
+        }
+        
+        // Processar cada lista de despesas
+        Object.keys(data.expenses).forEach(listName => {
+          // Pular a lista especial de itens excluídos durante a filtragem
+          if (listName === '__deleted_items__') return;
+          
+          if (Array.isArray(data.expenses[listName])) {
+            const expensesWithDeleted = data.expenses[listName].filter(expense => expense.__deleted__ === true);
+            totalExpensesWithDeleted += expensesWithDeleted.length;
+            
+            if (expensesWithDeleted.length > 0) {
+              console.log(`Encontrados ${expensesWithDeleted.length} despesas em "${listName}" marcadas para exclusão:`, 
+                expensesWithDeleted.map(e => e.id));
+            }
+            
+            // Filtrar apenas as despesas não marcadas como excluídas para manter na lista normal
+            data.expenses[listName] = data.expenses[listName].filter(expense => expense.__deleted__ !== true);
+          }
+        });
+        
+        if (totalExpensesWithDeleted > 0) {
+          console.log(`Total de ${totalExpensesWithDeleted} despesas marcadas para exclusão processadas`);
+        }
+      }
+      
+      // Processar e remover completamente os funcionários marcados para exclusão
+      if (data.employees) {
+        let totalEmployeesWithDeleted = 0;
+        
+        // Verificar e criar a lista de itens excluídos se não existir
+        if (!data.employees['__deleted_items__']) {
+          data.employees['__deleted_items__'] = [];
+        }
+        
+        // Processar cada semana de funcionários
+        Object.keys(data.employees).forEach(weekKey => {
+          // Pular a lista especial de itens excluídos durante a filtragem
+          if (weekKey === '__deleted_items__') return;
+          
+          if (Array.isArray(data.employees[weekKey])) {
+            const employeesWithDeleted = data.employees[weekKey].filter(employee => employee.__deleted__ === true);
+            totalEmployeesWithDeleted += employeesWithDeleted.length;
+            
+            if (employeesWithDeleted.length > 0) {
+              console.log(`Encontrados ${employeesWithDeleted.length} funcionários na semana "${weekKey}" marcados para exclusão:`, 
+                employeesWithDeleted.map(e => e.id));
+            }
+            
+            // Filtrar apenas os funcionários não marcados como excluídos para manter na lista normal
+            data.employees[weekKey] = data.employees[weekKey].filter(employee => employee.__deleted__ !== true);
+          }
+        });
+        
+        if (totalEmployeesWithDeleted > 0) {
+          console.log(`Total de ${totalEmployeesWithDeleted} funcionários marcados para exclusão processados`);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao processar itens excluídos:', error);
     }
   }
 };

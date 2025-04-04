@@ -110,15 +110,34 @@ export function useProjects() {
   // Remove um projeto
   const deleteProject = useCallback((id: string): void => {
     setProjects(prevProjects => {
-      // Cria um novo array para evitar mutação do estado anterior
-      const updatedProjects = prevProjects.filter(project => project.id !== id);
+      // Encontra o projeto a ser excluído
+      const projectToDelete = prevProjects.find(project => project.id === id);
       
-      // Salva as alterações no armazenamento local
+      if (!projectToDelete) {
+        console.error(`Projeto com ID ${id} não encontrado`);
+        return prevProjects;
+      }
+      
+      console.log(`Projeto encontrado para exclusão:`, projectToDelete);
+      
+      // Marcar o projeto como excluído
+      const markedProject = { ...projectToDelete, __deleted__: true };
+      console.log(`Projeto marcado como excluído:`, markedProject);
+      
+      // Remover da lista visível
+      const updatedProjects = prevProjects.filter(project => project.id !== id);
+      console.log(`Lista de projetos atualizada removendo o item da UI`);
+      
+      // Salva as alterações no armazenamento local incluindo o item marcado para exclusão
       const data = getData();
+      
+      // Adicionar o projeto marcado para exclusão aos dados para sincronização
       saveData({
         ...data,
-        projects: updatedProjects
+        projects: [...updatedProjects, markedProject]
       });
+      
+      console.log(`Projeto ID ${id} marcado para exclusão e salvo`);
       
       return updatedProjects;
     });

@@ -29,6 +29,9 @@ export function useUI() {
   // Estado para armazenar mensagens de feedback
   const [feedback, setFeedback] = useState<{ type: FeedbackType; message: string } | null>(null);
   
+  // Estado para armazenar o item em edição
+  const [itemToEdit, setItemToEdit] = useState<any>(null);
+  
   // Limpa o feedback após 3 segundos
   useEffect(() => {
     if (feedback) {
@@ -61,13 +64,17 @@ export function useUI() {
   }, []);
   
   // Abre o diálogo de edição
-  const openEditDialog = useCallback(() => {
+  const openEditDialog = useCallback((item?: any) => {
+    if (item) {
+      setItemToEdit(item);
+    }
     setIsEditDialogOpen(true);
   }, []);
   
   // Fecha o diálogo de edição
   const closeEditDialog = useCallback(() => {
     setIsEditDialogOpen(false);
+    setItemToEdit(null);
   }, []);
   
   // Abre o diálogo de taxa
@@ -116,6 +123,7 @@ export function useUI() {
     isSaving,
     setIsSaving,
     feedback,
-    showFeedback
+    showFeedback,
+    itemToEdit
   };
 } 

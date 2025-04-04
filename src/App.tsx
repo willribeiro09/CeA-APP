@@ -331,128 +331,185 @@ export default function App() {
   const handleDeleteItem = (id: string, category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
     console.log(`Deletando item ${id} da categoria ${category}`);
     
-    if (category === 'Expenses') {
-      setExpenses(prevExpenses => {
-        const newExpenses = { ...prevExpenses };
+    try {
+      // Função auxiliar para lidar com erro durante a remoção de um item
+      const handleDeletionError = (error: any) => {
+        console.error(`Erro ao excluir item ${id}:`, error);
+        alert(`Erro ao excluir item: ${error.message || 'Erro desconhecido'}. O item será removido localmente.`);
+      };
+      
+      if (category === 'Expenses') {
+        const newExpenses = { ...expenses };
         let itemDeleted = false;
         
-        // Marcar a despesa como deletada em todas as listas e remover da UI
+        // Para cada lista, procurar a despesa a deletar
         Object.keys(newExpenses).forEach(listName => {
-          const expenseToDelete = newExpenses[listName as ListName].find(expense => expense.id === id);
-          if (expenseToDelete) {
-            // Marcar como deletado
-            expenseToDelete.__deleted__ = true;
+          const index = newExpenses[listName as ListName].findIndex(expense => expense.id === id);
+          if (index !== -1) {
+            console.log(`Encontrado item para exclusão na lista ${listName} na posição ${index}`);
+            
+            // Marcar como deletado e remover da lista visível
+            const expenseToDelete = {...newExpenses[listName as ListName][index], __deleted__: true};
+            console.log(`Item marcado para exclusão:`, expenseToDelete);
+            
+            newExpenses[listName as ListName].splice(index, 1);
             itemDeleted = true;
             
-            // Remover da UI
-            newExpenses[listName as ListName] = newExpenses[listName as ListName].filter(
-              expense => expense.id !== id
-            );
+            // Adicione a despesa marcada como deletada para sincronização em outra lista temporária
+            // Criamos uma lista especial para itens deletados
+            const tempListName = '__deleted_items__';
+            if (!newExpenses[tempListName as ListName]) {
+              newExpenses[tempListName as ListName] = [];
+            }
+            newExpenses[tempListName as ListName].push(expenseToDelete);
+            console.log(`Item adicionado à lista de itens deletados para sincronização`);
           }
         });
         
         if (itemDeleted) {
-          // Salvar as alterações, incluindo o item marcado como deletado
-          saveChanges(createStorageData({
-            expenses: newExpenses,
-            projects,
-            stock: stockItems,
-            employees
-          }));
+          // Atualizar o estado e salvar
+          console.log(`Atualizando estado das despesas após exclusão`);
+          setExpenses(newExpenses);
+          
+          try {
+            saveChanges(createStorageData({
+              expenses: newExpenses,
+              projects,
+              stock: stockItems,
+              employees
+            }));
+            console.log('Dados de exclusão salvos com sucesso');
+          } catch (error) {
+            handleDeletionError(error);
+          }
+        } else {
+          console.log(`Despesa com ID ${id} não encontrada em nenhuma lista`);
         }
+      } else if (category === 'Projects') {
+        // Procurar o projeto na lista
+        const index = projects.findIndex(project => project.id === id);
+        console.log(`Procurando projeto com ID ${id}, índice encontrado: ${index}`);
         
-        return newExpenses;
-      });
-    } else if (category === 'Projects') {
-      setProjects(prevProjects => {
-        // Encontrar o projeto
-        const projectToDelete = prevProjects.find(project => project.id === id);
-        
-        if (projectToDelete) {
+        if (index !== -1) {
+          // Criar cópia dos projetos
+          const newProjects = [...projects];
+          
           // Marcar o projeto como deletado
-          projectToDelete.__deleted__ = true;
+          const projectToDelete = {...newProjects[index], __deleted__: true};
+          console.log(`Projeto marcado para exclusão:`, projectToDelete);
           
-          // Criar cópia dos projetos, mantendo o deletado mas removendo da UI
-          const newProjects = prevProjects.filter(project => project.id !== id);
+          // Remover da UI
+          newProjects.splice(index, 1);
+          console.log(`Projeto removido da lista visual`);
           
-          // Adicionar o projeto marcado como deletado para sincronização
-          const projectsForSync = [...newProjects, projectToDelete];
+          // Atualizar o estado e salvar
+          console.log(`Atualizando estado dos projetos após exclusão`);
+          setProjects(newProjects);
           
-          // Salvar as alterações, incluindo o item marcado como deletado
-          saveChanges(createStorageData({
-            expenses,
-            projects: projectsForSync,
-            stock: stockItems,
-            employees
-          }));
-          
-          return newProjects;
+          try {
+            // Salvar incluindo o projeto marcado como deletado para sincronização
+            saveChanges(createStorageData({
+              expenses,
+              projects: [...newProjects, projectToDelete],
+              stock: stockItems,
+              employees
+            }));
+            console.log('Dados de exclusão de projeto salvos com sucesso');
+          } catch (error) {
+            handleDeletionError(error);
+          }
+        } else {
+          console.log(`Projeto com ID ${id} não encontrado`);
         }
+      } else if (category === 'Stock') {
+        // Procurar o item no estoque
+        const index = stockItems.findIndex(item => item.id === id);
+        console.log(`Procurando item de estoque com ID ${id}, índice encontrado: ${index}`);
         
-        return prevProjects;
-      });
-    } else if (category === 'Stock') {
-      setStockItems(prevStockItems => {
-        // Encontrar o item
-        const itemToDelete = prevStockItems.find(item => item.id === id);
-        
-        if (itemToDelete) {
+        if (index !== -1) {
+          // Criar cópia dos itens de estoque
+          const newStockItems = [...stockItems];
+          
           // Marcar o item como deletado
-          itemToDelete.__deleted__ = true;
+          const itemToDelete = {...newStockItems[index], __deleted__: true};
+          console.log(`Item de estoque marcado para exclusão:`, itemToDelete);
           
-          // Criar cópia dos itens, mantendo o deletado mas removendo da UI
-          const newStockItems = prevStockItems.filter(item => item.id !== id);
+          // Remover da UI
+          newStockItems.splice(index, 1);
+          console.log(`Item de estoque removido da lista visual`);
           
-          // Adicionar o item marcado como deletado para sincronização
-          const stockItemsForSync = [...newStockItems, itemToDelete];
+          // Atualizar o estado e salvar
+          console.log(`Atualizando estado dos itens de estoque após exclusão`);
+          setStockItems(newStockItems);
           
-          // Salvar as alterações, incluindo o item marcado como deletado
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: stockItemsForSync,
-            employees
-          }));
-          
-          return newStockItems;
+          try {
+            // Salvar incluindo o item marcado como deletado para sincronização
+            saveChanges(createStorageData({
+              expenses,
+              projects,
+              stock: [...newStockItems, itemToDelete],
+              employees
+            }));
+            console.log('Dados de exclusão de item de estoque salvos com sucesso');
+          } catch (error) {
+            handleDeletionError(error);
+          }
+        } else {
+          console.log(`Item de estoque com ID ${id} não encontrado`);
         }
-        
-        return prevStockItems;
-      });
-    } else if (category === 'Employees') {
-      setEmployees(prevEmployees => {
-        const newEmployees = { ...prevEmployees };
+      } else if (category === 'Employees') {
+        const newEmployees = { ...employees };
         let itemDeleted = false;
         
-        // Marcar o funcionário como deletado em todas as semanas e remover da UI
+        // Para cada semana, procurar o funcionário a deletar
         Object.keys(newEmployees).forEach(weekStartDate => {
-          const employeeToDelete = newEmployees[weekStartDate].find(employee => employee.id === id);
-          if (employeeToDelete) {
-            // Marcar como deletado
-            employeeToDelete.__deleted__ = true;
+          const index = newEmployees[weekStartDate].findIndex(employee => employee.id === id);
+          if (index !== -1) {
+            console.log(`Encontrado funcionário para exclusão na semana ${weekStartDate} na posição ${index}`);
+            
+            // Marcar como deletado e remover da lista visível
+            const employeeToDelete = {...newEmployees[weekStartDate][index], __deleted__: true};
+            console.log(`Funcionário marcado para exclusão:`, employeeToDelete);
+            
+            newEmployees[weekStartDate].splice(index, 1);
             itemDeleted = true;
             
-            // Remover da UI
-            newEmployees[weekStartDate] = newEmployees[weekStartDate].filter(
-              employee => employee.id !== id
-            );
+            // Adicione o funcionário marcado como deletado para sincronização
+            // Usar uma chave de tipo string para armazenar itens deletados
+            const deletedItemsKey = '__deleted_items__';
+            if (!newEmployees[deletedItemsKey]) {
+              newEmployees[deletedItemsKey] = [];
+            }
+            newEmployees[deletedItemsKey].push(employeeToDelete);
+            console.log(`Funcionário adicionado à lista de itens deletados para sincronização`);
           }
         });
         
         if (itemDeleted) {
-          // Salvar as alterações, incluindo o item marcado como deletado
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: stockItems,
-            employees: newEmployees,
-            willBaseRate,
-            willBonus
-          }));
+          // Atualizar o estado e salvar
+          console.log(`Atualizando estado dos funcionários após exclusão`);
+          setEmployees(newEmployees);
+          
+          try {
+            saveChanges(createStorageData({
+              expenses,
+              projects,
+              stock: stockItems,
+              employees: newEmployees,
+              willBaseRate,
+              willBonus
+            }));
+            console.log('Dados de exclusão de funcionário salvos com sucesso');
+          } catch (error) {
+            handleDeletionError(error);
+          }
+        } else {
+          console.log(`Funcionário com ID ${id} não encontrado em nenhuma semana`);
         }
-        
-        return newEmployees;
-      });
+      }
+    } catch (error) {
+      console.error(`Erro ao deletar item ${id} da categoria ${category}:`, error);
+      alert(`Ocorreu um erro ao excluir o item: ${(error as Error).message || 'Erro desconhecido'}`);
     }
   };
 
@@ -667,50 +724,26 @@ export default function App() {
         console.log("Adicionando projeto:", newItem);
         
         // Garantir que o projeto esteja formatado corretamente
-        const project = newItem as Project;
-        
-        // Garantir ID único
-        if (!project.id) {
-          project.id = uuidv4();
-          console.log("Novo ID gerado para o projeto:", project.id);
-        }
-        
-        // Garantir que campos obrigatórios existam
-        if (!project.client) project.client = "Cliente";
-        if (!project.name) project.name = project.client;
-        if (!project.startDate) project.startDate = new Date().toISOString();
-        if (!project.status) project.status = "in_progress";
-        if (!project.location) project.location = "";
-        if (project.value === undefined) project.value = 0;
+        const project: Project = {
+          id: newItem.id || uuidv4(),
+          name: newItem.name || 'Novo Projeto',
+          client: newItem.client || 'Cliente',
+          description: newItem.description || '',
+          startDate: newItem.startDate || new Date().toISOString(),
+          status: newItem.status || 'in_progress',
+          location: newItem.location || '',
+          value: newItem.value !== undefined ? newItem.value : 0,
+          invoiceOk: newItem.invoiceOk || false
+        };
         
         console.log("Projeto formatado para adicionar:", project);
-        console.log("Lista atual de projetos:", projects);
 
         // Atualizar o estado
         setProjects(prevProjects => {
-          console.log("Estado atual de projects:", prevProjects);
+          const newProjects = [...prevProjects, project];
+          console.log("Nova lista de projetos:", newProjects);
           
-          // Clone profundo para evitar problemas de referência
-          const existingProjects = JSON.parse(JSON.stringify(prevProjects));
-          
-          // Verificar se o projeto já existe
-          const existingIndex = existingProjects.findIndex((p: Project) => p.id === project.id);
-          
-          let newProjects;
-          if (existingIndex >= 0) {
-            // Atualizar projeto existente
-            newProjects = [...existingProjects];
-            newProjects[existingIndex] = project;
-            console.log("Projeto atualizado na posição:", existingIndex);
-          } else {
-            // Adicionar novo projeto
-            newProjects = [...existingProjects, project];
-            console.log("Novo projeto adicionado à lista");
-          }
-          
-          console.log("Lista de projetos atualizada:", newProjects);
-          
-          // Salvar as alterações
+          // Salvar as alterações - importante para persistência
           saveChanges(createStorageData({
             expenses,
             projects: newProjects,
