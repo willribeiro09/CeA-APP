@@ -335,10 +335,22 @@ export default function App() {
       setExpenses(prevExpenses => {
         const newExpenses = { ...prevExpenses };
         
-        // Procurar e remover a despesa em todas as listas
+        // Marcar a despesa como deletada em todas as listas
+        Object.keys(newExpenses).forEach(listName => {
+          const index = newExpenses[listName as ListName].findIndex(expense => expense.id === id);
+          if (index !== -1) {
+            // Marcar como deletado em vez de remover
+            newExpenses[listName as ListName][index] = {
+              ...newExpenses[listName as ListName][index],
+              __deleted__: true
+            };
+          }
+        });
+        
+        // Remover da UI
         Object.keys(newExpenses).forEach(listName => {
           newExpenses[listName as ListName] = newExpenses[listName as ListName].filter(
-            expense => expense.id !== id
+            expense => !expense.__deleted__
           );
         });
         
@@ -354,40 +366,86 @@ export default function App() {
       });
     } else if (category === 'Projects') {
       setProjects(prevProjects => {
-        const newProjects = prevProjects.filter(project => project.id !== id);
+        // Encontrar o projeto
+        const index = prevProjects.findIndex(project => project.id === id);
         
-        // Salvar as alterações
-        saveChanges(createStorageData({
-          expenses,
-          projects: newProjects,
-          stock: stockItems,
-          employees
-        }));
+        if (index !== -1) {
+          // Criar uma cópia do array de projetos
+          const newProjects = [...prevProjects];
+          
+          // Marcar o projeto como deletado
+          newProjects[index] = {
+            ...newProjects[index],
+            __deleted__: true
+          };
+          
+          // Filtrar para a UI (remover da visualização)
+          const filteredProjects = newProjects.filter(project => !project.__deleted__);
+          
+          // Salvar as alterações (incluindo os marcados como deletados)
+          saveChanges(createStorageData({
+            expenses,
+            projects: newProjects,
+            stock: stockItems,
+            employees
+          }));
+          
+          return filteredProjects;
+        }
         
-        return newProjects;
+        return prevProjects;
       });
     } else if (category === 'Stock') {
       setStockItems(prevStockItems => {
-        const newStockItems = prevStockItems.filter(item => item.id !== id);
+        // Encontrar o item
+        const index = prevStockItems.findIndex(item => item.id === id);
         
-        // Salvar as alterações
-        saveChanges(createStorageData({
-          expenses,
-          projects,
-          stock: newStockItems,
-          employees
-        }));
+        if (index !== -1) {
+          // Criar uma cópia do array de itens
+          const newStockItems = [...prevStockItems];
+          
+          // Marcar o item como deletado
+          newStockItems[index] = {
+            ...newStockItems[index],
+            __deleted__: true
+          };
+          
+          // Filtrar para a UI (remover da visualização)
+          const filteredStockItems = newStockItems.filter(item => !item.__deleted__);
+          
+          // Salvar as alterações (incluindo os marcados como deletados)
+          saveChanges(createStorageData({
+            expenses,
+            projects,
+            stock: newStockItems,
+            employees
+          }));
+          
+          return filteredStockItems;
+        }
         
-        return newStockItems;
+        return prevStockItems;
       });
     } else if (category === 'Employees') {
       setEmployees(prevEmployees => {
         const newEmployees = { ...prevEmployees };
         
-        // Procurar e remover o funcionário em todas as semanas
+        // Marcar o funcionário como deletado em todas as semanas
+        Object.keys(newEmployees).forEach(weekStartDate => {
+          const index = newEmployees[weekStartDate].findIndex(employee => employee.id === id);
+          if (index !== -1) {
+            // Marcar como deletado em vez de remover
+            newEmployees[weekStartDate][index] = {
+              ...newEmployees[weekStartDate][index],
+              __deleted__: true
+            };
+          }
+        });
+        
+        // Remover da UI
         Object.keys(newEmployees).forEach(weekStartDate => {
           newEmployees[weekStartDate] = newEmployees[weekStartDate].filter(
-            employee => employee.id !== id
+            employee => !employee.__deleted__
           );
         });
         

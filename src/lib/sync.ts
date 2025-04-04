@@ -12,6 +12,9 @@ console.log('ID da sessão:', SESSION_ID);
 const SHARED_UUID = "00000000-0000-0000-0000-000000000000";
 console.log('UUID compartilhado para sincronização:', SHARED_UUID);
 
+// Flag para identificar itens deletados no sistema
+const DELETED_FLAG = '__deleted__';
+
 // Intervalo de sincronização em milissegundos (5 segundos)
 const SYNC_INTERVAL = 5000;
 
@@ -263,6 +266,10 @@ export const syncService = {
           data.projects.map(p => `${p.id}: ${p.client}`).join(', '));
       }
       
+      // Marcar itens deletados (itens com o flag __deleted__)
+      // Processamos itens deletados antes da sincronização
+      this.processDeletedItems(data);
+      
       // Garantir que os valores do Will estejam definidos
       const willValues = ensureWillValues(data);
       
@@ -372,6 +379,41 @@ export const syncService = {
   stopAutoSync() {
     // Implementação vazia para manter compatibilidade
     console.log('Método stopAutoSync chamado, mas não está implementado');
+  },
+
+  // Função para processar itens marcados para exclusão
+  processDeletedItems(data: StorageItems) {
+    // Processar projetos marcados para exclusão
+    if (Array.isArray(data.projects)) {
+      data.projects = data.projects.filter(project => !project[DELETED_FLAG]);
+    }
+    
+    // Processar itens de estoque marcados para exclusão
+    if (Array.isArray(data.stock)) {
+      data.stock = data.stock.filter(item => !item[DELETED_FLAG]);
+    }
+    
+    // Processar despesas marcadas para exclusão
+    if (data.expenses) {
+      Object.keys(data.expenses).forEach(listName => {
+        if (Array.isArray(data.expenses[listName])) {
+          data.expenses[listName] = data.expenses[listName].filter(
+            expense => !expense[DELETED_FLAG]
+          );
+        }
+      });
+    }
+    
+    // Processar funcionários marcados para exclusão
+    if (data.employees) {
+      Object.keys(data.employees).forEach(weekKey => {
+        if (Array.isArray(data.employees[weekKey])) {
+          data.employees[weekKey] = data.employees[weekKey].filter(
+            employee => !employee[DELETED_FLAG]
+          );
+        }
+      });
+    }
   }
 };
 

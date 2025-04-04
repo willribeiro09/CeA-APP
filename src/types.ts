@@ -2,6 +2,7 @@ export interface BaseItem {
   id: string;
   name: string;
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
+  __deleted__?: boolean;
 }
 
 export interface Expense {
@@ -14,6 +15,7 @@ export interface Expense {
   is_paid?: boolean;
   paid?: boolean;
   receipts_urls?: string[];
+  __deleted__?: boolean;
 }
 
 export interface Project {
@@ -29,6 +31,7 @@ export interface Project {
   location?: string;
   value?: number;
   invoiceOk?: boolean;
+  __deleted__?: boolean;
 }
 
 export interface StockItem {
@@ -38,6 +41,7 @@ export interface StockItem {
   unit: string;
   minimumQuantity?: number;
   notes?: string;
+  __deleted__?: boolean;
 }
 
 export interface Employee {
@@ -49,6 +53,7 @@ export interface Employee {
   daysWorked: number;
   workedDates?: string[];
   category: 'Employees';
+  __deleted__?: boolean;
 }
 
 export type Item = Expense | Project | StockItem | Employee;
