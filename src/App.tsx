@@ -2051,7 +2051,11 @@ export default function App() {
         <AddButton 
           onClick={() => setIsAddDialogOpen(true)} 
           onScanReceipt={() => {
-            if (activeCategory === 'Expenses' && selectedList === 'Receipts') {
+            if (activeCategory === 'Expenses') {
+              // Se não estiver na lista de recibos, alternar para ela
+              if (selectedList !== 'Receipts') {
+                setSelectedList('Receipts');
+              }
               // Ativar o modo de escaneamento
               setScanReceiptMode(true);
               // Abrir o modal para adicionar recibo
