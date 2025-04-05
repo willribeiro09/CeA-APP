@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { StorageItems, Expense, Project, StockItem, Employee } from '../types';
 import { storage } from './storage';
-import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { onRealtimeUpdate } from './supabase';
 
 // Identificador único para esta sessão do navegador
 const SESSION_ID = Math.random().toString(36).substring(2, 15);
@@ -19,7 +19,7 @@ const SYNC_INTERVAL = 5000;
 let isSyncInProgress = false;
 let isAppReady = false;
 let lastKnownVersion = 0;
-let channelSubscribed = false;
+let isPollingActive = false;
 
 // Função para marcar o app como pronto para interação
 const setAppReady = () => {
@@ -48,7 +48,7 @@ const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number 
 };
 
 export const syncService = {
-  channel: null as RealtimeChannel | null,
+  unsubscribe: null as (() => void) | null,
   isInitialized: false,
   syncIntervalId: null as NodeJS.Timeout | null,
 
@@ -79,114 +79,78 @@ export const syncService = {
     // Forçar sincronização imediata ao inicializar
     this.forceSyncNow();
 
-    // Configurar canal de realtime para receber atualizações
-    this.setupRealtimeChannel();
+    // Configurar polling para receber atualizações
+    this.setupPolling();
   },
 
-  setupRealtimeChannel() {
+  setupPolling() {
     // Verificar se o Supabase está disponível
     if (!supabase) {
-      console.error('Não é possível configurar canal de realtime: Supabase não configurado');
+      console.error('Não é possível configurar polling: Supabase não configurado');
       return;
     }
 
     // Limpar inscrição anterior se existir
-    if (this.channel) {
-      this.channel.unsubscribe();
-      channelSubscribed = false;
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+      isPollingActive = false;
     }
 
-    // Criar nova inscrição no canal
+    // Criar nova inscrição via polling
     try {
-      console.log('Configurando canal de realtime para sync_data...');
+      console.log('Configurando polling para sync_data...');
       
-      // IMPORTANTE: O nome do canal deve seguir o formato específico para inscrição em tabelas
-      // Formato: '{database}:{schema}:{table}[:column=filter]'
-      this.channel = supabase
-        .channel('public:sync_data')
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public',
-            table: 'sync_data',
-            filter: `id=eq.${SHARED_UUID}` // Filtrar apenas o registro que nos interessa
-          }, 
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            console.log('Mudança recebida via realtime:', payload);
-            if (payload.new) {
-              const data = payload.new as any;
-              const newVersion = data.version;
-              
-              // Evitar processamento de versões antigas ou da mesma versão
-              if (newVersion && newVersion <= lastKnownVersion) {
-                console.log(`Ignorando atualização com versão ${newVersion} (já temos versão ${lastKnownVersion})`);
-                return;
-              }
-              
-              // Atualizar última versão conhecida
-              if (newVersion) {
-                lastKnownVersion = newVersion;
-              }
-              
-              console.log('Valores do Will recebidos do Supabase:', data.willbaserate, data.willbonus);
-              
-              // Garantir que os valores do Will estejam definidos
-              const willValues = ensureWillValues(data);
-              
-              const storageData: StorageItems = {
-                expenses: data.expenses || {},
-                projects: data.projects || [],
-                stock: data.stock || [],
-                employees: data.employees || {},
-                willBaseRate: willValues.willBaseRate,
-                willBonus: willValues.willBonus,
-                lastSync: new Date().getTime()
-              };
-              
-              console.log('Dados processados para armazenamento local:', storageData);
-              console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
-              
-              // Salvar no armazenamento local
-              storage.save(storageData);
-              
-              // Disparar evento para atualizar a UI
-              window.dispatchEvent(new CustomEvent('dataUpdated', { 
-                detail: storageData 
-              }));
-            }
+      this.unsubscribe = onRealtimeUpdate((data) => {
+        console.log('Mudança recebida via polling:', data);
+        if (data) {
+          const newVersion = data.version;
+          
+          // Evitar processamento de versões antigas ou da mesma versão
+          if (newVersion && newVersion <= lastKnownVersion) {
+            console.log(`Ignorando atualização com versão ${newVersion} (já temos versão ${lastKnownVersion})`);
+            return;
           }
-        )
-        .subscribe((status: string) => {
-          console.log('Status da inscrição do canal realtime:', status);
-          if (status === 'SUBSCRIBED') {
-            channelSubscribed = true;
-            console.log('Canal de realtime configurado com sucesso!');
-          } else if (status === 'CHANNEL_ERROR') {
-            channelSubscribed = false;
-            console.error('Erro ao configurar canal de realtime. Tentando reconectar em 5 segundos...');
-            setTimeout(() => this.setupRealtimeChannel(), 5000);
-          } else if (status === 'TIMED_OUT') {
-            channelSubscribed = false;
-            console.error('Tempo limite esgotado na conexão realtime. Tentando reconectar...');
-            setTimeout(() => this.setupRealtimeChannel(), 3000);
-          } else if (status === 'CLOSED') {
-            channelSubscribed = false;
-            console.log('Conexão realtime fechada. Reconectando...');
-            setTimeout(() => this.setupRealtimeChannel(), 1000);
+          
+          // Atualizar última versão conhecida
+          if (newVersion) {
+            lastKnownVersion = newVersion;
           }
-        });
-        
-      // Teste adicional para verificar se o canal está ativo
-      setTimeout(() => {
-        if (!channelSubscribed) {
-          console.warn('Canal ainda não está inscrito após timeout. Tentando novamente...');
-          this.setupRealtimeChannel();
+          
+          console.log('Valores do Will recebidos do Supabase:', data.willbaserate, data.willbonus);
+          
+          // Garantir que os valores do Will estejam definidos
+          const willValues = ensureWillValues(data);
+          
+          const storageData: StorageItems = {
+            expenses: data.expenses || {},
+            projects: data.projects || [],
+            stock: data.stock || [],
+            employees: data.employees || {},
+            willBaseRate: willValues.willBaseRate,
+            willBonus: willValues.willBonus,
+            lastSync: new Date().getTime()
+          };
+          
+          console.log('Dados processados para armazenamento local:', storageData);
+          console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
+          
+          // Salvar no armazenamento local
+          storage.save(storageData);
+          
+          // Disparar evento para atualizar a UI
+          window.dispatchEvent(new CustomEvent('dataUpdated', { 
+            detail: storageData 
+          }));
         }
-      }, 10000);
+      });
+      
+      isPollingActive = true;
+      console.log('Polling para sync_data configurado com sucesso!');
       
     } catch (error) {
-      console.error('Erro ao configurar canal de realtime:', error);
-      setTimeout(() => this.setupRealtimeChannel(), 5000);
+      console.error('Erro ao configurar polling:', error);
+      setTimeout(() => this.setupPolling(), 5000);
     }
   },
 
@@ -202,10 +166,10 @@ export const syncService = {
     window.addEventListener('dataUpdated', handleDataUpdate as EventListener);
     return () => {
       window.removeEventListener('dataUpdated', handleDataUpdate as EventListener);
-      if (this.channel) {
-        this.channel.unsubscribe();
-        channelSubscribed = false;
-        this.isInitialized = false;
+      if (this.unsubscribe) {
+        this.unsubscribe();
+        this.unsubscribe = null;
+        isPollingActive = false;
       }
       if (this.syncIntervalId) {
         clearInterval(this.syncIntervalId);
@@ -293,10 +257,10 @@ export const syncService = {
       // Testar primeiro o método RPC que resolve problemas de sincronização
       const syncResult = await this.syncWithRPC(data);
       
-      // Verificar se o canal de realtime está ativo, caso contrário, tentar reconectar
-      if (!channelSubscribed && this.isInitialized) {
-        console.log('Canal de realtime não está ativo. Reconectando...');
-        this.setupRealtimeChannel();
+      // Verificar se o polling está ativo, caso contrário, tentar reiniciar
+      if (!isPollingActive && this.isInitialized) {
+        console.log('Polling não está ativo. Reiniciando...');
+        this.setupPolling();
       }
       
       return syncResult;
