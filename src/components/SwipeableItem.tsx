@@ -36,8 +36,14 @@ export function SwipeableItem({
     currentX.current = e.touches[0].clientX;
     const diff = (startX.current - currentX.current);
     
-    // Limitar o swipe para a esquerda apenas (valores positivos)
-    swipeDistance.current = Math.max(0, diff);
+    // Permitir apenas swipe para a esquerda (valores positivos)
+    if (diff < 0) {
+      resetSwipe();
+      return;
+    }
+    
+    // Atualizar a distância do swipe
+    swipeDistance.current = diff;
     
     // Limitar a distância máxima de swipe
     const maxSwipe = 150;
@@ -48,13 +54,13 @@ export function SwipeableItem({
       itemRef.current.style.transform = `translateX(-${swipeDistance.current}px)`;
     }
     
-    // Atualizar o estado de swipe
-    setIsSwiped(swipeDistance.current > 50);
+    // Diminuir o limite para facilitar o swipe
+    setIsSwiped(swipeDistance.current > 40);
   };
   
   const handleTouchEnd = () => {
     // Snap para a posição aberta ou fechada
-    if (swipeDistance.current > 50) {
+    if (swipeDistance.current > 40) {
       // Abrir completamente
       if (itemRef.current) {
         itemRef.current.style.transform = 'translateX(-150px)';
@@ -91,7 +97,7 @@ export function SwipeableItem({
   }, [isSwiped]);
   
   return (
-    <div style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
+    <div style={{ overflow: 'hidden', borderRadius: '0.75rem', marginBottom: '0.5rem' }}>
       <div className="relative overflow-hidden" style={{ borderRadius: '0.75rem' }}>
         {/* Ações de swipe */}
         <div className="absolute right-0 top-0 bottom-0 flex h-full">

@@ -161,7 +161,10 @@ const checkAndCreateBucket = async (): Promise<boolean> => {
     
     if (getBucketsError) {
       console.error('Error listing buckets:', getBucketsError.message);
-      return false;
+      // Em caso de erro, assumimos que o armazenamento não está disponível
+      // mas continuamos a execução sem bloquear funcionalidades críticas
+      console.log('Storage may not be available, continuing without receipts storage');
+      return true;
     }
     
     // Se o bucket já existe, retornar sucesso
@@ -183,14 +186,19 @@ const checkAndCreateBucket = async (): Promise<boolean> => {
     
     if (createBucketError) {
       console.error('Error creating bucket:', createBucketError.message);
-      return false;
+      // Em caso de erro na criação, continuamos sem o armazenamento de recibos
+      // mas permitimos o uso de outras funcionalidades
+      console.log('Unable to create storage bucket, continuing without receipts storage');
+      return true;
     }
     
     console.log('Bucket created successfully');
     return true;
   } catch (error) {
     console.error('Error checking/creating bucket:', error);
-    return false;
+    // Em caso de exceção, continuamos sem o armazenamento
+    console.log('Exception in storage setup, continuing without receipts storage');
+    return true;
   }
 };
 

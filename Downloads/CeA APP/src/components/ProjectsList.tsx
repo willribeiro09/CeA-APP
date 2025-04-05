@@ -22,14 +22,15 @@ export function ProjectsList() {
   
   // Função para editar um projeto
   const handleEditProject = (project: Project) => {
-    // Implementar lógica de edição
-    console.log('Editar projeto:', project);
+    ui.openEditDialog(project);
   };
   
   // Função para excluir um projeto
   const handleDeleteProject = (id: string) => {
-    // Implementar lógica de exclusão
-    console.log('Excluir projeto:', id);
+    // Chamar a função de exclusão do contexto para projetos
+    if (confirm('Tem certeza que deseja excluir este projeto?')) {
+      projects.deleteProject(id);
+    }
   };
   
   // Função para alternar o status de faturamento
