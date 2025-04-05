@@ -1,6 +1,23 @@
 import { StorageItems } from '../types';
 
+// Chave para o armazenamento local
 const STORAGE_KEY = 'expenses-app-data';
+
+// Função para garantir que os valores do Will estejam definidos
+const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number } => {
+  const baseRate = typeof data.willBaseRate === 'number' ? 
+    data.willBaseRate : 
+    (typeof data.willbaserate === 'number' ? data.willbaserate : 200);
+    
+  const bonus = typeof data.willBonus === 'number' ? 
+    data.willBonus : 
+    (typeof data.willbonus === 'number' ? data.willbonus : 0);
+    
+  return {
+    willBaseRate: baseRate,
+    willBonus: bonus
+  };
+};
 
 // Função para sincronizar entre abas/janelas
 const setupStorageSync = () => {
@@ -25,49 +42,132 @@ const setupStorageSync = () => {
 // Inicializar sincronização entre abas
 setupStorageSync();
 
+// Funções para manipulação de armazenamento
 export const storage = {
-  save: (data: StorageItems): void => {
+  // Salvar dados no armazenamento local
+  save: (data: StorageItems): boolean => {
     try {
-      console.log('Salvando dados no armazenamento local:', data);
-      const serialized = JSON.stringify({
-        expenses: data.expenses || {},
-        projects: data.projects || [],
-        stock: data.stock || [],
-        employees: data.employees || {},
-        willBaseRate: data.willBaseRate || 200,
-        willBonus: data.willBonus || 0,
-        lastSync: new Date().getTime()
-      });
-      localStorage.setItem(STORAGE_KEY, serialized);
+      // Validar os dados antes de salvar
+      if (!data) {
+        console.error('Tentativa de salvar dados nulos');
+        return false;
+      }
+      
+      // Garantir que os arrays obrigatórios existam
+      if (!data.projects) data.projects = [];
+      if (!data.stock) data.stock = [];
+      if (!data.expenses) data.expenses = {};
+      if (!data.employees) data.employees = {};
+      
+      // Garantir que os valores do Will estejam definidos
+      const willValues = ensureWillValues(data);
+      
+      // Estrutura de dados a ser salva
+      const dataToSave: StorageItems = {
+        expenses: data.expenses,
+        projects: data.projects,
+        stock: data.stock,
+        employees: data.employees,
+        willBaseRate: willValues.willBaseRate,
+        willBonus: willValues.willBonus,
+        lastSync: data.lastSync || new Date().getTime()
+      };
+      
+      // Converter para string e salvar
+      const jsonData = JSON.stringify(dataToSave);
+      localStorage.setItem(STORAGE_KEY, jsonData);
+      
+      console.log('Dados salvos no armazenamento local:', data);
+      return true;
     } catch (error) {
-      console.error('Erro ao salvar no armazenamento local:', error);
+      console.error('Erro ao salvar dados no armazenamento local:', error);
+      return false;
     }
   },
   
+  // Carregar dados do armazenamento local
   load: (): StorageItems | null => {
     try {
-      console.log('Carregando dados do armazenamento local...');
-      const serialized = localStorage.getItem(STORAGE_KEY);
-      if (!serialized) {
+      const jsonData = localStorage.getItem(STORAGE_KEY);
+      
+      if (!jsonData) {
         console.log('Nenhum dado encontrado no armazenamento local');
         return null;
       }
       
-      const data = JSON.parse(serialized) as StorageItems;
-      console.log('Dados carregados do armazenamento local:', data);
+      const data = JSON.parse(jsonData) as StorageItems;
+      
+      // Garantir que os arrays obrigatórios existam
+      if (!data.projects) data.projects = [];
+      if (!data.stock) data.stock = [];
+      if (!data.expenses) data.expenses = {};
+      if (!data.employees) data.employees = {};
+      
+      // Garantir que os valores do Will estejam definidos
+      const willValues = ensureWillValues(data);
+      data.willBaseRate = willValues.willBaseRate;
+      data.willBonus = willValues.willBonus;
+      
       return data;
     } catch (error) {
-      console.error('Erro ao carregar do armazenamento local:', error);
+      console.error('Erro ao carregar dados do armazenamento local:', error);
       return null;
     }
   },
   
-  clear: (): void => {
+  // Limpar todos os dados do armazenamento local
+  clear: (): boolean => {
     try {
       localStorage.removeItem(STORAGE_KEY);
-      console.log('Armazenamento local limpo');
+      console.log('Dados do armazenamento local limpos');
+      return true;
     } catch (error) {
-      console.error('Erro ao limpar armazenamento local:', error);
+      console.error('Erro ao limpar dados do armazenamento local:', error);
+      return false;
+    }
+  },
+  
+  // Criar um backup dos dados
+  backup: (): string | null => {
+    try {
+      const jsonData = localStorage.getItem(STORAGE_KEY);
+      
+      if (!jsonData) {
+        console.log('Nenhum dado para fazer backup');
+        return null;
+      }
+      
+      // Adicionar timestamp ao backup
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupKey = `${STORAGE_KEY}-backup-${timestamp}`;
+      
+      localStorage.setItem(backupKey, jsonData);
+      console.log('Backup criado com sucesso:', backupKey);
+      
+      return backupKey;
+    } catch (error) {
+      console.error('Erro ao criar backup:', error);
+      return null;
+    }
+  },
+  
+  // Restaurar dados de um backup
+  restore: (backupKey: string): boolean => {
+    try {
+      const backupData = localStorage.getItem(backupKey);
+      
+      if (!backupData) {
+        console.error('Backup não encontrado:', backupKey);
+        return false;
+      }
+      
+      localStorage.setItem(STORAGE_KEY, backupData);
+      console.log('Dados restaurados do backup:', backupKey);
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao restaurar dados do backup:', error);
+      return false;
     }
   },
   

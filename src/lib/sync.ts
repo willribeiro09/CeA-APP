@@ -9,66 +9,28 @@ console.log('ID da sessão:', SESSION_ID);
 
 // ID FIXO compartilhado por todas as instalações do app
 // Usando um UUID fixo para garantir que todos os usuários vejam os mesmos dados
-const SHARED_UUID = "00000000-0000-0000-0000-000000000000";
+const SHARED_UUID = "ce764a91-58e0-4c3d-a821-b52b16ca3e7c";
 console.log('UUID compartilhado para sincronização:', SHARED_UUID);
 
 // Intervalo de sincronização em milissegundos (5 segundos)
 const SYNC_INTERVAL = 5000;
 
-// Canais de sincronização para cada tipo de dados
-type SyncChannels = {
-  expenses: RealtimeChannel | null;
-  employees: RealtimeChannel | null;
-  projects: RealtimeChannel | null;
-  stock: RealtimeChannel | null;
-  willSettings: RealtimeChannel | null;
+// Variável para controlar se a sincronização está em andamento
+let isSyncInProgress = false;
+let isAppReady = false;
+
+// Função para marcar o app como pronto para interação
+const setAppReady = () => {
+  if (!isAppReady) {
+    isAppReady = true;
+    window.dispatchEvent(new CustomEvent('appReady'));
+    console.log('App marcado como pronto para interação');
+  }
 };
 
-// Interface para as despesas adaptadas ao formato de banco de dados
-interface DBExpense {
-  id: string;
-  description: string;
-  amount: number;
-  date: string;
-  category: string;
-  project?: string;
-  photo_url?: string;
-  is_paid: boolean;
-}
-
-// Interface para os funcionários adaptados ao formato de banco de dados
-interface DBEmployee {
-  id: string;
-  name: string;
-  role?: string;
-  base_rate: number;
-  bonus: number;
-  expenses: any[];
-}
-
-// Interface para os projetos adaptados ao formato de banco de dados
-interface DBProject {
-  id: string;
-  name: string;
-  client?: string;
-  start_date?: string;
-  end_date?: string;
-  status?: string;
-  description?: string;
-}
-
-// Interface para os itens de estoque adaptados ao formato de banco de dados
-interface DBStockItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unit?: string;
-  project?: string;
-}
-
 // Função para garantir que os valores do Will estejam definidos
+// Lidar com o problema de case-sensitivity entre willBaseRate e willbaserate
 const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number } => {
-  // Mapeamento de camelCase para lowercase (correspondendo aos nomes no banco)
   const baseRate = typeof data.willBaseRate === 'number' ? 
     data.willBaseRate : 
     (typeof data.willbaserate === 'number' ? data.willbaserate : 200);
@@ -76,7 +38,7 @@ const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number 
   const bonus = typeof data.willBonus === 'number' ? 
     data.willBonus : 
     (typeof data.willbonus === 'number' ? data.willbonus : 0);
-  
+    
   return {
     willBaseRate: baseRate,
     willBonus: bonus
@@ -86,9 +48,6 @@ const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number 
 export const syncService = {
   channel: null as RealtimeChannel | null,
   isInitialized: false,
-  syncIntervalId: null as NodeJS.Timeout | null,
-  lastSyncTime: 0,
-  isSyncing: false,
 
   init() {
     if (!supabase || this.isInitialized) return;
@@ -96,14 +55,12 @@ export const syncService = {
     console.log('Inicializando serviço de sincronização com ID:', SESSION_ID);
     this.isInitialized = true;
 
+    // Forçar sincronização imediata ao inicializar
+    this.forceSyncNow();
+
     // Limpar inscrição anterior se existir
     if (this.channel) {
       this.channel.unsubscribe();
-    }
-    
-    // Limpar intervalo de sincronização anterior se existir
-    if (this.syncIntervalId) {
-      clearInterval(this.syncIntervalId);
     }
 
     // Criar nova inscrição
@@ -119,7 +76,6 @@ export const syncService = {
           console.log('Mudança recebida:', payload);
           if (payload.new) {
             const data = payload.new as any;
-            console.log('Dados recebidos do Supabase:', data);
             console.log('Valores do Will recebidos do Supabase:', data.willbaserate, data.willbonus);
             
             // Garantir que os valores do Will estejam definidos
@@ -132,7 +88,7 @@ export const syncService = {
               employees: data.employees || {},
               willBaseRate: willValues.willBaseRate,
               willBonus: willValues.willBonus,
-              lastSync: data.last_sync_timestamp || new Date().getTime()
+              lastSync: new Date().getTime()
             };
             
             console.log('Dados processados para armazenamento local:', storageData);
@@ -169,10 +125,6 @@ export const syncService = {
         this.channel.unsubscribe();
         this.isInitialized = false;
       }
-      if (this.syncIntervalId) {
-        clearInterval(this.syncIntervalId);
-        this.syncIntervalId = null;
-      }
     };
   },
 
@@ -180,59 +132,33 @@ export const syncService = {
     if (!supabase) return null;
     
     try {
-      // Usar a função SQL get_changes_since para obter dados do servidor
+      // Usar o UUID compartilhado para carregar dados
       const { data, error } = await supabase
-        .rpc('get_changes_since', {
-          p_id: SHARED_UUID,
-          p_last_sync_timestamp: 0 // Timestamp 0 garante que todos os dados sejam retornados
-        });
+        .from('sync_data')
+        .select('*')
+        .eq('id', SHARED_UUID)
+        .limit(1);
 
       if (error) {
-        console.error('Erro ao carregar dados com get_changes_since:', error);
-        
-        // Fallback para método tradicional
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('sync_data')
-          .select('*')
-          .eq('id', SHARED_UUID)
-          .limit(1);
-          
-        if (fallbackError) {
-          console.error('Erro no fallback ao carregar dados mais recentes:', fallbackError);
-          return null;
-        }
-        
-        if (fallbackData && fallbackData.length > 0) {
-          console.log('Dados recebidos pelo fallback:', fallbackData[0]);
-          const willValues = ensureWillValues(fallbackData[0]);
-          
-          return {
-            expenses: fallbackData[0].expenses || {},
-            projects: fallbackData[0].projects || [],
-            stock: fallbackData[0].stock || [],
-            employees: fallbackData[0].employees || {},
-            willBaseRate: willValues.willBaseRate,
-            willBonus: willValues.willBonus,
-            lastSync: fallbackData[0].last_sync_timestamp || new Date().getTime()
-          };
-        }
-        
+        console.error('Erro ao carregar dados mais recentes:', error);
         return null;
       }
 
-      if (data) {
-        console.log('Dados recebidos via get_changes_since:', data);
+      // Verificar se o array contém dados
+      if (data && data.length > 0) {
+        console.log('Dados recebidos do Supabase:', data[0]);
         
-        const willValues = ensureWillValues(data);
+        // Garantir que os valores do Will estejam definidos
+        const willValues = ensureWillValues(data[0]);
         
         return {
-          expenses: data.expenses || {},
-          projects: data.projects || [],
-          stock: data.stock || [],
-          employees: data.employees || {},
+          expenses: data[0].expenses || {},
+          projects: data[0].projects || [],
+          stock: data[0].stock || [],
+          employees: data[0].employees || {},
           willBaseRate: willValues.willBaseRate,
           willBonus: willValues.willBonus,
-          lastSync: data.last_sync_timestamp || new Date().getTime()
+          lastSync: new Date().getTime()
         };
       }
       
@@ -245,11 +171,10 @@ export const syncService = {
 
   async sync(data: StorageItems): Promise<boolean> {
     if (!supabase) {
-      console.log('Supabase não configurado, salvando apenas localmente');
-      storage.save(data);
-      return true;
+      console.warn('Supabase não configurado, não é possível sincronizar');
+      return false;
     }
-
+    
     try {
       // Verificar e validar os dados antes de sincronizar
       if (!data.projects) {
@@ -258,9 +183,6 @@ export const syncService = {
       } else if (!Array.isArray(data.projects)) {
         console.error('Dados de projetos não são um array! Tipo:', typeof data.projects);
         data.projects = [];
-      } else {
-        console.log(`Sincronizando ${data.projects.length} projetos:`, 
-          data.projects.map(p => `${p.id}: ${p.client}`).join(', '));
       }
       
       // Garantir que os valores do Will estejam definidos
@@ -269,45 +191,10 @@ export const syncService = {
       console.log('Sincronizando dados com Supabase usando UUID compartilhado:', SHARED_UUID);
       console.log('Valores do Will a serem sincronizados:', willValues.willBaseRate, willValues.willBonus);
       
-      // Usar diretamente o método upsert para evitar problemas com RLS na tabela sync_history
-      // Esse é um bypass temporário até que as políticas de RLS sejam configuradas corretamente
-      const currentTime = new Date().getTime();
-      
-      const dataToSave = {
-        id: SHARED_UUID,
-        expenses: data.expenses || {},
-        projects: data.projects || [],
-        stock: data.stock || [],
-        employees: data.employees || {},
-        willbaserate: willValues.willBaseRate,
-        willbonus: willValues.willBonus,
-        last_sync_timestamp: currentTime
-      };
-      
-      console.log('Tentando salvar diretamente sem usar a função RPC...');
-      const { error: directSaveError } = await supabase
-        .from('sync_data')
-        .upsert(dataToSave);
-      
-      if (directSaveError) {
-        console.error('Erro ao salvar diretamente na tabela sync_data:', directSaveError);
-        console.error('Detalhes completos do erro:', JSON.stringify(directSaveError));
-        
-        // Tentar o método original com RPC
-        console.log('Tentando método original como fallback...');
-        return await this.syncWithRPC(data);
-      } else {
-        console.log('Dados salvos com sucesso diretamente na tabela sync_data');
-        
-        // Atualizar timestamp local
-        data.lastSync = currentTime;
-        
-        // Salvar localmente
-        storage.save(data);
-        return true;
-      }
+      // Testar primeiro o método RPC que resolve problemas de sincronização
+      return await this.syncWithRPC(data);
     } catch (error) {
-      console.error('Erro na sincronização:', error);
+      console.error('Erro ao sincronizar dados:', error);
       return false;
     }
   },
@@ -324,6 +211,7 @@ export const syncService = {
         return true;
       }
       
+      console.log('Tentando sincronizar usando função RPC sync_client_data...');
       const { data: syncResult, error: syncError } = await supabase
         .rpc('sync_client_data', {
           p_id: SHARED_UUID,
@@ -331,230 +219,195 @@ export const syncService = {
           p_projects: data.projects || [],
           p_stock: data.stock || [],
           p_employees: data.employees || {},
-          p_willbaserate: willValues.willBaseRate,
-          p_willbonus: willValues.willBonus,
+          p_willbaserate: willValues.willBaseRate, // Usar nome do parâmetro correto
+          p_willbonus: willValues.willBonus, // Usar nome do parâmetro correto
           p_client_timestamp: currentTime,
           p_device_id: SESSION_ID
         });
       
       if (syncError) {
-        console.error('Erro ao sincronizar com sync_client_data:', syncError);
-        console.error('Detalhes completos do erro:', JSON.stringify(syncError));
+        console.error('Erro ao sincronizar usando RPC:', syncError);
         
-        // Fallback para método tradicional
-        console.log('Tentando método tradicional como fallback...');
-        
-        // Primeiro, carregamos os dados existentes para garantir que não sobrescrevemos nada
-        const { data: existingData, error: fetchError } = await supabase
+        // Tentar o método direto como fallback
+        console.log('Tentando salvar diretamente na tabela sync_data...');
+        const { error: directSaveError } = await supabase
           .from('sync_data')
-          .select('*')
-          .eq('id', SHARED_UUID)
-          .limit(1);
-        
-        if (fetchError) {
-          console.error('Erro ao buscar dados existentes:', fetchError);
-          // Mesmo com erro, tentamos salvar no armazenamento local
-          storage.save(data);
-          return false;
-        }
-        
-        let dataToSave;
-        
-        if (existingData && existingData.length > 0) {
-          // Mesclamos os dados existentes com os novos dados
-          console.log('Dados existentes encontrados, mesclando com novos dados');
-          
-          dataToSave = {
-            id: SHARED_UUID,
-            expenses: { ...existingData[0].expenses, ...data.expenses },
-            projects: data.projects || existingData[0].projects || [],
-            stock: data.stock || existingData[0].stock || [],
-            employees: { ...existingData[0].employees, ...data.employees },
-            willbaserate: willValues.willBaseRate,
-            willbonus: willValues.willBonus,
-            last_sync_timestamp: currentTime
-          };
-        } else {
-          // Não encontramos dados existentes, salvamos os novos dados
-          console.log('Nenhum dado existente encontrado, salvando novos dados');
-          
-          dataToSave = {
+          .upsert({
             id: SHARED_UUID,
             expenses: data.expenses || {},
             projects: data.projects || [],
             stock: data.stock || [],
             employees: data.employees || {},
-            willbaserate: willValues.willBaseRate,
-            willbonus: willValues.willBonus,
-            last_sync_timestamp: currentTime
-          };
-        }
+            willbaserate: willValues.willBaseRate, // Nome correto da coluna no DB
+            willbonus: willValues.willBonus, // Nome correto da coluna no DB
+            last_sync_timestamp: currentTime,
+            updated_at: new Date().toISOString()
+          });
         
-        console.log('Dados a serem salvos:', dataToSave);
-        
-        // Salvar no Supabase
-        const { error } = await supabase
-          .from('sync_data')
-          .upsert(dataToSave);
-
-        if (error) {
-          console.error('Erro ao sincronizar com Supabase:', error);
-          console.error('Detalhes completos do erro:', JSON.stringify(error));
+        if (directSaveError) {
+          console.error('Falha em todas as tentativas de sincronização:', directSaveError);
           return false;
         }
-      } else {
-        console.log('Sincronização bem-sucedida via sync_client_data:', syncResult);
         
-        // Atualizar timestamp local
-        data.lastSync = currentTime;
+        console.log('Dados essenciais salvos com sucesso usando método direto');
+        return true;
       }
-
-      // Salvar localmente
-      storage.save(data);
+      
+      console.log('Dados sincronizados com sucesso usando RPC:', syncResult);
       return true;
     } catch (error) {
-      console.error('Erro na sincronização via RPC:', error);
+      console.error('Erro ao sincronizar usando RPC:', error);
       return false;
     }
   },
 
-  startAutoSync(interval = 1000) {
-    // Parar sincronização automática anterior se existir
-    this.stopAutoSync();
+  // Função para mesclar dados locais com dados do servidor
+  mergeData(serverData: StorageItems, localData: StorageItems): StorageItems {
+    console.log('Mesclando dados do servidor com dados locais...');
     
-    console.log(`Iniciando sincronização automática a cada ${interval}ms`);
+    // Usar o valor mais recente para willBaseRate e willBonus
+    const willBaseRate = localData.willBaseRate !== undefined ? 
+      localData.willBaseRate : serverData.willBaseRate;
+    const willBonus = localData.willBonus !== undefined ? 
+      localData.willBonus : serverData.willBonus;
     
-    // Iniciar nova sincronização automática
-    this.syncIntervalId = setInterval(async () => {
-      try {
-        // Evitar múltiplas sincronizações simultâneas
-        if (this.isSyncing) {
-          console.log('Sincronização já em andamento, pulando...');
-          return;
-        }
-        
-        // Evitar sincronizações muito frequentes (menos de 500ms entre elas)
-        const now = Date.now();
-        if (now - this.lastSyncTime < 500) {
-          console.log('Sincronização muito recente, pulando...');
-          return;
-        }
-        
-        this.isSyncing = true;
-        
-        // Carregar dados atuais do armazenamento local
-        const currentData = storage.load();
-        if (!currentData) {
-          console.log('Nenhum dado local para sincronizar');
-          this.isSyncing = false;
-          return;
-        }
-        
-        // Sincronizar dados
-        console.log('Sincronização automática executando...');
-        await this.sync(currentData);
-        
-        // Atualizar timestamp da última sincronização
-        this.lastSyncTime = Date.now();
-      } catch (error) {
-        console.error('Erro na sincronização automática:', error);
-      } finally {
-        this.isSyncing = false;
-      }
-    }, interval);
+    return {
+      expenses: { ...serverData.expenses, ...localData.expenses },
+      projects: [...serverData.projects, ...localData.projects],
+      stock: [...serverData.stock, ...localData.stock],
+      employees: { ...serverData.employees, ...localData.employees },
+      willBaseRate,
+      willBonus,
+      lastSync: new Date().getTime()
+    };
   },
-  
-  stopAutoSync() {
-    if (this.syncIntervalId) {
-      console.log('Parando sincronização automática');
-      clearInterval(this.syncIntervalId);
-      this.syncIntervalId = null;
+
+  // Função para forçar sincronização imediata
+  async forceSyncNow(): Promise<void> {
+    if (!supabase || isSyncInProgress) {
+      // Se não há Supabase ou já está sincronizando, marcar como pronto mesmo assim
+      setAppReady();
+      return;
+    }
+    
+    isSyncInProgress = true;
+    
+    try {
+      console.log('Forçando sincronização imediata...');
+      
+      // Carregar dados mais recentes do Supabase
+      const latestData = await this.loadLatestData();
+      
+      if (latestData) {
+        // Salvar no armazenamento local
+        storage.save(latestData);
+        
+        // Disparar evento para atualizar a UI
+        window.dispatchEvent(new CustomEvent('dataUpdated', { 
+          detail: latestData 
+        }));
+        
+        console.log('Sincronização forçada concluída com sucesso');
+      } else {
+        console.log('Nenhum dado encontrado para sincronização forçada');
+      }
+      
+      // Marcar o app como pronto para interação após a primeira sincronização
+      setAppReady();
+    } catch (error) {
+      console.error('Erro na sincronização forçada:', error);
+      
+      // Mesmo com erro, marcar o app como pronto para interação
+      setAppReady();
+    } finally {
+      isSyncInProgress = false;
     }
   }
 };
 
 export const loadInitialData = async (): Promise<StorageItems | null> => {
-  // Primeiro, verificar se há dados no armazenamento local
-  const localData = storage.load();
-  
-  // Se houver dados no armazenamento local e o Supabase não estiver configurado, usar dados locais
-  if (localData && !supabase) {
-    console.log('Usando dados do armazenamento local (Supabase não configurado)');
-    return localData;
+  if (!supabase) {
+    console.log('Supabase não configurado, carregando dados locais');
+    setAppReady();
+    return storage.load();
   }
-  
-  // Se o Supabase estiver configurado, tentar carregar dados mais recentes
-  if (supabase) {
-    try {
-      const serverData = await syncService.loadLatestData();
-      
-      if (serverData) {
-        console.log('Dados carregados do servidor');
-        
-        // Se também houver dados locais, verificar qual é mais recente
-        if (localData) {
-          const serverTimestamp = typeof serverData.lastSync === 'string' 
-            ? parseInt(serverData.lastSync, 10) 
-            : serverData.lastSync;
-          
-          const localTimestamp = typeof localData.lastSync === 'string' 
-            ? parseInt(localData.lastSync, 10) 
-            : localData.lastSync;
-          
-          // Se os dados locais forem mais recentes, mesclar dados e sincronizar
-          if (localTimestamp > serverTimestamp) {
-            console.log('Dados locais são mais recentes, sincronizando com o servidor');
-            
-            // Mesclar dados (preferindo dados locais em caso de conflito)
-            const mergedData: StorageItems = {
-              expenses: { ...serverData.expenses, ...localData.expenses },
-              projects: [...serverData.projects, ...localData.projects.filter(p => 
-                !serverData.projects.some(sp => sp.id === p.id))],
-              stock: [...serverData.stock, ...localData.stock.filter(s => 
-                !serverData.stock.some(ss => ss.id === s.id))],
-              employees: { ...serverData.employees, ...localData.employees },
-              willBaseRate: localData.willBaseRate !== undefined ? 
-                localData.willBaseRate : serverData.willBaseRate,
-              willBonus: localData.willBonus !== undefined ? 
-                localData.willBonus : serverData.willBonus,
-              lastSync: localTimestamp
-            };
-            
-            // Sincronizar dados mesclados com o servidor
-            await syncService.sync(mergedData);
-            
-            return mergedData;
-          }
-        }
-        
-        // Se não houver dados locais ou os dados do servidor forem mais recentes, usar dados do servidor
-        storage.save(serverData);
-        return serverData;
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados do servidor:', error);
+
+  try {
+    // Tentar carregar dados do Supabase usando o UUID compartilhado
+    const { data, error } = await supabase
+      .from('sync_data')
+      .select('*')
+      .eq('id', SHARED_UUID)
+      .limit(1);
+
+    if (error) {
+      console.warn('Erro ao carregar dados iniciais do Supabase:', error);
+      setAppReady();
+      return storage.load();
     }
+
+    // Verificar se o array contém dados
+    if (data && data.length > 0) {
+      console.log('Dados carregados do Supabase:', data[0]);
+      
+      // Garantir que os valores do Will estejam definidos, considerando case sensitivity
+      const willValues = ensureWillValues(data[0]);
+      
+      const storageData: StorageItems = {
+        expenses: data[0].expenses || {},
+        projects: data[0].projects || [],
+        stock: data[0].stock || [],
+        employees: data[0].employees || {},
+        willBaseRate: willValues.willBaseRate,
+        willBonus: willValues.willBonus,
+        lastSync: new Date().getTime()
+      };
+      
+      // Salvar no armazenamento local
+      storage.save(storageData);
+      
+      return storageData;
+    } else {
+      console.log('Registro não encontrado no Supabase, criando inicial');
+      const localData = storage.load() || {
+        expenses: {},
+        projects: [],
+        stock: [],
+        employees: {},
+        willBaseRate: 200,
+        willBonus: 0,
+        lastSync: new Date().getTime()
+      };
+      
+      await syncService.sync(localData);
+      
+      return localData;
+    }
+  } catch (error) {
+    console.error('Erro ao carregar dados iniciais:', error);
+    setAppReady();
+    return storage.load();
   }
-  
-  // Se não conseguir carregar dados do servidor ou não houver dados no servidor, usar dados locais
-  if (localData) {
-    console.log('Usando dados do armazenamento local');
-    return localData;
-  }
-  
-  // Se não houver dados locais nem no servidor, retornar estrutura vazia
-  console.log('Nenhum dado encontrado, retornando estrutura vazia');
-  return {
-    expenses: {},
-    projects: [],
-    stock: [],
-    employees: {},
-    willBaseRate: 200,
-    willBonus: 0,
-    lastSync: new Date().getTime()
-  };
 };
 
 export const saveData = (data: StorageItems) => {
-  return syncService.sync(data);
-}; 
+  // Garantir que os valores do Will estejam definidos
+  const willValues = ensureWillValues(data);
+  data.willBaseRate = willValues.willBaseRate;
+  data.willBonus = willValues.willBonus;
+  
+  console.log('Salvando dados com valores do Will:', data.willBaseRate, data.willBonus);
+  
+  // Salvar localmente primeiro para resposta imediata
+  storage.save(data);
+  
+  // Sincronizar com Supabase
+  if (supabase) {
+    syncService.sync(data).catch(error => {
+      console.error('Erro ao sincronizar dados:', error);
+    });
+  }
+};
+
+// Função para verificar se o app está pronto para interação
+export const isReady = () => isAppReady; 
