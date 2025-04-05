@@ -13,7 +13,12 @@ export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       realtime: {
         params: {
-          eventsPerSecond: 10
+          eventsPerSecond: 10,
+          // Configurações adicionais para conexão mais robusta
+          heartbeatIntervalMs: 5000,
+          reconnectMaxRetries: 10,
+          reconnectMinDelayMs: 500,
+          reconnectMaxDelayMs: 3000
         }
       },
       auth: {
@@ -23,6 +28,41 @@ export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
       }
     })
   : null;
+
+// Inicializar configurações de realtime
+export const initializeRealtime = async () => {
+  if (!supabase) {
+    console.error('Não é possível inicializar realtime: Supabase não configurado');
+    return false;
+  }
+  
+  try {
+    console.log('Inicializando configurações de realtime...');
+    
+    // Testar conexão de realtime
+    const channel = supabase.channel('realtime_test');
+    
+    const subscription = channel
+      .on('presence', { event: 'sync' }, () => {
+        console.log('Realtime funcionando corretamente!');
+      })
+      .subscribe((status) => {
+        console.log('Status da inscrição do canal de teste:', status);
+        
+        // Após testar, desinscrever para liberar recursos
+        if (status === 'SUBSCRIBED') {
+          setTimeout(() => {
+            channel.unsubscribe();
+          }, 2000);
+        }
+      });
+      
+    return true;
+  } catch (error) {
+    console.error('Erro ao inicializar realtime:', error);
+    return false;
+  }
+};
 
 export const isSupabaseConfigured = () => {
   return !!supabase;
@@ -46,6 +86,12 @@ export const initSyncTable = async () => {
       console.log('Isso é normal na primeira execução. Continuando...');
     } else {
       console.log('Tabela sync_data existe e está acessível');
+      
+      // Verificar se as configurações de realtime estão habilitadas no projeto
+      console.log('Verificando configurações de realtime...');
+      
+      // Configurar canal de teste para verificar se o realtime está funcionando
+      await initializeRealtime();
     }
     
     return true;

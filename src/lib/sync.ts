@@ -15,9 +15,11 @@ console.log('UUID compartilhado para sincronização:', SHARED_UUID);
 // Intervalo de sincronização em milissegundos (5 segundos)
 const SYNC_INTERVAL = 5000;
 
-// Variável para controlar se a sincronização está em andamento
+// Variáveis para controlar o estado da sincronização
 let isSyncInProgress = false;
 let isAppReady = false;
+let lastKnownVersion = 0;
+let channelSubscribed = false;
 
 // Função para marcar o app como pronto para interação
 const setAppReady = () => {
@@ -48,6 +50,7 @@ const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number 
 export const syncService = {
   channel: null as RealtimeChannel | null,
   isInitialized: false,
+  syncIntervalId: null as NodeJS.Timeout | null,
 
   init() {
     if (!supabase || this.isInitialized) return;
@@ -55,58 +58,136 @@ export const syncService = {
     console.log('Inicializando serviço de sincronização com ID:', SESSION_ID);
     this.isInitialized = true;
 
+    // Limpar intervalo de sincronização anterior se existir
+    if (this.syncIntervalId) {
+      clearInterval(this.syncIntervalId);
+    }
+
+    // Iniciar sincronização periódica automática (a cada 5 segundos)
+    this.syncIntervalId = setInterval(() => {
+      if (!isSyncInProgress) {
+        const currentData = storage.load();
+        if (currentData) {
+          console.log('Sincronização automática iniciada...');
+          this.sync(currentData).catch(error => {
+            console.error('Erro na sincronização automática:', error);
+          });
+        }
+      }
+    }, SYNC_INTERVAL);
+
     // Forçar sincronização imediata ao inicializar
     this.forceSyncNow();
+
+    // Configurar canal de realtime para receber atualizações
+    this.setupRealtimeChannel();
+  },
+
+  setupRealtimeChannel() {
+    // Verificar se o Supabase está disponível
+    if (!supabase) {
+      console.error('Não é possível configurar canal de realtime: Supabase não configurado');
+      return;
+    }
 
     // Limpar inscrição anterior se existir
     if (this.channel) {
       this.channel.unsubscribe();
+      channelSubscribed = false;
     }
 
-    // Criar nova inscrição
-    this.channel = supabase
-      .channel('sync_updates')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public',
-          table: 'sync_data' 
-        }, 
-        (payload: RealtimePostgresChangesPayload<any>) => {
-          console.log('Mudança recebida:', payload);
-          if (payload.new) {
-            const data = payload.new as any;
-            console.log('Valores do Will recebidos do Supabase:', data.willbaserate, data.willbonus);
-            
-            // Garantir que os valores do Will estejam definidos
-            const willValues = ensureWillValues(data);
-            
-            const storageData: StorageItems = {
-              expenses: data.expenses || {},
-              projects: data.projects || [],
-              stock: data.stock || [],
-              employees: data.employees || {},
-              willBaseRate: willValues.willBaseRate,
-              willBonus: willValues.willBonus,
-              lastSync: new Date().getTime()
-            };
-            
-            console.log('Dados processados para armazenamento local:', storageData);
-            console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
-            
-            // Salvar no armazenamento local
-            storage.save(storageData);
-            
-            // Disparar evento para atualizar a UI
-            window.dispatchEvent(new CustomEvent('dataUpdated', { 
-              detail: storageData 
-            }));
+    // Criar nova inscrição no canal
+    try {
+      console.log('Configurando canal de realtime para sync_data...');
+      
+      // IMPORTANTE: O nome do canal deve seguir o formato específico para inscrição em tabelas
+      // Formato: '{database}:{schema}:{table}[:column=filter]'
+      this.channel = supabase
+        .channel('public:sync_data')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public',
+            table: 'sync_data',
+            filter: `id=eq.${SHARED_UUID}` // Filtrar apenas o registro que nos interessa
+          }, 
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            console.log('Mudança recebida via realtime:', payload);
+            if (payload.new) {
+              const data = payload.new as any;
+              const newVersion = data.version;
+              
+              // Evitar processamento de versões antigas ou da mesma versão
+              if (newVersion && newVersion <= lastKnownVersion) {
+                console.log(`Ignorando atualização com versão ${newVersion} (já temos versão ${lastKnownVersion})`);
+                return;
+              }
+              
+              // Atualizar última versão conhecida
+              if (newVersion) {
+                lastKnownVersion = newVersion;
+              }
+              
+              console.log('Valores do Will recebidos do Supabase:', data.willbaserate, data.willbonus);
+              
+              // Garantir que os valores do Will estejam definidos
+              const willValues = ensureWillValues(data);
+              
+              const storageData: StorageItems = {
+                expenses: data.expenses || {},
+                projects: data.projects || [],
+                stock: data.stock || [],
+                employees: data.employees || {},
+                willBaseRate: willValues.willBaseRate,
+                willBonus: willValues.willBonus,
+                lastSync: new Date().getTime()
+              };
+              
+              console.log('Dados processados para armazenamento local:', storageData);
+              console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
+              
+              // Salvar no armazenamento local
+              storage.save(storageData);
+              
+              // Disparar evento para atualizar a UI
+              window.dispatchEvent(new CustomEvent('dataUpdated', { 
+                detail: storageData 
+              }));
+            }
           }
+        )
+        .subscribe((status: string) => {
+          console.log('Status da inscrição do canal realtime:', status);
+          if (status === 'SUBSCRIBED') {
+            channelSubscribed = true;
+            console.log('Canal de realtime configurado com sucesso!');
+          } else if (status === 'CHANNEL_ERROR') {
+            channelSubscribed = false;
+            console.error('Erro ao configurar canal de realtime. Tentando reconectar em 5 segundos...');
+            setTimeout(() => this.setupRealtimeChannel(), 5000);
+          } else if (status === 'TIMED_OUT') {
+            channelSubscribed = false;
+            console.error('Tempo limite esgotado na conexão realtime. Tentando reconectar...');
+            setTimeout(() => this.setupRealtimeChannel(), 3000);
+          } else if (status === 'CLOSED') {
+            channelSubscribed = false;
+            console.log('Conexão realtime fechada. Reconectando...');
+            setTimeout(() => this.setupRealtimeChannel(), 1000);
+          }
+        });
+        
+      // Teste adicional para verificar se o canal está ativo
+      setTimeout(() => {
+        if (!channelSubscribed) {
+          console.warn('Canal ainda não está inscrito após timeout. Tentando novamente...');
+          this.setupRealtimeChannel();
         }
-      )
-      .subscribe((status: string) => {
-        console.log('Status da inscrição do canal:', status);
-      });
+      }, 10000);
+      
+    } catch (error) {
+      console.error('Erro ao configurar canal de realtime:', error);
+      setTimeout(() => this.setupRealtimeChannel(), 5000);
+    }
   },
 
   setupRealtimeUpdates(callback: (data: StorageItems) => void) {
@@ -123,7 +204,12 @@ export const syncService = {
       window.removeEventListener('dataUpdated', handleDataUpdate as EventListener);
       if (this.channel) {
         this.channel.unsubscribe();
+        channelSubscribed = false;
         this.isInitialized = false;
+      }
+      if (this.syncIntervalId) {
+        clearInterval(this.syncIntervalId);
+        this.syncIntervalId = null;
       }
     };
   },
@@ -147,6 +233,12 @@ export const syncService = {
       // Verificar se o array contém dados
       if (data && data.length > 0) {
         console.log('Dados recebidos do Supabase:', data[0]);
+        
+        // Atualizar a versão mais recente conhecida
+        if (data[0].version) {
+          lastKnownVersion = data[0].version;
+          console.log('Versão atual do registro:', lastKnownVersion);
+        }
         
         // Garantir que os valores do Will estejam definidos
         const willValues = ensureWillValues(data[0]);
@@ -175,6 +267,13 @@ export const syncService = {
       return false;
     }
     
+    if (isSyncInProgress) {
+      console.log('Sincronização já em andamento, aguardando...');
+      return false;
+    }
+    
+    isSyncInProgress = true;
+    
     try {
       // Verificar e validar os dados antes de sincronizar
       if (!data.projects) {
@@ -192,10 +291,20 @@ export const syncService = {
       console.log('Valores do Will a serem sincronizados:', willValues.willBaseRate, willValues.willBonus);
       
       // Testar primeiro o método RPC que resolve problemas de sincronização
-      return await this.syncWithRPC(data);
+      const syncResult = await this.syncWithRPC(data);
+      
+      // Verificar se o canal de realtime está ativo, caso contrário, tentar reconectar
+      if (!channelSubscribed && this.isInitialized) {
+        console.log('Canal de realtime não está ativo. Reconectando...');
+        this.setupRealtimeChannel();
+      }
+      
+      return syncResult;
     } catch (error) {
       console.error('Erro ao sincronizar dados:', error);
       return false;
+    } finally {
+      isSyncInProgress = false;
     }
   },
   
@@ -250,10 +359,30 @@ export const syncService = {
         }
         
         console.log('Dados essenciais salvos com sucesso usando método direto');
+        
+        // Atualizar versão após salvamento direto
+        const { data: newVersionData } = await supabase
+          .from('sync_data')
+          .select('version')
+          .eq('id', SHARED_UUID)
+          .single();
+          
+        if (newVersionData && newVersionData.version) {
+          lastKnownVersion = newVersionData.version;
+          console.log('Nova versão após salvamento:', lastKnownVersion);
+        }
+        
         return true;
       }
       
       console.log('Dados sincronizados com sucesso usando RPC:', syncResult);
+      
+      // Atualizar versão após RPC
+      if (syncResult && syncResult.version) {
+        lastKnownVersion = syncResult.version;
+        console.log('Nova versão após RPC:', lastKnownVersion);
+      }
+      
       return true;
     } catch (error) {
       console.error('Erro ao sincronizar usando RPC:', error);
@@ -349,6 +478,12 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
     // Verificar se o array contém dados
     if (data && data.length > 0) {
       console.log('Dados carregados do Supabase:', data[0]);
+      
+      // Atualizar a versão conhecida
+      if (data[0].version) {
+        lastKnownVersion = data[0].version;
+        console.log('Versão inicial do registro:', lastKnownVersion);
+      }
       
       // Garantir que os valores do Will estejam definidos, considerando case sensitivity
       const willValues = ensureWillValues(data[0]);
