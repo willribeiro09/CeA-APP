@@ -76,7 +76,7 @@ const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number 
   const bonus = typeof data.willBonus === 'number' ? 
     data.willBonus : 
     (typeof data.willbonus === 'number' ? data.willbonus : 0);
-  
+    
   return {
     willBaseRate: baseRate,
     willBonus: bonus
@@ -112,32 +112,32 @@ export const syncService = {
           if (payload.new) {
             const data = payload.new as any;
             console.log('Dados recebidos do Supabase:', data);
-            console.log('Valores do Will recebidos do Supabase:', data.willbaserate, data.willbonus);
-            
-            // Garantir que os valores do Will estejam definidos
-            const willValues = ensureWillValues(data);
-            
-            const storageData: StorageItems = {
-              expenses: data.expenses || {},
-              projects: data.projects || [],
-              stock: data.stock || [],
-              employees: data.employees || {},
-              willBaseRate: willValues.willBaseRate,
-              willBonus: willValues.willBonus,
+          console.log('Valores do Will recebidos do Supabase:', data.willbaserate, data.willbonus);
+          
+          // Garantir que os valores do Will estejam definidos
+          const willValues = ensureWillValues(data);
+          
+          const storageData: StorageItems = {
+            expenses: data.expenses || {},
+            projects: data.projects || [],
+            stock: data.stock || [],
+            employees: data.employees || {},
+            willBaseRate: willValues.willBaseRate,
+            willBonus: willValues.willBonus,
               lastSync: data.last_sync_timestamp || new Date().getTime()
-            };
-            
-            console.log('Dados processados para armazenamento local:', storageData);
-            console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
-            
-            // Salvar no armazenamento local
-            storage.save(storageData);
-            
-            // Disparar evento para atualizar a UI
-            window.dispatchEvent(new CustomEvent('dataUpdated', { 
-              detail: storageData 
-            }));
-          }
+          };
+          
+          console.log('Dados processados para armazenamento local:', storageData);
+          console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
+          
+          // Salvar no armazenamento local
+          storage.save(storageData);
+          
+          // Disparar evento para atualizar a UI
+          window.dispatchEvent(new CustomEvent('dataUpdated', { 
+            detail: storageData 
+          }));
+        }
         }
       )
       .subscribe((status: string) => {
@@ -180,16 +180,16 @@ export const syncService = {
         
         // Fallback para método tradicional
         const { data: fallbackData, error: fallbackError } = await supabase
-          .from('sync_data')
-          .select('*')
-          .eq('id', SHARED_UUID)
-          .limit(1);
-          
+        .from('sync_data')
+        .select('*')
+        .eq('id', SHARED_UUID)
+        .limit(1);
+
         if (fallbackError) {
           console.error('Erro no fallback ao carregar dados mais recentes:', fallbackError);
-          return null;
-        }
-        
+        return null;
+      }
+
         if (fallbackData && fallbackData.length > 0) {
           console.log('Dados recebidos pelo fallback:', fallbackData[0]);
           const willValues = ensureWillValues(fallbackData[0]);
@@ -309,7 +309,7 @@ export const syncService = {
             willbonus: willValues.willBonus,
             last_sync_timestamp: currentTime
           };
-        } else {
+      } else {
           // Não encontramos dados existentes, salvamos os novos dados
           console.log('Nenhum dado existente encontrado, salvando novos dados');
           
@@ -331,7 +331,7 @@ export const syncService = {
         const { error } = await supabase
           .from('sync_data')
           .upsert(dataToSave);
-
+        
         if (error) {
           console.error('Erro ao sincronizar com Supabase:', error);
           return false;
@@ -425,14 +425,14 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
   // Se não houver dados locais nem no servidor, retornar estrutura vazia
   console.log('Nenhum dado encontrado, retornando estrutura vazia');
   return {
-    expenses: {},
-    projects: [],
-    stock: [],
-    employees: {},
-    willBaseRate: 200,
-    willBonus: 0,
-    lastSync: new Date().getTime()
-  };
+        expenses: {},
+        projects: [],
+        stock: [],
+        employees: {},
+        willBaseRate: 200,
+        willBonus: 0,
+        lastSync: new Date().getTime()
+      };
 };
 
 export const saveData = (data: StorageItems) => {
