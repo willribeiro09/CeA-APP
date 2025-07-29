@@ -391,7 +391,7 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
               projects: [...serverData.projects, ...localData.projects.filter(p => 
                 !serverData.projects.some(sp => sp.id === p.id))],
               stock: [...serverData.stock, ...localData.stock.filter(s => 
-                !serverData.stock.some(ss => ss.id === s.id))],
+                !serverData.stock.some(ss => s.id === s.id))],
               employees: { ...serverData.employees, ...localData.employees },
               willBaseRate: localData.willBaseRate !== undefined ? 
                 localData.willBaseRate : serverData.willBaseRate,

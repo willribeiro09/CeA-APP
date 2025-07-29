@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Check } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 import { Expense } from '../types';
 import { SwipeableItem } from './SwipeableItem';
 
@@ -63,7 +63,7 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: Expense
           </p>
         </div>
 
-        <div className="text-right">
+        <div className="text-right mr-2">
           <span className="font-medium text-[#5ABB37]">
             ${expense.amount.toFixed(2)}
           </span>
@@ -71,6 +71,17 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: Expense
             {isPaid ? 'Paid' : diffDays < 0 ? 'Overdue' : `Due in ${diffDays} days`}
           </p>
         </div>
+        {/* Botão de deletar sempre visível */}
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            onDelete(expense.id);
+          }}
+          className="ml-2 p-1 text-gray-400 hover:text-red-600 focus:outline-none"
+          title="Deletar"
+        >
+          <Trash2 size={18} />
+        </button>
       </div>
     </SwipeableItem>
   );
