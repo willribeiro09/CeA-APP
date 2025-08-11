@@ -11,7 +11,7 @@ import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems
 import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
-import { syncService, loadInitialData, saveData } from './lib/sync';
+import { initSyncService, saveItem, CHANGE_TYPE, ITEM_TYPE } from './lib/sync';
 import { isSupabaseConfigured, initSyncTable, supabase } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
@@ -150,78 +150,52 @@ export default function App() {
   const [isSyncingOfflineChanges, setIsSyncingOfflineChanges] = useState(false);
 
   useEffect(() => {
-    const initializeData = async () => {
-      console.log('Inicializando dados...');
+    const initializeApp = async () => {
+      console.log('Initializing app with new event-based sync...');
       
-      // Inicializar tabela de sincronização se necessário
+      // Load initial data directly from local storage
+      const initialData = await storage.load();
+      if (initialData) {
+        console.log('Loaded data from storage:', initialData);
+        setExpenses(initialData.expenses || {});
+        setProjects(initialData.projects || []);
+        setStockItems(initialData.stock || []);
+        setEmployees(initialData.employees || {});
+        if (initialData.willBaseRate !== undefined) setWillBaseRate(initialData.willBaseRate);
+        if (initialData.willBonus !== undefined) setWillBonus(initialData.willBonus);
+      }
+      setIsInitialized(true);
+
+      // Setup listener for data updates from the new sync service
+      const handleDataUpdate = (event: Event) => {
+        const updatedData = (event as CustomEvent).detail;
+        console.log('Data updated event received in App.tsx', updatedData);
+        if(updatedData) {
+            setExpenses(updatedData.expenses || {});
+            setProjects(updatedData.projects || []);
+            setStockItems(updatedData.stock || []);
+            setEmployees(updatedData.employees || {});
+            if (updatedData.willBaseRate !== undefined) setWillBaseRate(updatedData.willBaseRate);
+            if (updatedData.willBonus !== undefined) setWillBonus(updatedData.willBonus);
+        }
+      };
+
+      window.addEventListener('dataUpdated', handleDataUpdate);
+
+      // Initialize the new sync service, which will handle full sync and real-time updates
       if (isSupabaseConfigured()) {
-        console.log('Supabase configurado, inicializando tabela de sincronização');
-        await initSyncTable();
+        initSyncService();
       } else {
-        console.warn('Supabase não configurado corretamente. Usando apenas armazenamento local.');
+        console.warn('Supabase not configured. Sync service not started.');
       }
-      
-      // Carregar dados iniciais
-      const localData = await loadInitialData();
-
-      if (localData) {
-        console.log('Dados carregados com sucesso:', {
-          expenses: Object.keys(localData.expenses || {}).length + ' listas',
-          projects: (localData.projects || []).length + ' projetos',
-          stock: (localData.stock || []).length + ' itens',
-          employees: Object.keys(localData.employees || {}).length + ' listas'
-        });
-        
-        setExpenses(localData.expenses || {});
-        setProjects(localData.projects || []);
-        setStockItems(localData.stock || []);
-        setEmployees(localData.employees || {});
-        
-        // Carregar dados do Will se existirem
-        if (localData.willBaseRate !== undefined) {
-          setWillBaseRate(localData.willBaseRate);
-        }
-        if (localData.willBonus !== undefined) {
-          setWillBonus(localData.willBonus);
-        }
-      } else {
-        console.log('Nenhum dado encontrado no armazenamento local');
-      }
-
-      // Configurar sincronização em tempo real
-      syncService.init();
-      const cleanup = syncService.setupRealtimeUpdates((data) => {
-        console.log('Recebida atualização em tempo real:', {
-          expenses: Object.keys(data.expenses || {}).length + ' listas',
-          projects: (data.projects || []).length + ' projetos',
-          stock: (data.stock || []).length + ' itens',
-          employees: Object.keys(data.employees || {}).length + ' listas'
-        });
-        
-        if (data) {
-          setExpenses(data.expenses || {});
-          setProjects(data.projects || []);
-          setStockItems(data.stock || []);
-          setEmployees(data.employees || {});
-          
-          // Atualizar dados do Will se existirem
-          if (data.willBaseRate !== undefined) {
-            setWillBaseRate(data.willBaseRate);
-          }
-          if (data.willBonus !== undefined) {
-            setWillBonus(data.willBonus);
-          }
-        }
-      });
 
       return () => {
-        if (typeof cleanup === 'function') {
-          cleanup();
-        }
+        window.removeEventListener('dataUpdated', handleDataUpdate);
+        // Optional: a function to stop the sync service could be exported and called here
       };
     };
 
-    initializeData();
+    initializeApp();
   }, []);
 
   // Adicione este useEffect para calcular o total dos projetos na semana selecionada
@@ -276,323 +250,108 @@ export default function App() {
     }
   }, [projects, projectWeekStartDate, projectWeekEndDate]);
 
-  // Função para salvar alterações
-  const saveChanges = async (newData: StorageItems) => {
-    console.log('Salvando alterações...');
-    
-    // Deep clone para evitar problemas de referência
-    const dataCopy = JSON.parse(JSON.stringify(newData));
-    
-    // Verificar se os projetos estão presentes
-    if (!dataCopy.projects || !Array.isArray(dataCopy.projects)) {
-      console.error('Erro: projects não está definido ou não é um array', dataCopy);
-      dataCopy.projects = [];
-    }
-    
-    // Verificar projetos com dados incompletos
-    dataCopy.projects.forEach((project: any, index: number) => {
-      if (!project.id) {
-        console.error(`Projeto ${index} sem ID:`, project);
-        // Tenta corrigir o problema
-        project.id = uuidv4();
-        console.log(`ID gerado para projeto sem ID: ${project.id}`);
-      }
-    });
-    
-    console.log('Número de projetos a salvar:', dataCopy.projects.length);
-    console.log('IDs dos projetos:', dataCopy.projects.map((p: any) => p.id).join(', '));
-    
-    setIsSaving(true);
-    try {
-      // Salvar dados
-      await saveData(dataCopy);
-      console.log('Dados salvos com sucesso');
-      setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
-      
-      // Atualizar o estado de projetos para garantir consistência
-      setProjects(dataCopy.projects);
-      
-      // Garantir que o estado local seja atualizado mesmo se houver problemas com o Supabase
-      localStorage.setItem('expenses-app-data', JSON.stringify(dataCopy));
-    } catch (error) {
-      console.error('Erro ao salvar alterações:', error);
-      setShowFeedback({ show: true, message: 'Erro ao salvar dados!', type: 'error' });
-      
-      // Mesmo com erro, atualizar o estado local para evitar perda de dados
-      localStorage.setItem('expenses-app-data', JSON.stringify(dataCopy));
-    } finally {
-      setIsSaving(false);
-      // Esconder o feedback após 3 segundos
-      setTimeout(() => {
-        setShowFeedback({ show: false, message: '', type: 'success' });
-      }, 3000);
-    }
-  };
 
   const handleTogglePaid = (id: string) => {
-    if (activeCategory === 'Expenses') {
-      setExpenses(prevExpenses => {
-        const newExpenses = { ...prevExpenses };
-        
-        Object.keys(newExpenses).forEach(listName => {
-          const list = newExpenses[listName as ListName];
-          const index = list.findIndex(expense => expense.id === id);
-          
-          if (index !== -1) {
-            const updatedExpense = { ...list[index], paid: !list[index].paid };
-            newExpenses[listName as ListName] = [
-              ...list.slice(0, index),
-              updatedExpense,
-              ...list.slice(index + 1)
-            ];
-          }
-        });
-        
-        saveChanges(createStorageData({
-          expenses: newExpenses,
-          projects,
-          stock: stockItems,
-          employees
-        }));
-        
-        return newExpenses;
-      });
+    let expenseToUpdate: Expense | undefined;
+    setExpenses(prev => {
+      const newExpenses = { ...prev };
+      for (const listName in newExpenses) {
+        const list = newExpenses[listName as ListName];
+        const index = list.findIndex(expense => expense.id === id);
+        if (index !== -1) {
+          const updatedExpense = { ...list[index], paid: !list[index].paid };
+          expenseToUpdate = updatedExpense;
+          newExpenses[listName as ListName] = [...list.slice(0, index), updatedExpense, ...list.slice(index + 1)];
+          break;
+        }
+      }
+      return newExpenses;
+    });
+
+    if (expenseToUpdate) {
+      saveItem(ITEM_TYPE.EXPENSES, expenseToUpdate, CHANGE_TYPE.UPDATE, expenseToUpdate.category as ListName);
     }
   };
 
   const handleDeleteItem = (id: string, category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
-    console.log(`Deletando item ${id} da categoria ${category}`);
-    
     if (category === 'Expenses') {
-      setExpenses(prevExpenses => {
-        const newExpenses = { ...prevExpenses };
-        
-        // Procurar e remover a despesa em todas as listas
-        Object.keys(newExpenses).forEach(listName => {
-          newExpenses[listName as ListName] = newExpenses[listName as ListName].filter(
-            expense => expense.id !== id
-          );
-        });
-        
-        // Salvar as alterações
-        saveChanges(createStorageData({
-          expenses: newExpenses,
-          projects,
-          stock: stockItems,
-          employees
-        }));
-        
+      let deletedExpense: Expense | undefined;
+      setExpenses(prev => {
+        const newExpenses = { ...prev };
+        for (const listName in newExpenses) {
+            const list = newExpenses[listName as ListName];
+            const item = list.find(expense => expense.id === id);
+            if(item) deletedExpense = item;
+            newExpenses[listName as ListName] = list.filter(expense => expense.id !== id);
+        }
         return newExpenses;
       });
+      if(deletedExpense) saveItem(ITEM_TYPE.EXPENSES, { id, category: deletedExpense.category }, CHANGE_TYPE.DELETE, deletedExpense.category as ListName);
     } else if (category === 'Projects') {
-      setProjects(prevProjects => {
-        const newProjects = prevProjects.filter(project => project.id !== id);
-        
-        // Salvar as alterações
-        saveChanges(createStorageData({
-          expenses,
-          projects: newProjects,
-          stock: stockItems,
-          employees
-        }));
-        
-        return newProjects;
-      });
+      setProjects(prev => prev.filter(project => project.id !== id));
+      saveItem(ITEM_TYPE.PROJECTS, { id }, CHANGE_TYPE.DELETE);
     } else if (category === 'Stock') {
-      setStockItems(prevStockItems => {
-        const newStockItems = prevStockItems.filter(item => item.id !== id);
-        
-        // Salvar as alterações
-        saveChanges(createStorageData({
-          expenses,
-          projects,
-          stock: newStockItems,
-          employees
-        }));
-        
-        return newStockItems;
-      });
+      setStockItems(prev => prev.filter(item => item.id !== id));
+      saveItem(ITEM_TYPE.STOCK, { id }, CHANGE_TYPE.DELETE);
     } else if (category === 'Employees') {
-      setEmployees(prevEmployees => {
-        const newEmployees = { ...prevEmployees };
-        
-        // Procurar e remover o funcionário em todas as semanas
-        Object.keys(newEmployees).forEach(weekStartDate => {
-          newEmployees[weekStartDate] = newEmployees[weekStartDate].filter(
-            employee => employee.id !== id
-          );
+        let deletedEmployee: Employee | undefined;
+        setEmployees(prev => {
+            const newEmployees = { ...prev };
+            for (const weekKey in newEmployees) {
+                const emp = newEmployees[weekKey].find(e => e.id === id);
+                if(emp) deletedEmployee = emp;
+                newEmployees[weekKey] = newEmployees[weekKey].filter(employee => employee.id !== id);
+            }
+            return newEmployees;
         });
-        
-        // Salvar as alterações
-        saveChanges(createStorageData({
-          expenses,
-          projects,
-          stock: stockItems,
-          employees: newEmployees,
-          willBaseRate,
-          willBonus
-        }));
-        
-        return newEmployees;
-      });
+      if(deletedEmployee) saveItem(ITEM_TYPE.EMPLOYEES, { id, weekStartDate: deletedEmployee.weekStartDate }, CHANGE_TYPE.DELETE);
     }
   };
 
   const handleEditItem = (item: Item) => {
-    console.log(`Editando item:`, item);
     setItemToEdit(item);
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateItem = (updatedItem: Partial<Item>) => {
-    console.log(`Atualizando item:`, updatedItem);
-    
-    try {
-      // Verificar o tipo do item usando propriedades específicas
-      if ('description' in updatedItem) {
-        // É uma despesa
-        setExpenses(prevExpenses => {
-          const newExpenses = { ...prevExpenses };
-          
-          // Procurar e atualizar a despesa em todas as listas
-          Object.keys(newExpenses).forEach(listName => {
-            const index = newExpenses[listName as ListName].findIndex(expense => expense.id === updatedItem.id);
-            if (index !== -1) {
-              newExpenses[listName as ListName][index] = updatedItem as Expense;
-            }
-          });
-          
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses: newExpenses,
-            projects,
-            stock: stockItems,
-            employees
-          }));
-          
-          return newExpenses;
-        });
-      } else if ('client' in updatedItem) {
-        // É um projeto
-        setProjects(prevProjects => {
-          try {
-            console.log("Atualizando projeto, dados recebidos:", JSON.stringify(updatedItem));
-            
-            // Verificar se o ID existe
-            if (!updatedItem.id) {
-              console.error("ID do projeto não encontrado nos dados de atualização");
-              return prevProjects;
-            }
-            
-            const index = prevProjects.findIndex(project => project.id === updatedItem.id);
-            console.log(`Procurando projeto com ID ${updatedItem.id}, índice encontrado: ${index}`);
-            
-            if (index === -1) {
-              console.error("Projeto não encontrado com ID:", updatedItem.id);
-              return prevProjects;
-            }
-            
-            // Garantir que todos os campos obrigatórios estejam presentes
-            const existingProject = prevProjects[index];
-            console.log("Projeto existente:", JSON.stringify(existingProject));
-            
-            // Criar uma cópia do projeto com todos os campos necessários
-            const updatedProject: Project = {
-              id: updatedItem.id || existingProject.id,
-              name: updatedItem.name || existingProject.name,
-              description: updatedItem.description || existingProject.description,
-              client: updatedItem.client || existingProject.client,
-              startDate: updatedItem.startDate || existingProject.startDate,
-              status: updatedItem.status || existingProject.status,
-              location: updatedItem.location || existingProject.location || '',
-              value: updatedItem.value !== undefined ? updatedItem.value : existingProject.value || 0,
-              invoiceOk: updatedItem.invoiceOk !== undefined ? updatedItem.invoiceOk : existingProject.invoiceOk
-            };
-            
-            console.log("Dados do projeto preparados para atualização:", JSON.stringify(updatedProject));
-            
-            // Criar um novo array para evitar mutação direta
-            const newProjects = [...prevProjects];
-            newProjects[index] = updatedProject;
-            
-            // Salvar as alterações
-            saveChanges(createStorageData({
-              expenses,
-              projects: newProjects,
-              stock: stockItems,
-              employees
-            }));
-            
-            console.log("Projetos após atualização:", JSON.stringify(newProjects));
-            return newProjects;
-          } catch (error) {
-            console.error("Erro ao atualizar projeto:", error);
-            // Garantir que retornamos o estado anterior em caso de erro
-            return prevProjects;
-          }
-        });
-      } else if ('quantity' in updatedItem) {
-        // É um item de estoque
-        setStockItems(prevStockItems => {
-          const index = prevStockItems.findIndex(item => item.id === updatedItem.id);
-          if (index === -1) return prevStockItems;
-          
-          const newStockItems = [...prevStockItems];
-          newStockItems[index] = updatedItem as StockItem;
-          
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: newStockItems,
-            employees
-          }));
-          
-          return newStockItems;
-        });
-      } else if ('employeeName' in updatedItem) {
-        // É um funcionário
-        setEmployees(prevEmployees => {
-          if (updatedItem.name === 'Will' || updatedItem.employeeName === 'Will') {
-            console.log("Tentativa de editar Will através da edição normal de funcionários. Ignorando.");
-            return prevEmployees;
-          }
-          
-          const newEmployees = { ...prevEmployees };
-          
-          // Procurar e atualizar o funcionário em todas as semanas
-          Object.keys(newEmployees).forEach(weekStartDate => {
-            const index = newEmployees[weekStartDate].findIndex(employee => employee.id === updatedItem.id);
-            if (index !== -1) {
-              newEmployees[weekStartDate][index] = updatedItem as Employee;
-            }
-          });
-          
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: stockItems,
-            employees: newEmployees,
-            willBaseRate,
-            willBonus
-          }));
-          
-          return newEmployees;
-        });
-      }
-    } catch (error) {
-      console.error("Erro ao atualizar item:", error);
-      // Garantir que o diálogo seja fechado mesmo em caso de erro
-      setIsEditDialogOpen(false);
-    } finally {
-      // Fechar o diálogo após atualizar o item
-      setIsEditDialogOpen(false);
+    if ('description' in updatedItem) { // Expense
+      const expense = updatedItem as Expense;
+      setExpenses(prev => {
+        const newExpenses = { ...prev };
+        const list = newExpenses[expense.category as ListName] || [];
+        const index = list.findIndex(e => e.id === expense.id);
+        if (index !== -1) {
+          list[index] = expense;
+        }
+        return newExpenses;
+      });
+      saveItem(ITEM_TYPE.EXPENSES, expense, CHANGE_TYPE.UPDATE, expense.category as ListName);
+    } else if ('client' in updatedItem) { // Project
+      const project = updatedItem as Project;
+      setProjects(prev => prev.map(p => (p.id === project.id ? project : p)));
+      saveItem(ITEM_TYPE.PROJECTS, project, CHANGE_TYPE.UPDATE);
+    } else if ('quantity' in updatedItem) { // Stock
+      const stockItem = updatedItem as StockItem;
+      setStockItems(prev => prev.map(s => (s.id === stockItem.id ? stockItem : s)));
+      saveItem(ITEM_TYPE.STOCK, stockItem, CHANGE_TYPE.UPDATE);
+    } else if ('employeeName' in updatedItem || 'dailyRate' in updatedItem) { // Employee
+      const employee = updatedItem as Employee;
+      setEmployees(prev => {
+        const newEmployees = { ...prev };
+        const list = newEmployees[employee.weekStartDate] || [];
+        const index = list.findIndex(e => e.id === employee.id);
+        if (index !== -1) {
+          list[index] = employee;
+        }
+        return newEmployees;
+      });
+      saveItem(ITEM_TYPE.EMPLOYEES, employee, CHANGE_TYPE.UPDATE);
     }
+    setIsEditDialogOpen(false);
   };
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
-      // Normalizar a data para evitar problemas de fuso horário
       const normalizedDate = normalizeDate(date);
       setSelectedDate(normalizedDate);
     } else {
@@ -601,309 +360,96 @@ export default function App() {
     setIsCalendarOpen(false);
   };
 
-  const handleAddItem = async (item: any) => {
-    try {
-      console.log("Função handleAddItem chamada com:", item);
-      
-      // Verificar se o item já tem um ID, caso contrário, criar um novo
-      if (!item.id) {
-        item.id = uuidv4();
-      }
-      
-      const newItem = { ...item, id: item.id };
-      console.log("ID gerado para o novo item:", newItem.id);
-      
-      if (activeCategory === 'Expenses') {
-        const expense = newItem as Expense;
-        expense.paid = expense.paid || false;
+  const handleAddItem = (item: any) => {
+    const newItem = { ...item, id: item.id || uuidv4() };
 
-        // Atualizar o estado
-        setExpenses(prevExpenses => {
-          console.log("Estado atual de expenses:", JSON.stringify(prevExpenses));
-          
-          // Criar uma cópia do objeto com tipagem correta
-          const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
-          
-          // Verificar se a lista existe
-          if (!newExpenses[selectedList]) {
-            console.log(`Lista ${selectedList} não encontrada, inicializando...`);
-            newExpenses[selectedList] = [];
-          }
-          
-          // Adicionar a nova despesa à lista selecionada
-          newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
-          console.log(`Despesa adicionada à lista ${selectedList}:`, JSON.stringify(expense));
-          console.log("Novo estado de expenses:", JSON.stringify(newExpenses));
-
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses: newExpenses,
-            projects,
-            stock: stockItems,
-            employees
-          }));
-
-          return newExpenses;
-        });
-      } else if (activeCategory === 'Projects') {
-        console.log("Adicionando projeto:", newItem);
-        
-        // Garantir que o projeto esteja formatado corretamente
-        const project = newItem as Project;
-        
-        // Garantir ID único
-        if (!project.id) {
-          project.id = uuidv4();
-          console.log("Novo ID gerado para o projeto:", project.id);
+    if (activeCategory === 'Expenses') {
+      const expense = newItem as Expense;
+      expense.paid = expense.paid || false;
+      // Optimistic UI update
+      setExpenses(prev => {
+        const newExpenses = { ...prev };
+        if (!newExpenses[selectedList]) {
+          newExpenses[selectedList] = [];
         }
-        
-        // Garantir que campos obrigatórios existam
-        if (!project.client) project.client = "Cliente";
-        if (!project.name) project.name = project.client;
-        if (!project.startDate) project.startDate = new Date().toISOString();
-        if (!project.status) project.status = "in_progress";
-        if (!project.location) project.location = "";
-        if (project.value === undefined) project.value = 0;
-        
-        console.log("Projeto formatado para adicionar:", project);
-        console.log("Lista atual de projetos:", projects);
-
-        // Atualizar o estado
-        setProjects(prevProjects => {
-          console.log("Estado atual de projects:", prevProjects);
-          
-          // Clone profundo para evitar problemas de referência
-          const existingProjects = JSON.parse(JSON.stringify(prevProjects));
-          
-          // Verificar se o projeto já existe
-          const existingIndex = existingProjects.findIndex((p: Project) => p.id === project.id);
-          
-          let newProjects;
-          if (existingIndex >= 0) {
-            // Atualizar projeto existente
-            newProjects = [...existingProjects];
-            newProjects[existingIndex] = project;
-            console.log("Projeto atualizado na posição:", existingIndex);
-          } else {
-            // Adicionar novo projeto
-            newProjects = [...existingProjects, project];
-            console.log("Novo projeto adicionado à lista");
-          }
-          
-          console.log("Lista de projetos atualizada:", newProjects);
-          
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses,
-            projects: newProjects,
-            stock: stockItems,
-            employees
-          }));
-          
-          return newProjects;
-        });
-      } else if (activeCategory === 'Stock') {
-        const stockItem = newItem as StockItem;
-        stockItem.id = uuidv4();
-
-        // Atualizar o estado
-        setStockItems(prevStockItems => {
-          console.log("Estado atual de stockItems:", JSON.stringify(prevStockItems));
-          
-          const newStockItems = [...prevStockItems, stockItem];
-          console.log("Item de estoque adicionado:", JSON.stringify(stockItem));
-          console.log("Novo estado de stockItems:", JSON.stringify(newStockItems));
-
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: newStockItems,
-            employees
-          }));
-
-          return newStockItems;
-        });
-      } else if (activeCategory === 'Employees') {
-        const employee = newItem as Employee;
-        
-        // Normalizar a data de início da semana para evitar problemas de fuso horário
-        const normalizedWeekStart = normalizeDate(selectedWeekStart);
-        const weekStartDate = formatDateToISO(normalizedWeekStart);
-        
-        // Inicializar os campos importantes do funcionário
-        employee.workedDates = [];
-        employee.weekStartDate = weekStartDate;
-        employee.daysWorked = 0;
-        
-        // Garantir que o dailyRate seja um número
-        if (typeof employee.dailyRate === 'string') {
-          employee.dailyRate = parseFloat(employee.dailyRate);
+        newExpenses[selectedList].push(expense);
+        return newExpenses;
+      });
+      // Save the change
+      saveItem(ITEM_TYPE.EXPENSES, expense, CHANGE_TYPE.ADD, selectedList);
+    } else if (activeCategory === 'Projects') {
+      const project = newItem as Project;
+      // Optimistic UI update
+      setProjects(prev => [...prev, project]);
+      // Save the change
+      saveItem(ITEM_TYPE.PROJECTS, project, CHANGE_TYPE.ADD);
+    } else if (activeCategory === 'Stock') {
+      const stockItem = newItem as StockItem;
+       // Optimistic UI update
+      setStockItems(prev => [...prev, stockItem]);
+      // Save the change
+      saveItem(ITEM_TYPE.STOCK, stockItem, CHANGE_TYPE.ADD);
+    } else if (activeCategory === 'Employees') {
+      const employee = newItem as Employee;
+      const weekStartDate = formatDateToISO(normalizeDate(selectedWeekStart));
+      employee.weekStartDate = weekStartDate;
+      // Optimistic UI update
+      setEmployees(prev => {
+        const newEmployees = { ...prev };
+        if (!newEmployees[weekStartDate]) {
+          newEmployees[weekStartDate] = [];
         }
-        if (!employee.dailyRate || isNaN(employee.dailyRate)) {
-          employee.dailyRate = 250;
-        }
-        
-        // Verificar se já existe este funcionário em alguma semana
-        let employeeExists = false;
-        const employeeId = employee.id;
-        
-        // Procurar o funcionário em todas as semanas
-        Object.keys(employees).forEach(weekKey => {
-          if (employees[weekKey].some(e => e.name === employee.name)) {
-            employeeExists = true;
-          }
-        });
-        
-        // Se o funcionário já existe, mostrar um alerta
-        if (employeeExists) {
-          alert(`Funcionário "${employee.name}" já existe.`);
-          return;
-        }
-        
-        // Adicionar o funcionário à semana selecionada
-        setEmployees(prevEmployees => {
-          const weekEmployees = prevEmployees[weekStartDate] || [];
-          const updatedEmployees = {
-            ...prevEmployees,
-            [weekStartDate]: [...weekEmployees, employee]
-          };
-          
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: stockItems,
-            employees: updatedEmployees
-          }));
-          
-          return updatedEmployees;
-        });
-      }
-    } catch (error) {
-      console.error('Error adding item:', error);
+        newEmployees[weekStartDate].push(employee);
+        return newEmployees;
+      });
+      // Save the change
+      saveItem(ITEM_TYPE.EMPLOYEES, employee, CHANGE_TYPE.ADD);
     }
   };
 
   const handleListSelect = (value: ListName) => {
     setSelectedList(value);
     setIsDropdownOpen(false);
-    
-    // Salvar os dados atualizados
-    saveChanges(createStorageData({
-      expenses,
-      projects,
-      stock: stockItems,
-      employees,
-      willBaseRate,
-      willBonus
-    }));
   };
 
   const handleEmployeeSelect = (value: EmployeeName) => {
     setActiveEmployee(value);
-    
-    // Salvar os dados atualizados
-    saveChanges(createStorageData({
-      expenses,
-      projects,
-      stock: stockItems,
-      employees,
-      willBaseRate,
-      willBonus
-    }));
   };
 
   const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
-    console.log(`Resetando todos os dias para funcionário ${employeeId}`);
-    
-    setEmployees(prevEmployees => {
-      const newEmployees = { ...prevEmployees };
-      
-      // Resetar o funcionário em todas as semanas
-      Object.keys(newEmployees).forEach(weekKey => {
-        const employeeIndex = newEmployees[weekKey].findIndex(e => e.id === employeeId);
-        
-        if (employeeIndex !== -1) {
-          // Resetar os dias trabalhados
-          const updatedEmployee = { ...newEmployees[weekKey][employeeIndex] };
-          updatedEmployee.daysWorked = 0;
-          updatedEmployee.workedDates = [];
-          
-          // Atualizar a lista de funcionários
-          newEmployees[weekKey] = [
-            ...newEmployees[weekKey].slice(0, employeeIndex),
-            updatedEmployee,
-            ...newEmployees[weekKey].slice(employeeIndex + 1)
-          ];
+      let employeeToUpdate : Employee | undefined;
+      setEmployees(prev => {
+        const newEmployees = { ...prev };
+        const week = newEmployees[weekStartDate];
+        if (week) {
+            const index = week.findIndex(e => e.id === employeeId);
+            if (index !== -1) {
+                const updatedEmployee = { ...week[index], workedDates: [], daysWorked: 0 };
+                employeeToUpdate = updatedEmployee;
+                week[index] = updatedEmployee;
+            }
         }
+        return newEmployees;
       });
-      
-      // Salvar no Supabase e localmente
-      saveChanges(createStorageData({
-        expenses,
-        projects,
-        stock: stockItems,
-        employees: newEmployees,
-        willBaseRate,
-        willBonus
-      }));
-      
-      return newEmployees;
-    });
+      if(employeeToUpdate) saveItem(ITEM_TYPE.EMPLOYEES, employeeToUpdate, CHANGE_TYPE.UPDATE);
   };
 
   const resetWillValues = () => {
     setWillBaseRate(200);
     setWillBonus(0);
-    
-    // Salvar dados após resetar os valores
-    setTimeout(() => {
-      saveChanges(createStorageData({
-        expenses,
-        projects,
-        stock: stockItems,
-        employees,
-        willBaseRate: 200,
-        willBonus: 0
-      }));
-    }, 0);
+    saveItem(ITEM_TYPE.WILL_SETTINGS, { id: 'willSettings', willBaseRate: 200, willBonus: 0 }, CHANGE_TYPE.UPDATE);
   };
 
-  // Adicionar função para salvar os dados do Will
   const handleSaveWillData = () => {
-    // Salvar todas as alterações
-    saveChanges(createStorageData({
-      expenses,
-      projects,
-      stock: stockItems,
-      employees,
-      willBaseRate,
-      willBonus
-    }));
+    saveItem(ITEM_TYPE.WILL_SETTINGS, { id: 'willSettings', willBaseRate, willBonus }, CHANGE_TYPE.UPDATE);
   };
 
-  // Modificar a função que adiciona bônus ao Will
   const handleAddBonus = () => {
-    setWillBonus(prev => {
-      const newBonus = prev + 100;
-      // Salvar dados após atualizar o bônus
-      setTimeout(() => {
-        console.log('Salvando bônus atualizado:', newBonus);
-        saveChanges(createStorageData({
-          expenses,
-          projects,
-          stock: stockItems,
-          employees,
-          willBaseRate,
-          willBonus: newBonus
-        }));
-      }, 0);
-      return newBonus;
-    });
+    const newBonus = willBonus + 100;
+    setWillBonus(newBonus);
+    saveItem(ITEM_TYPE.WILL_SETTINGS, { id: 'willSettings', willBaseRate, willBonus: newBonus }, CHANGE_TYPE.UPDATE);
   };
 
-  // Modificar a função que altera o salário base do Will
   const handleWillRateChange = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -912,19 +458,7 @@ export default function App() {
     
     setWillBaseRate(newBaseRate);
     setIsRateDialogOpen(false);
-    
-    // Salvar dados após atualizar o salário base
-    setTimeout(() => {
-      console.log('Salvando taxa base atualizada:', newBaseRate);
-      saveChanges(createStorageData({
-        expenses,
-        projects,
-        stock: stockItems,
-        employees,
-        willBaseRate: newBaseRate,
-        willBonus
-      }));
-    }, 0);
+    saveItem(ITEM_TYPE.WILL_SETTINGS, { id: 'willSettings', willBaseRate: newBaseRate, willBonus }, CHANGE_TYPE.UPDATE);
   };
 
   // Adicionar gerenciamento de foco para inputs de data

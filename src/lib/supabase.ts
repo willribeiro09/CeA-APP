@@ -27,30 +27,3 @@ export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
 export const isSupabaseConfigured = () => {
   return !!supabase;
 };
-
-// Inicializar a tabela de sincronização
-export const initSyncTable = async () => {
-  if (!supabase) return false;
-  
-  try {
-    console.log('Verificando se a tabela sync_data existe...');
-    
-    // Tentar acessar a tabela para ver se ela existe
-    const { error: checkError } = await supabase
-      .from('sync_data')
-      .select('id')
-      .limit(1);
-    
-    if (checkError) {
-      console.log('Erro ao verificar tabela (provavelmente não existe):', checkError.message);
-      console.log('Isso é normal na primeira execução. Continuando...');
-    } else {
-      console.log('Tabela sync_data existe e está acessível');
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Erro ao verificar tabela:', error);
-    return false;
-  }
-}; 

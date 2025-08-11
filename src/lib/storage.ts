@@ -1,5 +1,4 @@
 import { StorageItems, PendingChange } from '../types';
-import { syncService } from './sync';
 
 const STORAGE_KEY = 'expenses-app-data';
 const PENDING_CHANGES_KEY = 'expenses-app-pending-changes';
@@ -594,55 +593,3 @@ export const getData = async (): Promise<StorageItems> => {
     pendingChanges: []
   };
 };
-
-/**
- * Salva os dados no armazenamento local
- */
-export async function saveData(data: Partial<StorageItems>): Promise<boolean> {
-  try {
-    const now = new Date().toISOString();
-    const db = await openDatabase();
-    
-    // Primeiro obter os dados atuais para mesclar
-    const existingData = await getData();
-    
-    // Preparar dados para salvar, incluindo campos para offline
-    const dataToSave: StorageItems = {
-      ...existingData,
-      ...data,
-      lastSync: now,
-      version: existingData.version ? existingData.version + 1 : 1,
-    };
-    
-    // Salvar no IndexedDB usando transaction
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    store.put({ id: 'main-data', ...dataToSave });
-    
-    // Se estiver offline, registrar mudança para sincronização posterior
-    if (!navigator.onLine) {
-      console.log('Salvando dados localmente (offline)');
-      return true;
-    }
-    
-    // Tentar sincronizar com o servidor
-    try {
-      // Usar o método syncPendingChanges do syncService para sincronizar
-      await syncService.syncPendingChanges();
-      console.log('Solicitada sincronização com o servidor');
-    } catch (error) {
-      console.error('Erro ao sincronizar com servidor:', error);
-      // Registrar para sincronização posterior
-      await syncService.addOfflineChange({
-        type: 'update',
-        entity: 'expenses' as any, // Usando um tipo válido para o campo entity
-        data: dataToSave
-      });
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Erro ao salvar dados:', error);
-    return false;
-  }
-} 

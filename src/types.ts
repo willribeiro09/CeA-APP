@@ -97,3 +97,34 @@ export interface PendingChange {
   data: any;
   lastAttempt?: string;
 }
+
+// =================================================================
+// Types for the new event-based synchronization system
+// =================================================================
+
+export const CHANGE_TYPE = {
+  ADD: 'add',
+  UPDATE: 'update',
+  DELETE: 'delete',
+} as const;
+export type ChangeType = (typeof CHANGE_TYPE)[keyof typeof CHANGE_TYPE];
+
+export const ITEM_TYPE = {
+  EXPENSES: 'expenses',
+  PROJECTS: 'projects',
+  STOCK: 'stock',
+  EMPLOYEES: 'employees',
+  WILL_SETTINGS: 'willSettings',
+} as const;
+export type ItemType = (typeof ITEM_TYPE)[keyof typeof ITEM_TYPE];
+
+export interface ItemChange {
+  id: string; // UUID for the change event itself
+  item_id: string; // ID of the item that was changed
+  item_type: ItemType;
+  change_type: ChangeType;
+  data: any; // The full data of the item after the change
+  timestamp: number; // Unix timestamp (ms) of when the change occurred
+  session_id: string; // ID of the browser session that made the change
+  list_name?: string | null; // Optional: for categorized items like expenses
+}
