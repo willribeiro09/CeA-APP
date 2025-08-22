@@ -2,6 +2,12 @@ import { supabase } from './supabase';
 import { StorageItems, Expense, Project, StockItem, Employee } from '../types';
 import { storage } from './storage';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { 
+  BackgroundDetector, 
+  IntelligentMerge, 
+  ConflictNotifier,
+  DataWithMetadata
+} from './intelligentMerge';
 
 // Identificador único para esta sessão do navegador
 const SESSION_ID = Math.random().toString(36).substring(2, 15);
@@ -121,12 +127,16 @@ const applyDeletions = (data: StorageItems): StorageItems => {
 export const syncService = {
   channel: null as RealtimeChannel | null,
   isInitialized: false,
+  backgroundDetector: BackgroundDetector.getInstance(),
 
   init() {
     if (!supabase || this.isInitialized) return;
     
     console.log('Inicializando serviço de sincronização com ID:', SESSION_ID);
     this.isInitialized = true;
+
+    // Configurar detector de retorno do segundo plano
+    this.setupBackgroundDetection();
 
     // Limpar inscrição anterior se existir
     if (this.channel) {
@@ -143,45 +153,171 @@ export const syncService = {
           table: 'sync_data' 
         }, 
         (payload: RealtimePostgresChangesPayload<any>) => {
-          console.log('Mudança recebida:', payload);
+          console.log('🔄 Mudança recebida via realtime:', payload);
           if (payload.new) {
-            const data = payload.new as any;
-            console.log('Dados recebidos do Supabase:', data);
-          console.log('Valores do Will recebidos do Supabase:', data.willbaserate, data.willbonus);
-          
-          // Garantir que os valores do Will estejam definidos
-          const willValues = ensureWillValues(data);
-          
-          const storageData: StorageItems = {
-            expenses: data.expenses || {},
-            projects: data.projects || [],
-            stock: data.stock || [],
-            employees: data.employees || {},
-            deletedIds: data.deleted_ids || [],
-            willBaseRate: willValues.willBaseRate,
-            willBonus: willValues.willBonus,
-            lastSync: data.last_sync_timestamp || new Date().getTime()
-          };
-          
-          console.log('Dados processados para armazenamento local:', storageData);
-          console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
-          
-          // Aplicar exclusões antes de salvar
-          const processedData = applyDeletions(storageData);
-          
-          // Salvar no armazenamento local
-          storage.save(processedData);
-          
-          // Disparar evento para atualizar a UI
-          window.dispatchEvent(new CustomEvent('dataUpdated', { 
-            detail: processedData 
-          }));
+            this.handleRealtimeUpdate(payload.new);
+          }
         }
         }
       )
       .subscribe((status: string) => {
         console.log('Status da inscrição do canal:', status);
       });
+  },
+
+  setupBackgroundDetection() {
+    this.backgroundDetector.onReturnFromBackground(async (wasInBackground) => {
+      if (wasInBackground) {
+        console.log('🔄 App retornou do segundo plano - iniciando sincronização inteligente');
+        await this.smartSync();
+      }
+    });
+  },
+
+  async handleRealtimeUpdate(newData: any) {
+    try {
+      console.log('📥 Processando atualização realtime');
+      
+      // Carregar dados locais atuais
+      const localData = storage.load();
+      if (!localData) {
+        console.log('Nenhum dado local, usando dados do servidor diretamente');
+        this.processServerData(newData);
+        return;
+      }
+
+      // Verificar se precisa fazer merge
+      const serverData = this.convertServerData(newData);
+      
+      if (IntelligentMerge.needsSync(localData, serverData)) {
+        console.log('🔀 Dados diferentes detectados, fazendo merge inteligente');
+        
+        // Carregar metadados se existirem
+        const localMetadata = (localData as any).itemMetadata || {};
+        const serverMetadata = (newData.item_metadata as any) || {};
+        
+        // Fazer merge inteligente
+        const mergedData = IntelligentMerge.mergeStorageData(
+          localData,
+          serverData,
+          localMetadata,
+          serverMetadata
+        );
+
+        // Gerar relatório de conflitos
+        const conflicts = IntelligentMerge.generateConflictReport(localData, serverData);
+        ConflictNotifier.notifyConflicts(conflicts);
+
+        // Aplicar exclusões
+        const finalData = applyDeletions(mergedData);
+        
+        // Salvar dados mesclados
+        storage.save(finalData);
+        
+        // Atualizar UI
+        window.dispatchEvent(new CustomEvent('dataUpdated', { 
+          detail: finalData 
+        }));
+      } else {
+        console.log('✅ Dados já estão sincronizados');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao processar atualização realtime:', error);
+      // Em caso de erro, usar método tradicional
+      this.processServerData(newData);
+    }
+  },
+
+  processServerData(data: any) {
+    // Método tradicional para processar dados do servidor
+    const willValues = ensureWillValues(data);
+    
+    const storageData: StorageItems = {
+      expenses: data.expenses || {},
+      projects: data.projects || [],
+      stock: data.stock || [],
+      employees: data.employees || {},
+      deletedIds: data.deleted_ids || [],
+      willBaseRate: willValues.willBaseRate,
+      willBonus: willValues.willBonus,
+      lastSync: data.last_sync_timestamp || new Date().getTime()
+    };
+    
+    const processedData = applyDeletions(storageData);
+    storage.save(processedData);
+    
+    window.dispatchEvent(new CustomEvent('dataUpdated', { 
+      detail: processedData 
+    }));
+  },
+
+  convertServerData(serverData: any): StorageItems {
+    const willValues = ensureWillValues(serverData);
+    
+    return {
+      expenses: serverData.expenses || {},
+      projects: serverData.projects || [],
+      stock: serverData.stock || [],
+      employees: serverData.employees || {},
+      deletedIds: serverData.deleted_ids || [],
+      willBaseRate: willValues.willBaseRate,
+      willBonus: willValues.willBonus,
+      lastSync: serverData.last_sync_timestamp || new Date().getTime()
+    };
+  },
+
+  async smartSync(): Promise<void> {
+    try {
+      console.log('🧠 Iniciando sincronização inteligente');
+      
+      // Carregar dados locais e do servidor
+      const localData = storage.load();
+      const serverData = await this.loadLatestData();
+      
+      if (!localData || !serverData) {
+        console.log('Dados insuficientes para sincronização inteligente');
+        return;
+      }
+
+      // Verificar se precisa de sincronização
+      if (!IntelligentMerge.needsSync(localData, serverData)) {
+        console.log('✅ Dados já estão sincronizados');
+        return;
+      }
+
+      console.log('🔀 Fazendo merge inteligente de dados');
+      
+      // Carregar metadados se existirem
+      const localMetadata = (localData as any).itemMetadata || {};
+      const serverMetadata = {}; // Pode ser carregado do servidor se implementado
+      
+      // Fazer merge inteligente
+      const mergedData = IntelligentMerge.mergeStorageData(
+        localData,
+        serverData,
+        localMetadata,
+        serverMetadata
+      );
+
+      // Gerar relatório de conflitos
+      const conflicts = IntelligentMerge.generateConflictReport(localData, serverData);
+      ConflictNotifier.notifyConflicts(conflicts);
+
+      // Aplicar exclusões
+      const finalData = applyDeletions(mergedData);
+      
+      // Sincronizar com servidor
+      await this.sync(finalData);
+      
+      // Atualizar UI
+      window.dispatchEvent(new CustomEvent('dataUpdated', { 
+        detail: finalData 
+      }));
+
+      console.log('✅ Sincronização inteligente concluída');
+    } catch (error) {
+      console.error('❌ Erro na sincronização inteligente:', error);
+    }
   },
 
   setupRealtimeUpdates(callback: (data: StorageItems) => void) {

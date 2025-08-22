@@ -27,6 +27,7 @@ import { ProjectWeekSelector } from './components/ProjectWeekSelector';
 import { WeekSelector } from './components/WeekSelector';
 import EmployeeReceipt from './components/EmployeeReceipt';
 import WorkDaysCalendar from './components/WorkDaysCalendar';
+import { ConflictNotification } from './components/ConflictNotification';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   formatDateToISO, 
@@ -1472,6 +1473,9 @@ export default function App() {
           activeCategory={activeCategory}
           onCategoryChange={setActiveCategory}
         />
+        
+        {/* Notificações de conflito */}
+        <ConflictNotification />
         
         <div className="pt-[170px]">
           {(activeCategory === 'Expenses') && (
