@@ -158,7 +158,6 @@ export const syncService = {
             this.handleRealtimeUpdate(payload.new);
           }
         }
-        }
       )
       .subscribe((status: string) => {
         console.log('Status da inscrição do canal:', status);
