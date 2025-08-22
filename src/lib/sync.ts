@@ -154,13 +154,26 @@ export const syncService = {
         }, 
         (payload: RealtimePostgresChangesPayload<any>) => {
           console.log('🔄 Mudança recebida via realtime:', payload);
+          console.log('📊 Payload completo:', JSON.stringify(payload, null, 2));
           if (payload.new) {
             this.handleRealtimeUpdate(payload.new);
           }
         }
       )
-      .subscribe((status: string) => {
-        console.log('Status da inscrição do canal:', status);
+      .subscribe((status: string, err?: any) => {
+        console.log('🔗 Status da inscrição realtime:', status);
+        if (err) {
+          console.error('❌ Erro na inscrição realtime:', err);
+        }
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime conectado com sucesso!');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Erro no canal realtime');
+        } else if (status === 'TIMED_OUT') {
+          console.error('⏰ Timeout na conexão realtime');
+        } else if (status === 'CLOSED') {
+          console.warn('⚠️ Canal realtime fechado');
+        }
       });
   },
 
@@ -176,6 +189,7 @@ export const syncService = {
   async handleRealtimeUpdate(newData: any) {
     try {
       console.log('📥 Processando atualização realtime');
+      console.log('📊 Dados recebidos do servidor:', JSON.stringify(newData, null, 2));
       
       // Carregar dados locais atuais
       const localData = storage.load();
@@ -187,39 +201,47 @@ export const syncService = {
 
       // Verificar se precisa fazer merge
       const serverData = this.convertServerData(newData);
+      console.log('📊 Dados convertidos do servidor:', {
+        expenses: Object.keys(serverData.expenses).length,
+        projects: serverData.projects.length,
+        stock: serverData.stock.length,
+        employees: Object.keys(serverData.employees).length,
+        lastSync: serverData.lastSync
+      });
       
-      if (IntelligentMerge.needsSync(localData, serverData)) {
-        console.log('🔀 Dados diferentes detectados, fazendo merge inteligente');
-        
-        // Carregar metadados se existirem
-        const localMetadata = (localData as any).itemMetadata || {};
-        const serverMetadata = (newData.item_metadata as any) || {};
-        
-        // Fazer merge inteligente
-        const mergedData = IntelligentMerge.mergeStorageData(
-          localData,
-          serverData,
-          localMetadata,
-          serverMetadata
-        );
+      // Sempre processar mudanças do realtime para sincronização instantânea
+      console.log('🔀 Processando mudança realtime com merge inteligente');
+      
+      // Carregar metadados se existirem
+      const localMetadata = (localData as any).itemMetadata || {};
+      const serverMetadata = (newData.item_metadata as any) || {};
+      
+      // Fazer merge inteligente
+      const mergedData = IntelligentMerge.mergeStorageData(
+        localData,
+        serverData,
+        localMetadata,
+        serverMetadata
+      );
 
-        // Gerar relatório de conflitos
+      // Gerar relatório de conflitos apenas se houver diferenças significativas
+      if (IntelligentMerge.needsSync(localData, serverData)) {
         const conflicts = IntelligentMerge.generateConflictReport(localData, serverData);
         ConflictNotifier.notifyConflicts(conflicts);
-
-        // Aplicar exclusões
-        const finalData = applyDeletions(mergedData);
-        
-        // Salvar dados mesclados
-        storage.save(finalData);
-        
-        // Atualizar UI
-        window.dispatchEvent(new CustomEvent('dataUpdated', { 
-          detail: finalData 
-        }));
-      } else {
-        console.log('✅ Dados já estão sincronizados');
       }
+
+      // Aplicar exclusões
+      const finalData = applyDeletions(mergedData);
+      
+      // Salvar dados mesclados
+      storage.save(finalData);
+      
+      // Atualizar UI
+      window.dispatchEvent(new CustomEvent('dataUpdated', { 
+        detail: finalData 
+      }));
+      
+      console.log('✅ Sincronização realtime processada');
     } catch (error) {
       console.error('❌ Erro ao processar atualização realtime:', error);
       // Em caso de erro, usar método tradicional
@@ -317,6 +339,54 @@ export const syncService = {
     } catch (error) {
       console.error('❌ Erro na sincronização inteligente:', error);
     }
+  },
+
+  // Método de diagnóstico para verificar status do realtime
+  diagnoseRealtime() {
+    console.log('🔍 === DIAGNÓSTICO DO REALTIME ===');
+    console.log('Supabase configurado:', !!supabase);
+    console.log('Serviço inicializado:', this.isInitialized);
+    console.log('Canal criado:', !!this.channel);
+    
+    if (this.channel) {
+      console.log('Estado do canal:', this.channel.state);
+      console.log('Listeners do canal:', this.channel.bindings);
+    }
+    
+    if (supabase) {
+      console.log('Configuração realtime:', supabase.realtime);
+      console.log('Canais ativos:', supabase.realtime.channels);
+    }
+    
+    console.log('SESSION_ID:', SESSION_ID);
+    console.log('SHARED_UUID:', SHARED_UUID);
+    console.log('=================================');
+    
+    return {
+      supabaseConfigured: !!supabase,
+      serviceInitialized: this.isInitialized,
+      channelCreated: !!this.channel,
+      channelState: this.channel?.state,
+      sessionId: SESSION_ID,
+      sharedUuid: SHARED_UUID
+    };
+  },
+
+  // Forçar reconexão do realtime
+  forceReconnect() {
+    console.log('🔄 Forçando reconexão do realtime...');
+    
+    if (this.channel) {
+      this.channel.unsubscribe();
+      this.channel = null;
+    }
+    
+    this.isInitialized = false;
+    
+    // Recriar conexão após delay
+    setTimeout(() => {
+      this.init();
+    }, 1000);
   },
 
   setupRealtimeUpdates(callback: (data: StorageItems) => void) {
@@ -622,4 +692,34 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
 
 export const saveData = (data: StorageItems) => {
   return syncService.sync(data);
-}; 
+};
+
+// Expor métodos de debug globalmente
+if (typeof window !== 'undefined') {
+  (window as any).debugSync = {
+    diagnose: () => syncService.diagnoseRealtime(),
+    reconnect: () => syncService.forceReconnect(),
+    testSync: async () => {
+      const testData = {
+        expenses: {},
+        projects: [],
+        stock: [],
+        employees: {},
+        deletedIds: [],
+        willBaseRate: 200,
+        willBonus: 0,
+        lastSync: Date.now()
+      };
+      return await syncService.sync(testData);
+    },
+    getStatus: () => ({
+      initialized: syncService.isInitialized,
+      hasChannel: !!syncService.channel,
+      channelState: syncService.channel?.state,
+      supabaseOk: !!supabase
+    })
+  };
+  
+  console.log('🔧 Debug disponível via: window.debugSync');
+  console.log('🔧 Comandos: diagnose(), reconnect(), testSync(), getStatus()');
+} 
