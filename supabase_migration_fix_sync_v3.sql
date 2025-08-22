@@ -95,7 +95,7 @@ DECLARE
   merged_stock JSONB;
   merged_employees JSONB;
   merged_deleted_ids JSONB;
-  current_timestamp BIGINT;
+  sync_timestamp BIGINT;
 BEGIN
   -- Configurar o ID do dispositivo para o contexto da sessão
   IF p_device_id IS NOT NULL THEN
@@ -103,7 +103,7 @@ BEGIN
   END IF;
 
   -- Usar timestamp atual se não fornecido
-  current_timestamp := COALESCE(p_client_timestamp, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT);
+  sync_timestamp := COALESCE(p_client_timestamp, EXTRACT(EPOCH FROM NOW())::BIGINT * 1000);
 
   -- Buscar dados atuais do servidor
   SELECT * INTO current_data FROM sync_data WHERE id = p_id;
@@ -131,7 +131,7 @@ BEGIN
       COALESCE(p_deleted_ids, '[]'::jsonb),
       p_willbaseRate, 
       p_willbonus, 
-      current_timestamp,
+      sync_timestamp,
       1
     )
     RETURNING jsonb_build_object(
@@ -177,7 +177,7 @@ BEGIN
       deleted_ids = merged_deleted_ids,
       willbaseRate = GREATEST(p_willbaseRate, COALESCE(current_data.willbaseRate, 200)),
       willbonus = GREATEST(p_willbonus, COALESCE(current_data.willbonus, 0)),
-      last_sync_timestamp = current_timestamp,
+      last_sync_timestamp = sync_timestamp,
       version = COALESCE(current_data.version, 0) + 1
     WHERE id = p_id
     RETURNING jsonb_build_object(
@@ -222,7 +222,7 @@ BEGIN
       'deleted_ids', '[]'::jsonb,
       'willbaseRate', 200,
       'willbonus', 0,
-      'last_sync_timestamp', (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+      'last_sync_timestamp', EXTRACT(EPOCH FROM NOW())::BIGINT * 1000,
       'version', 1
     );
     RAISE NOTICE 'Nenhum dado encontrado para ID: %, retornando estrutura vazia', p_id;
@@ -267,7 +267,7 @@ DECLARE
   deleted_history_rows INTEGER := 0;
 BEGIN
   -- Calcular timestamp de N dias atrás (em milissegundos)
-  cutoff_time := (EXTRACT(EPOCH FROM NOW() - (days_to_keep || ' days')::INTERVAL) * 1000)::BIGINT;
+  cutoff_time := EXTRACT(EPOCH FROM NOW() - (days_to_keep || ' days')::INTERVAL)::BIGINT * 1000;
   
   -- Para cada registro, limpar deleted_ids se for muito antigo
   UPDATE sync_data 
@@ -384,7 +384,7 @@ BEGIN
       '["deleted1", "deleted2"]'::jsonb,
       250,
       50,
-      (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+      EXTRACT(EPOCH FROM NOW())::BIGINT * 1000,
       'test_device'
     ) INTO test_result;
     
