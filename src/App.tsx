@@ -61,6 +61,7 @@ const createStorageData = (data: Partial<StorageItems>): StorageItems => ({
   projects: data.projects || [],
   stock: data.stock || [],
   employees: data.employees || {},
+  deletedIds: data.deletedIds || [],
   lastSync: new Date().toISOString(),
   willBaseRate: data.willBaseRate,
   willBonus: data.willBonus
@@ -108,6 +109,8 @@ export default function App() {
   const [selectedEmployeeName, setSelectedEmployeeName] = useState<EmployeeName>('Matheus');
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
   const [receiptEmployee, setReceiptEmployee] = useState<Employee | null>(null);
+  // Adicionar estado para deletedIds
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -315,78 +318,69 @@ export default function App() {
   };
 
   const handleDeleteItem = (id: string, category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
-    console.log(`Deletando item ${id} da categoria ${category}`);
-    
+    setDeletedIds(prev => {
+      if (!prev.includes(id)) {
+        return [...prev, id];
+      }
+      return prev;
+    });
+
     if (category === 'Expenses') {
       setExpenses(prevExpenses => {
         const newExpenses = { ...prevExpenses };
-        
-        // Procurar e remover a despesa em todas as listas
         Object.keys(newExpenses).forEach(listName => {
           newExpenses[listName as ListName] = newExpenses[listName as ListName].filter(
             expense => expense.id !== id
           );
         });
-        
-        // Salvar as alterações
         saveChanges(createStorageData({
           expenses: newExpenses,
           projects,
           stock: stockItems,
-          employees
+          employees,
+          deletedIds: [...deletedIds, id]
         }));
-        
         return newExpenses;
       });
     } else if (category === 'Projects') {
       setProjects(prevProjects => {
         const newProjects = prevProjects.filter(project => project.id !== id);
-        
-        // Salvar as alterações
         saveChanges(createStorageData({
           expenses,
           projects: newProjects,
           stock: stockItems,
-          employees
+          employees,
+          deletedIds: [...deletedIds, id]
         }));
-        
         return newProjects;
       });
     } else if (category === 'Stock') {
       setStockItems(prevStockItems => {
         const newStockItems = prevStockItems.filter(item => item.id !== id);
-        
-        // Salvar as alterações
         saveChanges(createStorageData({
           expenses,
           projects,
           stock: newStockItems,
-          employees
+          employees,
+          deletedIds: [...deletedIds, id]
         }));
-        
         return newStockItems;
       });
     } else if (category === 'Employees') {
       setEmployees(prevEmployees => {
         const newEmployees = { ...prevEmployees };
-        
-        // Procurar e remover o funcionário em todas as semanas
         Object.keys(newEmployees).forEach(weekStartDate => {
           newEmployees[weekStartDate] = newEmployees[weekStartDate].filter(
             employee => employee.id !== id
           );
         });
-        
-        // Salvar as alterações
         saveChanges(createStorageData({
           expenses,
           projects,
           stock: stockItems,
           employees: newEmployees,
-          willBaseRate,
-          willBonus
+          deletedIds: [...deletedIds, id]
         }));
-        
         return newEmployees;
       });
     }
@@ -1453,6 +1447,21 @@ export default function App() {
   useEffect(() => {
     // Executar teste das semanas
     testWeekRanges();
+  }, []);
+
+  // Atualizar deletedIds ao receber dados do servidor
+  useEffect(() => {
+    const handleDataUpdate = (event: CustomEvent<StorageItems>) => {
+      if (event.detail.deletedIds) {
+        setDeletedIds(event.detail.deletedIds);
+      }
+    };
+
+    window.addEventListener('dataUpdated', handleDataUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('dataUpdated', handleDataUpdate as EventListener);
+    };
   }, []);
 
   return (

@@ -34,6 +34,7 @@ export const storage = {
         projects: data.projects || [],
         stock: data.stock || [],
         employees: data.employees || {},
+        deletedIds: data.deletedIds || [],
         willBaseRate: data.willBaseRate || 200,
         willBonus: data.willBonus || 0,
         lastSync: new Date().getTime()
@@ -97,6 +98,7 @@ export const getData = (): StorageItems => {
     projects: [],
     stock: [],
     employees: {},
+    deletedIds: [],
     willBaseRate: 200,
     willBonus: 0,
     lastSync: new Date().getTime()

@@ -83,6 +83,41 @@ const ensureWillValues = (data: any): { willBaseRate: number, willBonus: number 
   };
 };
 
+// Função para aplicar exclusões aos dados
+const applyDeletions = (data: StorageItems): StorageItems => {
+  if (!data.deletedIds || data.deletedIds.length === 0) {
+    return data;
+  }
+
+  const deletedSet = new Set(data.deletedIds);
+  
+  // Aplicar exclusões em expenses
+  const cleanedExpenses: Record<string, Expense[]> = {};
+  Object.keys(data.expenses).forEach(key => {
+    cleanedExpenses[key] = data.expenses[key].filter(expense => !deletedSet.has(expense.id));
+  });
+
+  // Aplicar exclusões em projects
+  const cleanedProjects = data.projects.filter(project => !deletedSet.has(project.id));
+
+  // Aplicar exclusões em stock
+  const cleanedStock = data.stock.filter(item => !deletedSet.has(item.id));
+
+  // Aplicar exclusões em employees
+  const cleanedEmployees: Record<string, Employee[]> = {};
+  Object.keys(data.employees).forEach(key => {
+    cleanedEmployees[key] = data.employees[key].filter(employee => !deletedSet.has(employee.id));
+  });
+
+  return {
+    ...data,
+    expenses: cleanedExpenses,
+    projects: cleanedProjects,
+    stock: cleanedStock,
+    employees: cleanedEmployees
+  };
+};
+
 export const syncService = {
   channel: null as RealtimeChannel | null,
   isInitialized: false,
@@ -122,20 +157,24 @@ export const syncService = {
             projects: data.projects || [],
             stock: data.stock || [],
             employees: data.employees || {},
+            deletedIds: data.deleted_ids || [],
             willBaseRate: willValues.willBaseRate,
             willBonus: willValues.willBonus,
-              lastSync: data.last_sync_timestamp || new Date().getTime()
+            lastSync: data.last_sync_timestamp || new Date().getTime()
           };
           
           console.log('Dados processados para armazenamento local:', storageData);
           console.log('Valores do Will após processamento:', storageData.willBaseRate, storageData.willBonus);
           
+          // Aplicar exclusões antes de salvar
+          const processedData = applyDeletions(storageData);
+          
           // Salvar no armazenamento local
-          storage.save(storageData);
+          storage.save(processedData);
           
           // Disparar evento para atualizar a UI
           window.dispatchEvent(new CustomEvent('dataUpdated', { 
-            detail: storageData 
+            detail: processedData 
           }));
         }
         }
@@ -194,15 +233,18 @@ export const syncService = {
           console.log('Dados recebidos pelo fallback:', fallbackData[0]);
           const willValues = ensureWillValues(fallbackData[0]);
           
-          return {
+          const fallbackServerData = {
             expenses: fallbackData[0].expenses || {},
             projects: fallbackData[0].projects || [],
             stock: fallbackData[0].stock || [],
             employees: fallbackData[0].employees || {},
+            deletedIds: fallbackData[0].deleted_ids || [],
             willBaseRate: willValues.willBaseRate,
             willBonus: willValues.willBonus,
             lastSync: fallbackData[0].last_sync_timestamp || new Date().getTime()
           };
+          
+          return applyDeletions(fallbackServerData);
         }
         
         return null;
@@ -213,15 +255,18 @@ export const syncService = {
         
         const willValues = ensureWillValues(data);
         
-        return {
+        const serverData = {
           expenses: data.expenses || {},
           projects: data.projects || [],
           stock: data.stock || [],
           employees: data.employees || {},
+          deletedIds: data.deleted_ids || [],
           willBaseRate: willValues.willBaseRate,
           willBonus: willValues.willBonus,
           lastSync: data.last_sync_timestamp || new Date().getTime()
         };
+        
+        return applyDeletions(serverData);
       }
       
       return null;
@@ -267,6 +312,7 @@ export const syncService = {
           p_projects: data.projects || [],
           p_stock: data.stock || [],
           p_employees: data.employees || {},
+          p_deleted_ids: data.deletedIds || [],
           p_willbaserate: willValues.willBaseRate,
           p_willbonus: willValues.willBonus,
           p_client_timestamp: currentTime,
@@ -305,6 +351,7 @@ export const syncService = {
             projects: data.projects || existingData[0].projects || [],
             stock: data.stock || existingData[0].stock || [],
             employees: { ...existingData[0].employees, ...data.employees },
+            deleted_ids: [...new Set([...(existingData[0].deleted_ids || []), ...(data.deletedIds || [])])],
             willbaserate: willValues.willBaseRate,
             willbonus: willValues.willBonus,
             last_sync_timestamp: currentTime
@@ -319,6 +366,7 @@ export const syncService = {
             projects: data.projects || [],
             stock: data.stock || [],
             employees: data.employees || {},
+            deleted_ids: data.deletedIds || [],
             willbaserate: willValues.willBaseRate,
             willbonus: willValues.willBonus,
             last_sync_timestamp: currentTime
@@ -391,8 +439,9 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
               projects: [...serverData.projects, ...localData.projects.filter(p => 
                 !serverData.projects.some(sp => sp.id === p.id))],
               stock: [...serverData.stock, ...localData.stock.filter(s => 
-                !serverData.stock.some(ss => s.id === s.id))],
+                !serverData.stock.some(ss => ss.id === s.id))],
               employees: { ...serverData.employees, ...localData.employees },
+              deletedIds: [...new Set([...(serverData.deletedIds || []), ...(localData.deletedIds || [])])],
               willBaseRate: localData.willBaseRate !== undefined ? 
                 localData.willBaseRate : serverData.willBaseRate,
               willBonus: localData.willBonus !== undefined ? 
@@ -429,6 +478,7 @@ export const loadInitialData = async (): Promise<StorageItems | null> => {
         projects: [],
         stock: [],
         employees: {},
+        deletedIds: [],
         willBaseRate: 200,
         willBonus: 0,
         lastSync: new Date().getTime()

@@ -60,6 +60,7 @@ export interface StorageItems {
   lastSync: number | string;
   willBaseRate?: number;
   willBonus?: number;
+  deletedIds?: string[];
 }
 
 export type SyncData = StorageItems;

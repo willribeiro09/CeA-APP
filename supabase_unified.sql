@@ -35,6 +35,7 @@ CREATE TABLE sync_data (
   projects JSONB DEFAULT '[]'::JSONB,
   stock JSONB DEFAULT '[]'::JSONB,
   employees JSONB DEFAULT '{}'::JSONB,
+  deleted_ids JSONB DEFAULT '[]'::JSONB,
   willbaseRate INTEGER DEFAULT 200,
   willbonus INTEGER DEFAULT 0,
   last_sync_timestamp BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
@@ -48,6 +49,7 @@ COMMENT ON COLUMN sync_data.expenses IS 'Mapa de despesas: { chave: Array<Despes
 COMMENT ON COLUMN sync_data.projects IS 'Array de projetos';
 COMMENT ON COLUMN sync_data.stock IS 'Array de itens de estoque';
 COMMENT ON COLUMN sync_data.employees IS 'Mapa de funcionários: { chave: Array<Funcionário> }';
+COMMENT ON COLUMN sync_data.deleted_ids IS 'Array de IDs de itens deletados para sincronização';
 COMMENT ON COLUMN sync_data.willbaseRate IS 'Taxa base do Will';
 COMMENT ON COLUMN sync_data.willbonus IS 'Bônus do Will';
 COMMENT ON COLUMN sync_data.last_sync_timestamp IS 'Timestamp da última sincronização (em milissegundos)';
@@ -310,6 +312,7 @@ CREATE OR REPLACE FUNCTION sync_client_data(
   p_projects JSONB,
   p_stock JSONB,
   p_employees JSONB,
+  p_deleted_ids JSONB,
   p_willbaseRate INTEGER,
   p_willbonus INTEGER,
   p_client_timestamp BIGINT,
@@ -339,6 +342,7 @@ BEGIN
       projects, 
       stock, 
       employees, 
+      deleted_ids,
       willbaseRate, 
       willbonus, 
       last_sync_timestamp
@@ -349,6 +353,7 @@ BEGIN
       p_projects, 
       p_stock, 
       p_employees, 
+      p_deleted_ids,
       p_willbaseRate, 
       p_willbonus, 
       p_client_timestamp
@@ -359,6 +364,7 @@ BEGIN
       'projects', projects,
       'stock', stock,
       'employees', employees,
+      'deleted_ids', deleted_ids,
       'willbaseRate', willbaseRate,
       'willbonus', willbonus,
       'last_sync_timestamp', last_sync_timestamp,
@@ -378,6 +384,12 @@ BEGIN
       projects = merged_projects,
       stock = merged_stock,
       employees = merged_employees,
+      deleted_ids = (
+        SELECT jsonb_agg(DISTINCT value) 
+        FROM jsonb_array_elements_text(
+          COALESCE(current_data.deleted_ids, '[]'::jsonb) || COALESCE(p_deleted_ids, '[]'::jsonb)
+        ) AS value
+      ),
       willbaseRate = GREATEST(p_willbaseRate, current_data.willbaseRate),
       willbonus = GREATEST(p_willbonus, current_data.willbonus),
       last_sync_timestamp = p_client_timestamp
@@ -388,6 +400,7 @@ BEGIN
       'projects', projects,
       'stock', stock,
       'employees', employees,
+      'deleted_ids', deleted_ids,
       'willbaseRate', willbaseRate,
       'willbonus', willbonus,
       'last_sync_timestamp', last_sync_timestamp,
@@ -418,6 +431,7 @@ BEGIN
       'projects', '[]'::jsonb,
       'stock', '[]'::jsonb,
       'employees', '{}'::jsonb,
+      'deleted_ids', '[]'::jsonb,
       'willbaseRate', 200,
       'willbonus', 0,
       'last_sync_timestamp', (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
@@ -431,6 +445,7 @@ BEGIN
         'projects', current_data.projects,
         'stock', current_data.stock,
         'employees', current_data.employees,
+        'deleted_ids', current_data.deleted_ids,
         'willbaseRate', current_data.willbaseRate,
         'willbonus', current_data.willbonus,
         'last_sync_timestamp', current_data.last_sync_timestamp,
@@ -482,6 +497,7 @@ INSERT INTO sync_data (
   projects,
   stock,
   employees,
+  deleted_ids,
   willbaseRate,
   willbonus,
   last_sync_timestamp
@@ -492,11 +508,34 @@ VALUES (
   '[]'::jsonb,
   '[]'::jsonb,
   '{}'::jsonb,
+  '[]'::jsonb,
   200,
   0,
   (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- Função para limpar deleted_ids antigos (mais de 30 dias)
+CREATE OR REPLACE FUNCTION cleanup_old_deleted_ids()
+RETURNS void AS $$
+DECLARE
+  cutoff_time BIGINT;
+BEGIN
+  -- Calcular timestamp de 30 dias atrás (em milissegundos)
+  cutoff_time := (EXTRACT(EPOCH FROM NOW() - INTERVAL '30 days') * 1000)::BIGINT;
+  
+  -- Para cada registro, manter apenas deleted_ids dos últimos 30 dias
+  -- Nota: Esta é uma simplificação - numa implementação real, seria necessário
+  -- rastrear quando cada ID foi deletado para fazer a limpeza corretamente
+  UPDATE sync_data 
+  SET deleted_ids = '[]'::jsonb
+  WHERE last_sync_timestamp < cutoff_time;
+  
+  -- Limpar histórico antigo também
+  DELETE FROM sync_history 
+  WHERE created_at < NOW() - INTERVAL '30 days';
+END;
+$$ LANGUAGE plpgsql;
 
 -- Exemplos de uso das funções:
 
@@ -507,6 +546,7 @@ ON CONFLICT (id) DO NOTHING;
 --   '[]'::jsonb, 
 --   '[]'::jsonb, 
 --   '{"2023-01":[]}'::jsonb, 
+--   '["id1","id2"]'::jsonb,
 --   200, 
 --   0, 
 --   extract(epoch from now()) * 1000,
@@ -517,4 +557,7 @@ ON CONFLICT (id) DO NOTHING;
 -- SELECT get_changes_since(
 --   '00000000-0000-0000-0000-000000000000', 
 --   1672531200000  -- timestamp em milissegundos
--- ); 
+-- );
+
+-- 3. Para limpar deleted_ids antigos:
+-- SELECT cleanup_old_deleted_ids(); 
