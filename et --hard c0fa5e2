@@ -1,0 +1,10 @@
+[33mdafd1da[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m  FORCE DEPLOY: Resolver cache e Service Worker
+[33m89e2d9f[m  DEBUG: Adicionar logs detalhados de sincronização
+[33m78a015f[m  DEPLOY: Build atualizado com código limpo
+[33ma7552aa[m  CORRIGIR SQL: Fix função get_sync_diagnostics
+[33m2346933[m  LIMPEZA COMPLETA DO PROJETO
+[33mc0fa5e2[m Fix: Corrige sincronização em tempo real - Realtime funcionando
+[33m8f6f022[m Fix: Corrige erro de sintaxe no sync.ts linha 161
+[33me197ed9[m  Feature: Sistema de Merge Inteligente - Elimina sobrescrita entre usuários
+[33m4ff63ce[m  Fix: Migração Supabase funcionando - Sintaxe corrigida
+[33mb6c7b3f[m Fix: Script migração v3 - Remove triggers antes das funções
