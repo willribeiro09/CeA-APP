@@ -511,7 +511,7 @@ export const syncService = {
       const currentTime = new Date().getTime();
       
       const { data: syncResult, error: syncError } = await supabase
-        .rpc('sync_client_data', {
+        .rpc('intelligent_sync_client_data', {
           p_id: SHARED_UUID,
           p_expenses: data.expenses || {},
           p_projects: data.projects || [],
@@ -694,7 +694,7 @@ export const saveData = (data: StorageItems) => {
   return syncService.sync(data);
 };
 
-// Expor métodos de debug globalmente
+  // Expor métodos de debug globalmente
 if (typeof window !== 'undefined') {
   (window as any).debugSync = {
     diagnose: () => syncService.diagnoseRealtime(),
@@ -717,9 +717,88 @@ if (typeof window !== 'undefined') {
       hasChannel: !!syncService.channel,
       channelState: syncService.channel?.state,
       supabaseOk: !!supabase
-    })
+    }),
+    // Verificação de integridade do banco
+    verifyIntegrity: async () => {
+      if (!supabase) return { error: 'Supabase não configurado' };
+      
+      try {
+        const { data, error } = await supabase.rpc('verify_sync_integrity');
+        if (error) {
+          console.error('Erro na verificação:', error);
+          return { error: error.message };
+        }
+        console.log('🔍 Verificação de integridade:', data);
+        return data;
+      } catch (err) {
+        console.error('Erro na verificação:', err);
+        return { error: 'Falha na verificação' };
+      }
+    },
+    // Limpeza manual de IDs deletados
+    cleanupDeletedIds: async () => {
+      if (!supabase) return { error: 'Supabase não configurado' };
+      
+      try {
+        const { error } = await supabase.rpc('auto_cleanup_deleted_ids');
+        if (error) {
+          console.error('Erro na limpeza:', error);
+          return { error: error.message };
+        }
+        console.log('🧹 Limpeza de IDs deletados concluída');
+        return { success: true };
+      } catch (err) {
+        console.error('Erro na limpeza:', err);
+        return { error: 'Falha na limpeza' };
+      }
+    },
+    // Estatísticas detalhadas
+    getStats: async () => {
+      if (!supabase) return { error: 'Supabase não configurado' };
+      
+      try {
+        const { data, error } = await supabase
+          .from('sync_data')
+          .select('*')
+          .eq('id', SHARED_UUID)
+          .single();
+          
+        if (error) {
+          console.error('Erro ao buscar estatísticas:', error);
+          return { error: error.message };
+        }
+        
+        const stats = {
+          version: data.version,
+          lastSync: new Date(data.last_sync_timestamp).toLocaleString(),
+          deviceLastSeen: data.device_last_seen,
+          deletedIdsCount: data.deleted_ids ? data.deleted_ids.length : 0,
+          projectsCount: data.projects ? data.projects.length : 0,
+          stockCount: data.stock ? data.stock.length : 0,
+          expensesKeys: data.expenses ? Object.keys(data.expenses) : [],
+          employeesKeys: data.employees ? Object.keys(data.employees) : [],
+          willSettings: {
+            baseRate: data.willbaserate,
+            bonus: data.willbonus
+          }
+        };
+        
+        console.log('📊 Estatísticas do sync:', stats);
+        return stats;
+      } catch (err) {
+        console.error('Erro ao buscar estatísticas:', err);
+        return { error: 'Falha ao buscar estatísticas' };
+      }
+    }
   };
   
-  console.log('🔧 Debug disponível via: window.debugSync');
-  console.log('🔧 Comandos: diagnose(), reconnect(), testSync(), getStatus()');
+  console.log('🔧 Debug avançado disponível via: window.debugSync');
+  console.log('🔧 Comandos disponíveis:');
+  console.log('   - diagnose() - Diagnosticar realtime');
+  console.log('   - reconnect() - Reconectar');
+  console.log('   - testSync() - Testar sincronização');
+  console.log('   - getStatus() - Status do serviço');
+  console.log('   - verifyIntegrity() - Verificar integridade');
+  console.log('   - cleanupDeletedIds() - Limpar IDs deletados');
+  console.log('   - getStats() - Estatísticas detalhadas');
 } 
