@@ -112,6 +112,8 @@ export default function App() {
   const [receiptEmployee, setReceiptEmployee] = useState<Employee | null>(null);
   // Adicionar estado para deletedIds
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  // Estado para sincronização de retorno do segundo plano
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -155,6 +157,21 @@ export default function App() {
         console.log('Nenhum dado encontrado no armazenamento local');
       }
 
+      // Configurar listeners para sincronização de segundo plano
+      const handleSyncReturnStarted = () => {
+        console.log('🔄 UI: Sincronização de retorno iniciada');
+        setIsBackgroundSyncing(true);
+      };
+
+      const handleSyncReturnCompleted = () => {
+        console.log('✅ UI: Sincronização de retorno concluída');
+        setIsBackgroundSyncing(false);
+      };
+
+      // Registrar eventos de sincronização de segundo plano
+      window.addEventListener('syncReturnStarted', handleSyncReturnStarted);
+      window.addEventListener('syncReturnCompleted', handleSyncReturnCompleted);
+
       // Configurar sincronização em tempo real
       const cleanup = basicSyncService.setupRealtimeUpdates((data) => {
         console.log('Recebida atualização em tempo real:', {
@@ -181,6 +198,10 @@ export default function App() {
       });
 
       return () => {
+        // Limpar listeners de sincronização
+        window.removeEventListener('syncReturnStarted', handleSyncReturnStarted);
+        window.removeEventListener('syncReturnCompleted', handleSyncReturnCompleted);
+        
         if (typeof cleanup === 'function') {
           cleanup();
         }
@@ -1480,6 +1501,14 @@ export default function App() {
           activeCategory={activeCategory}
           onCategoryChange={setActiveCategory}
         />
+        
+        {/* Indicador não-intrusivo de sincronização */}
+        {isBackgroundSyncing && (
+          <div className="fixed top-[120px] left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg z-[60] flex items-center gap-2 text-sm">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            Sincronizando...
+          </div>
+        )}
         
         {/* Notificações de conflito */}
         <ConflictNotification />

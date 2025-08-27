@@ -19,6 +19,8 @@ export const basicSyncService = {
   isInitialized: false,
   lastSyncTime: 0, // Para evitar sync muito frequente
   syncInProgress: false, // Para evitar syncs simultâneos
+  isSyncingOnReturn: false, // Flag específica para sync de retorno do segundo plano
+  syncCallbacks: new Set<() => void>(), // Callbacks para notificar quando sync termina
 
   async init() {
     if (!supabase || this.isInitialized) return;
@@ -37,64 +39,82 @@ export const basicSyncService = {
   },
 
   setupBackgroundDetection() {
-    // Detectar quando app volta do segundo plano (navegador)
+    let lastCheckTime = Date.now();
+    let lastFocusTime = Date.now();
+    
+    // DETECÇÃO IMEDIATA - PWA e navegador
+    const immediateSync = () => {
+      // Reset do debounce para ser quase instantâneo
+      this.lastSyncTime = 0;
+      this.handleAppReturn();
+    };
+
+    // 1. Visibilitychange - Detecta mudança de aba/janela (mais confiável)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        console.log('📱 App voltou (visibilitychange) - verificando atualizações...');
-        this.handleAppReturn();
+        const now = Date.now();
+        console.log('🚀 IMEDIATO: App voltou (visibilitychange) - sincronização instantânea...');
+        immediateSync();
+        lastCheckTime = now;
+        lastFocusTime = now;
       }
     });
 
-    // Detectar focus da janela (navegador)
-    window.addEventListener('focus', () => {
-      console.log('🎯 App recebeu foco (focus) - verificando atualizações...');
-      this.handleAppReturn();
-    });
-
-    // PWA: Detectar quando app volta do background (específico para PWA)
-    window.addEventListener('pageshow', (event) => {
-      if (event.persisted) {
-        console.log('📱 PWA: App voltou do cache (pageshow) - verificando atualizações...');
-        this.handleAppReturn();
-      }
-    });
-
-    // PWA: Detectar resume do app
-    document.addEventListener('resume', () => {
-      console.log('📱 PWA: App resumed (resume) - verificando atualizações...');
-      this.handleAppReturn();
-    });
-
-    // PWA: Verificação adicional a cada foco (mais agressiva para PWA)
-    let lastCheckTime = Date.now();
+    // 2. Focus - Detectar foco da janela
     window.addEventListener('focus', () => {
       const now = Date.now();
-      // Se passou mais de 30 segundos desde a última verificação
-      if (now - lastCheckTime > 30000) {
-        console.log('📱 PWA: Verificação temporal (30s+) - atualizando...');
-        this.handleAppReturn();
-        lastCheckTime = now;
-      }
+      console.log('🎯 IMEDIATO: App recebeu foco (focus) - sincronização instantânea...');
+      immediateSync();
+      lastCheckTime = now;
+      lastFocusTime = now;
     });
 
-    // PWA: Verificação periódica quando app está ativo (para casos extremos)
+    // 3. PWA: Pageshow - Específico para volta do cache/background
+    window.addEventListener('pageshow', (event) => {
+      const now = Date.now();
+      // Sempre sincronizar no pageshow, independente de persisted
+      console.log('📱 PWA IMEDIATO: App voltou (pageshow) - sincronização instantânea...');
+      console.log('- Event persisted:', event.persisted);
+      console.log('- Time since last focus:', now - lastFocusTime, 'ms');
+      immediateSync();
+      lastCheckTime = now;
+    });
+
+    // 4. PWA: Resume - Evento específico de PWA
+    document.addEventListener('resume', () => {
+      const now = Date.now();
+      console.log('📱 PWA IMEDIATO: App resumed (resume) - sincronização instantânea...');
+      immediateSync();
+      lastCheckTime = now;
+    });
+
+    // 5. DETECÇÃO TEMPORAL AGRESSIVA - Para casos onde eventos não disparam
     setInterval(() => {
       if (!document.hidden && navigator.onLine) {
         const now = Date.now();
-        if (now - lastCheckTime > 120000) { // 2 minutos
-          console.log('📱 PWA: Verificação periódica (2min) - sincronizando...');
+        // Verificação a cada 15 segundos se passou mais de 30s sem sync
+        if (now - lastCheckTime > 30000) {
+          console.log('⏰ TEMPORAL: Verificação agressiva (30s+) - sincronização...');
           this.handleAppReturn();
           lastCheckTime = now;
         }
       }
-    }, 60000); // Verifica a cada 1 minuto
+    }, 15000); // Verifica a cada 15 segundos
+
+    // 6. PWA: Detectar mudanças no estado online/offline
+    window.addEventListener('online', () => {
+      console.log('🌐 ONLINE: Conectividade restaurada - sincronização...');
+      setTimeout(() => immediateSync(), 100); // Pequeno delay para estabilizar
+    });
+
+    console.log('🔧 Detecção de segundo plano configurada com sincronização IMEDIATA');
   },
 
   async handleAppReturn() {
     const now = Date.now();
     
-    // Debounce: evitar sync muito frequente (mínimo 5 segundos)
-    if (now - this.lastSyncTime < 5000) {
+    // Debounce reduzido para 2 segundos (mais ágil)
+    if (now - this.lastSyncTime < 2000) {
       console.log('⏭️ Sync recente, ignorando...');
       return;
     }
@@ -106,10 +126,11 @@ export const basicSyncService = {
     }
     
     this.syncInProgress = true;
+    this.isSyncingOnReturn = true; // Marcar como sync de retorno
     this.lastSyncTime = now;
     
     try {
-      console.log('🔄 Sincronizando dados após volta (PWA-safe)...');
+      console.log('🚀 Sincronização IMEDIATA após volta do segundo plano...');
       
       // Verificar se está online antes de tentar
       if (!navigator.onLine) {
@@ -117,20 +138,39 @@ export const basicSyncService = {
         return;
       }
       
-      // SEMPRE carregar dados mais recentes do servidor
+      // Notificar que sync de retorno começou
+      window.dispatchEvent(new CustomEvent('syncReturnStarted'));
+      
+      // SEMPRE carregar dados mais recentes do servidor COM PRIORIDADE MÁXIMA
       const serverData = await this.loadInitialData();
       
       if (serverData) {
-        console.log('✅ Dados atualizados do servidor após volta');
+        console.log('✅ Dados sincronizados IMEDIATAMENTE após volta');
         // Disparar evento para atualizar UI
         window.dispatchEvent(new CustomEvent('dataUpdated', { 
           detail: serverData 
         }));
       }
+      
+      // Notificar que sync de retorno terminou
+      window.dispatchEvent(new CustomEvent('syncReturnCompleted'));
+      
+      // Executar callbacks registrados
+      this.syncCallbacks.forEach(callback => {
+        try {
+          callback();
+        } catch (err) {
+          console.error('Erro em callback de sync:', err);
+        }
+      });
+      
     } catch (error) {
       console.error('❌ Erro ao sincronizar após volta:', error);
+      // Mesmo com erro, notificar que terminou
+      window.dispatchEvent(new CustomEvent('syncReturnCompleted'));
     } finally {
       this.syncInProgress = false;
+      this.isSyncingOnReturn = false;
     }
   },
 
@@ -283,6 +323,17 @@ export const basicSyncService = {
         this.isInitialized = false;
       }
     };
+  },
+
+  // Método para registrar callback de sync
+  onSyncComplete(callback: () => void) {
+    this.syncCallbacks.add(callback);
+    return () => this.syncCallbacks.delete(callback);
+  },
+
+  // Verificar se está sincronizando ao retornar do segundo plano
+  isSyncingFromBackground() {
+    return this.isSyncingOnReturn;
   }
 };
 
@@ -399,6 +450,29 @@ if (typeof window !== 'undefined') {
       basicSyncService.lastSyncTime = 0; // Reset debounce
       basicSyncService.syncInProgress = false; // Reset lock
       await basicSyncService.handleAppReturn();
+    },
+    // NOVOS MÉTODOS PARA SYNC DE RETORNO
+    isSyncingFromBackground: () => basicSyncService.isSyncingFromBackground(),
+    getSyncStatus: () => ({
+      syncInProgress: basicSyncService.syncInProgress,
+      isSyncingOnReturn: basicSyncService.isSyncingOnReturn,
+      lastSyncTime: new Date(basicSyncService.lastSyncTime).toLocaleTimeString(),
+      registeredCallbacks: basicSyncService.syncCallbacks.size
+    }),
+    simulateBackgroundReturn: async () => {
+      console.log('🧪 TESTE: Simulando volta do segundo plano...');
+      // Simular que saiu do segundo plano há tempo suficiente
+      basicSyncService.lastSyncTime = Date.now() - 10000;
+      // Disparar eventos de volta
+      window.dispatchEvent(new Event('focus'));
+      setTimeout(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      }, 100);
+    },
+    testInstantSync: () => {
+      console.log('⚡ TESTE: Sincronização instantânea...');
+      basicSyncService.lastSyncTime = 0;
+      basicSyncService.handleAppReturn();
     }
   };
   
