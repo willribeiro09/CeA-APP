@@ -11,7 +11,7 @@ import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems
 import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
-import { syncService, loadInitialData, saveData } from './lib/sync';
+import { simpleSyncService, loadData, saveData } from './lib/syncSimple';
 import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
@@ -125,8 +125,11 @@ export default function App() {
         console.warn('Supabase não configurado corretamente. Usando apenas armazenamento local.');
       }
       
+      // Inicializar sincronização simples
+      await simpleSyncService.init();
+      
       // Carregar dados iniciais
-      const localData = await loadInitialData();
+      const localData = await loadData();
 
       if (localData) {
         console.log('Dados carregados com sucesso:', {
@@ -153,8 +156,7 @@ export default function App() {
       }
 
       // Configurar sincronização em tempo real
-      syncService.init();
-      const cleanup = syncService.setupRealtimeUpdates((data) => {
+      const cleanup = simpleSyncService.setupRealtimeUpdates((data) => {
         console.log('Recebida atualização em tempo real:', {
           expenses: Object.keys(data.expenses || {}).length + ' listas',
           projects: (data.projects || []).length + ' projetos',
