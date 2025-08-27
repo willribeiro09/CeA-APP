@@ -9,7 +9,7 @@ interface NavigationProps {
 
 export function Navigation({ activeCategory, onCategoryChange, disabled = false }: NavigationProps) {
   return (
-    <nav className={`fixed top-[100px] left-0 right-0 bg-[#5ABB37] rounded-b-xl z-40 ${disabled ? 'opacity-70' : ''}`}>
+    <nav className="fixed top-[100px] left-0 right-0 bg-[#5ABB37] rounded-b-xl z-40">
       <div className="flex justify-around">
         <button
           onClick={disabled ? () => {} : () => onCategoryChange('Expenses')}
@@ -18,7 +18,7 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
             activeCategory === 'Expenses' 
               ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
               : ''
-          } ${disabled ? 'cursor-not-allowed' : ''}`}
+          }`}
         >
           <ReceiptText className={`w-[22px] h-[22px] ${activeCategory === 'Expenses' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
           <span className={`text-sm ${activeCategory === 'Expenses' ? 'text-white font-medium' : 'text-white'}`}>
@@ -33,7 +33,7 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
             activeCategory === 'Projects' 
               ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
               : ''
-          } ${disabled ? 'cursor-not-allowed' : ''}`}
+          }`}
         >
           <Briefcase className={`w-[22px] h-[22px] ${activeCategory === 'Projects' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
           <span className={`text-sm ${activeCategory === 'Projects' ? 'text-white font-medium' : 'text-white'}`}>
@@ -48,7 +48,7 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
             activeCategory === 'Employees' 
               ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
               : ''
-          } ${disabled ? 'cursor-not-allowed' : ''}`}
+          }`}
         >
           <Users className={`w-[22px] h-[22px] ${activeCategory === 'Employees' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
           <span className={`text-sm ${activeCategory === 'Employees' ? 'text-white font-medium' : 'text-white'}`}>
@@ -63,7 +63,7 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
             activeCategory === 'Stock' 
               ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
               : ''
-          } ${disabled ? 'cursor-not-allowed' : ''}`}
+          }`}
         >
           <Package className={`w-[22px] h-[22px] ${activeCategory === 'Stock' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
           <span className={`text-sm ${activeCategory === 'Stock' ? 'text-white font-medium' : 'text-white'}`}>

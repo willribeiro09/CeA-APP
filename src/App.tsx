@@ -1503,18 +1503,7 @@ export default function App() {
           disabled={isBackgroundSyncing}
         />
         
-        {/* Overlay de bloqueio durante sincronização */}
-        {isBackgroundSyncing && (
-          <div className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 shadow-xl flex items-center gap-4 mx-4">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              <div className="text-gray-800">
-                <div className="font-medium">Sincronizando dados...</div>
-                <div className="text-sm text-gray-600">Aguarde, não feche o aplicativo</div>
-              </div>
-            </div>
-          </div>
-        )}
+
         
         {/* Notificações de conflito */}
         <ConflictNotification />
@@ -1526,11 +1515,7 @@ export default function App() {
                 <button
                   onClick={isBackgroundSyncing ? () => {} : () => setIsDropdownOpen(!isDropdownOpen)}
                   disabled={isBackgroundSyncing}
-                  className={`w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm flex items-center justify-between ${
-                    isBackgroundSyncing 
-                      ? 'bg-gray-100 cursor-not-allowed opacity-70' 
-                      : 'bg-white hover:bg-gray-50'
-                  }`}
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
                 >
                     <span className="text-gray-700 font-medium">
                       {selectedList}
@@ -1577,17 +1562,11 @@ export default function App() {
           {(activeCategory === 'Projects') && (
             <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
               <div className="relative max-w-[800px] mx-auto pb-2">
-                <div className={`w-full px-2 py-2 border border-gray-200 rounded-lg shadow-sm flex items-center justify-between ${
-                  isBackgroundSyncing ? 'bg-gray-100 opacity-70' : 'bg-white'
-                }`}>
-                  {!isBackgroundSyncing ? (
-                    <ProjectWeekSelector 
-                      selectedWeekStart={selectedWeekStart}
-                      onWeekChange={handleProjectWeekChange}
-                    />
-                  ) : (
-                    <div className="text-gray-600 text-sm">Aguarde sincronização...</div>
-                  )}
+                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
+                  <ProjectWeekSelector 
+                    selectedWeekStart={selectedWeekStart}
+                    onWeekChange={isBackgroundSyncing ? () => {} : handleProjectWeekChange}
+                  />
                   <div className="flex items-center">
                     <span className="text-gray-700 font-medium text-xs">Total:</span>
                     <span className="text-[#5ABB37] text-base font-bold ml-1">
@@ -1608,17 +1587,11 @@ export default function App() {
           {(activeCategory === 'Employees') && (
             <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
               <div className="relative max-w-[800px] mx-auto pb-2">
-                <div className={`w-full px-2 py-2 border border-gray-200 rounded-lg shadow-sm flex items-center justify-between ${
-                  isBackgroundSyncing ? 'bg-gray-100 opacity-70' : 'bg-white'
-                }`}>
-                  {!isBackgroundSyncing ? (
-                    <WeekSelector 
-                      selectedWeekStart={selectedWeekStart}
-                      onWeekChange={handleWeekChange}
-                    />
-                  ) : (
-                    <div className="text-gray-600 text-sm">Aguarde sincronização...</div>
-                  )}
+                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
+                  <WeekSelector 
+                    selectedWeekStart={selectedWeekStart}
+                    onWeekChange={isBackgroundSyncing ? () => {} : handleWeekChange}
+                  />
                   <div className="flex items-center">
                     <span className="text-gray-700 font-medium text-xs">Total:</span>
                     <span className="text-[#5ABB37] text-base font-bold ml-1">
@@ -1650,7 +1623,7 @@ export default function App() {
               </div>
             )}
 
-            <ul className={`flex flex-col space-y-[8px] m-0 p-0 ${isBackgroundSyncing ? 'pointer-events-none opacity-70' : ''}`}>
+            <ul className={`flex flex-col space-y-[8px] m-0 p-0 ${isBackgroundSyncing ? 'pointer-events-none' : ''}`}>
               {activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || [])
                 .filter(isItemFromSelectedDate)
                 .map(expense => (
@@ -1822,11 +1795,7 @@ export default function App() {
                                         openWorkDaysCalendar(employee);
                                       }}
                                       disabled={isBackgroundSyncing}
-                                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors flex items-center h-8 ${
-                                        isBackgroundSyncing 
-                                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                                          : 'bg-green-500 text-white hover:bg-green-600'
-                                      }`}
+                                      className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
                                     >
                                       Days Worked
                                     </button>
@@ -1840,11 +1809,7 @@ export default function App() {
                                         });
                                       }}
                                       disabled={isBackgroundSyncing}
-                                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors h-8 ${
-                                        isBackgroundSyncing 
-                                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                                          : 'bg-blue-500 text-white hover:bg-blue-600'
-                                      }`}
+                                      className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors h-8"
                                     >
                                       Receipt
                                     </button>

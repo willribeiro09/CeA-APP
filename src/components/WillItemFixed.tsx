@@ -26,29 +26,21 @@ export function WillItemFixed({
       onDelete={disabled ? () => {} : onLayoff}
       isWill={true}
     >
-      <div className={`p-2.5 ${disabled ? 'opacity-70' : ''}`}>
+      <div className="p-2.5">
         <div className="flex items-center justify-between mb-1.5">
           <h3 className="text-xl font-bold text-gray-800">Will</h3>
           <div className="flex items-center gap-1.5">
             <button
               onClick={disabled ? () => {} : onIncreaseRate}
               disabled={disabled}
-              className={`px-4 py-1 rounded-md text-sm font-medium transition-colors flex items-center h-8 ${
-                disabled 
-                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                  : 'bg-green-500 text-white hover:bg-green-600'
-              }`}
+              className="px-4 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
             >
               Increase
             </button>
             <button
               onClick={disabled ? () => {} : onAddBonus}
               disabled={disabled}
-              className={`px-2.5 py-1 rounded-md text-sm transition-colors h-8 ${
-                disabled 
-                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
-              }`}
+              className="px-2.5 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 transition-colors h-8"
             >
               BONUS
             </button>
