@@ -20,6 +20,7 @@ export const smartSyncService = {
   isInBackground: false,
   pendingSync: false,
   lastServerData: null as StorageItems | null,
+  syncPaused: false, // Nova flag para pausar sync temporariamente
 
   async init() {
     if (!supabase || this.isInitialized) return;
@@ -66,26 +67,28 @@ export const smartSyncService = {
   },
 
   async handleForegroundReturn() {
-    console.log('🔄 Sincronização após volta do segundo plano');
+    console.log('🔄 Sincronização suave após volta do segundo plano');
     this.pendingSync = true;
     
-    // Bloquear interações temporariamente
-    window.dispatchEvent(new CustomEvent('syncBlocking', { detail: true }));
-    
     try {
-      // Carregar dados do servidor
+      // Carregar dados do servidor SEM bloquear interações
       const serverData = await this.loadFromServer();
       if (serverData) {
         // Fazer merge inteligente com dados locais
         const localData = storage.load();
         if (localData) {
-          const mergedData = this.intelligentMerge(localData, serverData);
-          storage.save(mergedData);
-          
-          // Atualizar UI
-          window.dispatchEvent(new CustomEvent('dataUpdated', { 
-            detail: mergedData 
-          }));
+          // Só fazer merge se houver diferenças significativas
+          const hasSignificantChanges = this.hasSignificantChanges(localData, serverData);
+          if (hasSignificantChanges) {
+            const mergedData = this.intelligentMerge(localData, serverData);
+            storage.save(mergedData);
+            
+            // Atualizar UI silenciosamente
+            window.dispatchEvent(new CustomEvent('dataUpdated', { 
+              detail: mergedData 
+            }));
+            console.log('📊 Dados sincronizados silenciosamente');
+          }
         } else {
           storage.save(serverData);
           window.dispatchEvent(new CustomEvent('dataUpdated', { 
@@ -97,9 +100,31 @@ export const smartSyncService = {
       console.error('❌ Erro na sincronização de volta:', error);
     } finally {
       this.pendingSync = false;
-      // Liberar interações
-      window.dispatchEvent(new CustomEvent('syncBlocking', { detail: false }));
     }
+  },
+
+  hasSignificantChanges(localData: StorageItems, serverData: StorageItems): boolean {
+    // Comparar timestamps de última sincronização
+    const localSync = localData.lastSync as number || 0;
+    const serverSync = serverData.lastSync as number || 0;
+    
+    // Se servidor tem dados mais novos, há mudanças significativas
+    if (serverSync > localSync + 5000) { // 5 segundos de diferença
+      return true;
+    }
+    
+    // Comparar quantidade de itens (mudanças estruturais)
+    const localProjectsCount = localData.projects?.length || 0;
+    const serverProjectsCount = serverData.projects?.length || 0;
+    
+    const localStockCount = localData.stock?.length || 0;
+    const serverStockCount = serverData.stock?.length || 0;
+    
+    if (localProjectsCount !== serverProjectsCount || localStockCount !== serverStockCount) {
+      return true;
+    }
+    
+    return false;
   },
 
   intelligentMerge(localData: StorageItems, serverData: StorageItems): StorageItems {
@@ -214,8 +239,13 @@ export const smartSyncService = {
   },
 
   async handleRealtimeUpdate(newData: any) {
+    if (this.syncPaused) {
+      console.log('⏸️ Sync pausado, ignorando atualização realtime');
+      return;
+    }
+    
     try {
-      console.log('📥 Processando atualização realtime');
+      console.log('📥 Processando atualização realtime (modo suave)');
       
       const serverData: StorageItems = {
         expenses: newData.expenses || {},
@@ -228,24 +258,37 @@ export const smartSyncService = {
         lastSync: newData.last_sync_timestamp || Date.now()
       };
       
-      // Sempre fazer merge inteligente com dados locais
+      // Verificar se é uma atualização do próprio dispositivo
+      const lastDeviceSeen = newData.device_last_seen;
+      const currentDevice = localStorage.getItem('device_id');
+      
+      if (lastDeviceSeen === currentDevice) {
+        console.log('⏭️ Ignorando atualização do próprio dispositivo');
+        return;
+      }
+      
+      // Só fazer merge se há mudanças significativas
       const localData = storage.load();
       if (localData) {
-        const mergedData = this.intelligentMerge(localData, serverData);
-        storage.save(mergedData);
-        
-        // Atualizar UI
-        window.dispatchEvent(new CustomEvent('dataUpdated', { 
-          detail: mergedData 
-        }));
+        const hasChanges = this.hasSignificantChanges(localData, serverData);
+        if (hasChanges) {
+          const mergedData = this.intelligentMerge(localData, serverData);
+          storage.save(mergedData);
+          
+          // Atualizar UI de forma suave
+          window.dispatchEvent(new CustomEvent('dataUpdated', { 
+            detail: mergedData 
+          }));
+          console.log('✅ Dados atualizados via realtime com merge suave');
+        } else {
+          console.log('📊 Nenhuma mudança significativa detectada');
+        }
       } else {
         storage.save(serverData);
         window.dispatchEvent(new CustomEvent('dataUpdated', { 
           detail: serverData 
         }));
       }
-      
-      console.log('✅ Dados atualizados via realtime com merge');
     } catch (error) {
       console.error('❌ Erro ao processar realtime:', error);
     }
@@ -462,22 +505,32 @@ export const smartSyncService = {
       callback(event.detail);
     };
 
-    const handleSyncBlocking = (event: CustomEvent<boolean>) => {
-      console.log('🚫 Sync blocking:', event.detail);
-      // Callback pode implementar UI de bloqueio se necessário
-    };
-
     window.addEventListener('dataUpdated', handleDataUpdate as EventListener);
-    window.addEventListener('syncBlocking', handleSyncBlocking as EventListener);
     
     return () => {
       window.removeEventListener('dataUpdated', handleDataUpdate as EventListener);
-      window.removeEventListener('syncBlocking', handleSyncBlocking as EventListener);
       if (this.channel) {
         this.channel.unsubscribe();
         this.isInitialized = false;
       }
     };
+  },
+
+  // Pausar sincronização temporariamente
+  pauseSync() {
+    this.syncPaused = true;
+    console.log('⏸️ Sincronização pausada');
+  },
+
+  // Resumir sincronização
+  resumeSync() {
+    this.syncPaused = false;
+    console.log('▶️ Sincronização resumida');
+  },
+
+  // Verificar se sync está ativo
+  isSyncActive(): boolean {
+    return !this.syncPaused && this.isInitialized;
   }
 };
 
@@ -513,8 +566,10 @@ if (typeof window !== 'undefined') {
       initialized: smartSyncService.isInitialized,
       isInBackground: smartSyncService.isInBackground,
       pendingSync: smartSyncService.pendingSync,
+      syncPaused: smartSyncService.syncPaused,
       hasChannel: !!smartSyncService.channel,
-      channelState: smartSyncService.channel?.state
+      channelState: smartSyncService.channel?.state,
+      isActive: smartSyncService.isSyncActive()
     }),
     loadData: () => smartSyncService.loadFromServer(),
     testMerge: (local: any, server: any) => smartSyncService.intelligentMerge(local, server),
@@ -531,9 +586,27 @@ if (typeof window !== 'undefined') {
         return await smartSyncService.sync(data);
       }
       return false;
+    },
+    // NOVAS FUNÇÕES DE CONTROLE
+    pauseSync: () => smartSyncService.pauseSync(),
+    resumeSync: () => smartSyncService.resumeSync(),
+    emergencyDisable: () => {
+      smartSyncService.pauseSync();
+      console.log('🚨 SYNC EMERGÊNCIA DESABILITADO - Use resumeSync() para reativar');
+    },
+    clearAndReload: async () => {
+      smartSyncService.pauseSync();
+      const data = await smartSyncService.loadFromServer();
+      if (data) {
+        storage.save(data);
+        window.dispatchEvent(new CustomEvent('dataUpdated', { detail: data }));
+        console.log('🔄 Dados recarregados do servidor');
+      }
+      smartSyncService.resumeSync();
     }
   };
   
   console.log('🧠 Smart Sync Debug disponível via: window.smartSyncDebug');
   console.log('📱 Device ID:', DEVICE_ID);
+  console.log('🆘 Emergência: window.smartSyncDebug.emergencyDisable()');
 }
