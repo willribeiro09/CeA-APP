@@ -1,6 +1,6 @@
 // This is the service worker with the Advanced caching
 
-const CACHE = "cea-app-v1.8.0";
+const CACHE = "cea-app-v1.8.1-safe";
 const cacheFiles = [
   "/",
   "index.html",
@@ -41,6 +41,27 @@ self.addEventListener("activate", event => {
 
 // Estratégia de Cache: Verificar rede primeiro, depois cache para fallback
 self.addEventListener("fetch", event => {
+  // Ignorar requests de navigation preload para evitar warnings
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          // Aguardar preloadResponse se disponível
+          const preloadResponse = await event.preloadResponse;
+          if (preloadResponse) {
+            return preloadResponse;
+          }
+        } catch (error) {
+          console.log('[ServiceWorker] Preload response error (ignorado):', error);
+        }
+        
+        // Fallback para fetch normal
+        return fetch(event.request);
+      })()
+    );
+    return;
+  }
+
   // Garantir que solicitações para dados locais sempre são atualizadas
   if (event.request.url.includes('localStorage') || 
       event.request.url.includes('indexedDB') ||
@@ -50,7 +71,7 @@ self.addEventListener("fetch", event => {
     return;
   }
   
-  if (event.request.url.includes('/api/')) {
+  if (event.request.url.includes('/api/') || event.request.url.includes('supabase')) {
     // Para chamadas de API, sempre tentar rede primeiro
     event.respondWith(networkFirst(event.request));
   } else {

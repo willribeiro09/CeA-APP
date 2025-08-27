@@ -25,16 +25,20 @@ export const smartSyncService = {
   async init() {
     if (!supabase || this.isInitialized) return;
     
-    console.log('🚀 Inicializando Smart Sync:', DEVICE_ID);
+    console.log('🚀 Inicializando Smart Sync (MODO SEGURO):', DEVICE_ID);
     this.isInitialized = true;
+    
+    // TEMPORARIAMENTE DESABILITADO para resolver problemas de merge
+    this.syncPaused = true;
+    console.log('⚠️ SYNC PAUSADO POR SEGURANÇA - Use window.smartSyncDebug.resumeSync() quando necessário');
 
-    // Configurar detecção de segundo plano
-    this.setupBackgroundDetection();
+    // Configurar detecção de segundo plano (DESABILITADO)
+    // this.setupBackgroundDetection();
     
-    // Configurar realtime
-    this.setupRealtime();
+    // Configurar realtime (DESABILITADO)  
+    // this.setupRealtime();
     
-    // Carregar dados iniciais com merge inteligente
+    // Carregar dados iniciais SEM merge automático
     await this.loadInitialData();
   },
 
@@ -378,8 +382,14 @@ export const smartSyncService = {
       return true;
     }
 
+    if (this.syncPaused) {
+      console.log('⏸️ Sync pausado, salvando apenas localmente');
+      storage.save(data);
+      return true;
+    }
+
     try {
-      console.log('🔄 Sincronizando com timestamps...');
+      console.log('🔄 Sincronizando com timestamps (modo manual)...');
       
       // Adicionar timestamps aos novos itens
       const timestampedData = this.addTimestampsToData(data);
@@ -400,28 +410,13 @@ export const smartSyncService = {
         
         if (intelligentResult.error) throw intelligentResult.error;
         
-        // Se sucesso, usar dados merged do servidor
+        // MODO SEGURO: Não fazer merge automático, apenas salvar no servidor
         if (intelligentResult.data && intelligentResult.data.merged) {
-          const mergedData = intelligentResult.data.data;
-          const updatedData: StorageItems = {
-            expenses: mergedData.expenses || {},
-            projects: mergedData.projects || [],
-            stock: mergedData.stock || [],
-            employees: mergedData.employees || {},
-            deletedIds: mergedData.deleted_ids || [],
-            willBaseRate: mergedData.willbaserate || 200,
-            willBonus: mergedData.willbonus || 0,
-            lastSync: intelligentResult.data.last_sync_timestamp || Date.now()
-          };
+          // Manter dados locais, apenas atualizar timestamp
+          timestampedData.lastSync = intelligentResult.data.last_sync_timestamp || Date.now();
+          storage.save(timestampedData);
           
-          storage.save(updatedData);
-          
-          // Atualizar UI com dados merged
-          window.dispatchEvent(new CustomEvent('dataUpdated', { 
-            detail: updatedData 
-          }));
-          
-          console.log('✅ Sincronização inteligente bem-sucedida com merge');
+          console.log('✅ Dados enviados ao servidor, mantendo versão local');
           return true;
         }
         
@@ -603,6 +598,33 @@ if (typeof window !== 'undefined') {
         console.log('🔄 Dados recarregados do servidor');
       }
       smartSyncService.resumeSync();
+    },
+    // MODO SEGURO: Operações sem merge
+    enableSafeMode: () => {
+      smartSyncService.pauseSync();
+      console.log('🛡️ MODO SEGURO ATIVADO - Sync automático DESABILITADO');
+      console.log('📝 Suas edições/deleções agora funcionam normalmente');
+      console.log('🔄 Use manualSync() para enviar dados quando quiser');
+    },
+    manualSync: async () => {
+      if (smartSyncService.syncPaused) {
+        const data = storage.load();
+        if (data) {
+          // Forçar sync mesmo pausado temporariamente
+          const originalPaused = smartSyncService.syncPaused;
+          smartSyncService.syncPaused = false;
+          const result = await smartSyncService.sync(data);
+          smartSyncService.syncPaused = originalPaused;
+          console.log('📤 Sync manual:', result ? 'sucesso' : 'falhou');
+          return result;
+        }
+      }
+      return false;
+    },
+    getLocalData: () => storage.load(),
+    clearLocalStorage: () => {
+      storage.clear();
+      console.log('🗑️ Local storage limpo');
     }
   };
   
