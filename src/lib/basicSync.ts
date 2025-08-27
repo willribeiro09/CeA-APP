@@ -17,6 +17,8 @@ const DEVICE_ID = (() => {
 export const basicSyncService = {
   channel: null as RealtimeChannel | null,
   isInitialized: false,
+  lastSyncTime: 0, // Para evitar sync muito frequente
+  syncInProgress: false, // Para evitar syncs simultâneos
 
   async init() {
     if (!supabase || this.isInitialized) return;
@@ -35,25 +37,85 @@ export const basicSyncService = {
   },
 
   setupBackgroundDetection() {
-    // Detectar quando app volta do segundo plano
+    // Detectar quando app volta do segundo plano (navegador)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        // App voltou do segundo plano
-        console.log('📱 App voltou - verificando atualizações...');
+        console.log('📱 App voltou (visibilitychange) - verificando atualizações...');
         this.handleAppReturn();
       }
     });
 
-    // Detectar focus da janela
+    // Detectar focus da janela (navegador)
     window.addEventListener('focus', () => {
-      console.log('🎯 App recebeu foco - verificando atualizações...');
+      console.log('🎯 App recebeu foco (focus) - verificando atualizações...');
       this.handleAppReturn();
     });
+
+    // PWA: Detectar quando app volta do background (específico para PWA)
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        console.log('📱 PWA: App voltou do cache (pageshow) - verificando atualizações...');
+        this.handleAppReturn();
+      }
+    });
+
+    // PWA: Detectar resume do app
+    document.addEventListener('resume', () => {
+      console.log('📱 PWA: App resumed (resume) - verificando atualizações...');
+      this.handleAppReturn();
+    });
+
+    // PWA: Verificação adicional a cada foco (mais agressiva para PWA)
+    let lastCheckTime = Date.now();
+    window.addEventListener('focus', () => {
+      const now = Date.now();
+      // Se passou mais de 30 segundos desde a última verificação
+      if (now - lastCheckTime > 30000) {
+        console.log('📱 PWA: Verificação temporal (30s+) - atualizando...');
+        this.handleAppReturn();
+        lastCheckTime = now;
+      }
+    });
+
+    // PWA: Verificação periódica quando app está ativo (para casos extremos)
+    setInterval(() => {
+      if (!document.hidden && navigator.onLine) {
+        const now = Date.now();
+        if (now - lastCheckTime > 120000) { // 2 minutos
+          console.log('📱 PWA: Verificação periódica (2min) - sincronizando...');
+          this.handleAppReturn();
+          lastCheckTime = now;
+        }
+      }
+    }, 60000); // Verifica a cada 1 minuto
   },
 
   async handleAppReturn() {
+    const now = Date.now();
+    
+    // Debounce: evitar sync muito frequente (mínimo 5 segundos)
+    if (now - this.lastSyncTime < 5000) {
+      console.log('⏭️ Sync recente, ignorando...');
+      return;
+    }
+    
+    // Evitar syncs simultâneos
+    if (this.syncInProgress) {
+      console.log('🔄 Sync já em progresso, ignorando...');
+      return;
+    }
+    
+    this.syncInProgress = true;
+    this.lastSyncTime = now;
+    
     try {
-      console.log('🔄 Sincronizando dados após volta...');
+      console.log('🔄 Sincronizando dados após volta (PWA-safe)...');
+      
+      // Verificar se está online antes de tentar
+      if (!navigator.onLine) {
+        console.log('📡 Offline - pulando sync');
+        return;
+      }
       
       // SEMPRE carregar dados mais recentes do servidor
       const serverData = await this.loadInitialData();
@@ -67,6 +129,8 @@ export const basicSyncService = {
       }
     } catch (error) {
       console.error('❌ Erro ao sincronizar após volta:', error);
+    } finally {
+      this.syncInProgress = false;
     }
   },
 
@@ -313,6 +377,28 @@ if (typeof window !== 'undefined') {
           console.log('✅ Dados em sincronia');
         }
       }
+    },
+    // PWA ESPECÍFICO
+    isPWA: () => {
+      return window.matchMedia('(display-mode: standalone)').matches || 
+             window.navigator.standalone === true;
+    },
+    getPWAInfo: () => {
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                   window.navigator.standalone === true;
+      console.log('📱 PWA Info:');
+      console.log('- É PWA:', isPWA);
+      console.log('- Online:', navigator.onLine);
+      console.log('- Document hidden:', document.hidden);
+      console.log('- Last sync:', new Date(basicSyncService.lastSyncTime).toLocaleTimeString());
+      console.log('- Sync in progress:', basicSyncService.syncInProgress);
+      return { isPWA, online: navigator.onLine, hidden: document.hidden };
+    },
+    forcePWASync: async () => {
+      console.log('🚀 Forçando sync PWA (ignorando debounce)...');
+      basicSyncService.lastSyncTime = 0; // Reset debounce
+      basicSyncService.syncInProgress = false; // Reset lock
+      await basicSyncService.handleAppReturn();
     }
   };
   
