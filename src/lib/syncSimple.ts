@@ -234,6 +234,50 @@ export const saveData = (data: StorageItems): Promise<boolean> => {
   return simpleSyncService.sync(data);
 };
 
+// Função para forçar limpeza completa dos dados locais
+export const forceCleanLocalData = async (): Promise<boolean> => {
+  console.log('🧹 LIMPEZA FORÇADA: Removendo todos os dados locais...');
+  
+  try {
+    // Limpar localStorage
+    storage.clear();
+    
+    // Carregar dados limpos do servidor
+    const serverData = await simpleSyncService.loadInitialData();
+    
+    if (serverData) {
+      console.log('✅ Dados limpos carregados do servidor');
+      // Disparar evento para atualizar UI
+      window.dispatchEvent(new CustomEvent('dataUpdated', { 
+        detail: serverData 
+      }));
+      return true;
+    }
+    
+    console.log('⚠️ Nenhum dado no servidor, criando estrutura limpa');
+    const cleanData: StorageItems = {
+      expenses: {},
+      projects: [],
+      stock: [],
+      employees: {},
+      deletedIds: [],
+      willBaseRate: 200,
+      willBonus: 0,
+      lastSync: Date.now()
+    };
+    
+    storage.save(cleanData);
+    window.dispatchEvent(new CustomEvent('dataUpdated', { 
+      detail: cleanData 
+    }));
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Erro na limpeza forçada:', error);
+    return false;
+  }
+};
+
 // Debug global
 if (typeof window !== 'undefined') {
   (window as any).simpleSyncDebug = {
@@ -255,8 +299,19 @@ if (typeof window !== 'undefined') {
       initialized: simpleSyncService.isInitialized,
       hasChannel: !!simpleSyncService.channel,
       channelState: simpleSyncService.channel?.state
-    })
+    }),
+    // NOVA FUNÇÃO DE LIMPEZA
+    forceCleanAll: async () => {
+      console.log('🧹 EXECUTANDO LIMPEZA COMPLETA...');
+      const result = await forceCleanLocalData();
+      if (result) {
+        console.log('✅ LIMPEZA CONCLUÍDA! Dados locais removidos e sincronizados com servidor.');
+        console.log('🔄 Recarregue a página para ver os dados limpos.');
+      }
+      return result;
+    }
   };
   
   console.log('🔧 Debug simples disponível via: window.simpleSyncDebug');
+  console.log('🧹 Para remover item problemático: window.simpleSyncDebug.forceCleanAll()');
 }
