@@ -24,11 +24,50 @@ export const basicSyncService = {
     console.log('🔄 Inicializando Sync Básico:', DEVICE_ID);
     this.isInitialized = true;
 
+    // Configurar detecção de segundo plano
+    this.setupBackgroundDetection();
+
     // Configurar realtime simples
     this.setupRealtime();
     
     // Carregar dados iniciais
     await this.loadInitialData();
+  },
+
+  setupBackgroundDetection() {
+    // Detectar quando app volta do segundo plano
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        // App voltou do segundo plano
+        console.log('📱 App voltou - verificando atualizações...');
+        this.handleAppReturn();
+      }
+    });
+
+    // Detectar focus da janela
+    window.addEventListener('focus', () => {
+      console.log('🎯 App recebeu foco - verificando atualizações...');
+      this.handleAppReturn();
+    });
+  },
+
+  async handleAppReturn() {
+    try {
+      console.log('🔄 Sincronizando dados após volta...');
+      
+      // SEMPRE carregar dados mais recentes do servidor
+      const serverData = await this.loadInitialData();
+      
+      if (serverData) {
+        console.log('✅ Dados atualizados do servidor após volta');
+        // Disparar evento para atualizar UI
+        window.dispatchEvent(new CustomEvent('dataUpdated', { 
+          detail: serverData 
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Erro ao sincronizar após volta:', error);
+    }
   },
 
   setupRealtime() {
@@ -185,21 +224,30 @@ export const basicSyncService = {
 
 // Funções de conveniência
 export const loadData = async (): Promise<StorageItems> => {
+  console.log('📥 LoadData: Verificando fonte de dados...');
+  
   // SEMPRE carregar do servidor primeiro se disponível
   if (supabase) {
-    const serverData = await basicSyncService.loadInitialData();
-    if (serverData) {
-      return serverData;
+    try {
+      const serverData = await basicSyncService.loadInitialData();
+      if (serverData) {
+        console.log('✅ LoadData: Usando dados do servidor (mais recentes)');
+        return serverData;
+      }
+    } catch (error) {
+      console.error('⚠️ LoadData: Erro ao carregar do servidor:', error);
     }
   }
   
-  // Fallback para dados locais
+  // Fallback para dados locais APENAS se servidor falhar
   const localData = storage.load();
   if (localData) {
+    console.log('📱 LoadData: Usando dados locais (fallback)');
     return localData;
   }
   
-  // Dados vazios
+  // Dados vazios apenas se nada existir
+  console.log('🆕 LoadData: Criando estrutura vazia');
   return {
     expenses: {},
     projects: [],
@@ -237,6 +285,34 @@ if (typeof window !== 'undefined') {
     clearLocal: () => {
       storage.clear();
       console.log('🗑️ Dados locais limpos');
+    },
+    simulateAppReturn: async () => {
+      console.log('🧪 Simulando volta do segundo plano...');
+      await basicSyncService.handleAppReturn();
+    },
+    compareData: async () => {
+      const localData = storage.load();
+      const serverData = await basicSyncService.loadInitialData();
+      
+      console.log('📊 COMPARAÇÃO DE DADOS:');
+      console.log('📱 Local:', localData);
+      console.log('🌐 Servidor:', serverData);
+      
+      if (localData && serverData) {
+        const localProjects = localData.projects?.length || 0;
+        const serverProjects = serverData.projects?.length || 0;
+        const localStock = localData.stock?.length || 0;
+        const serverStock = serverData.stock?.length || 0;
+        
+        console.log(`📊 Projetos - Local: ${localProjects}, Servidor: ${serverProjects}`);
+        console.log(`📦 Estoque - Local: ${localStock}, Servidor: ${serverStock}`);
+        
+        if (localProjects !== serverProjects || localStock !== serverStock) {
+          console.log('⚠️ DIVERGÊNCIA DETECTADA! Dados diferentes entre local e servidor');
+        } else {
+          console.log('✅ Dados em sincronia');
+        }
+      }
     }
   };
   
