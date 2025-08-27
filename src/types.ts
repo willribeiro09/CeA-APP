@@ -2,6 +2,8 @@ export interface BaseItem {
   id: string;
   name: string;
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
+  lastModified?: number; // Timestamp para sincronização
+  deviceId?: string; // ID do dispositivo que criou/modificou
 }
 
 export interface Expense {
@@ -13,6 +15,8 @@ export interface Expense {
   notes?: string;
   is_paid?: boolean;
   paid?: boolean;
+  lastModified?: number; // Timestamp para sincronização
+  deviceId?: string; // ID do dispositivo que criou/modificou
 }
 
 export interface Project {
@@ -28,6 +32,8 @@ export interface Project {
   location?: string;
   value?: number;
   invoiceOk?: boolean;
+  lastModified?: number; // Timestamp para sincronização
+  deviceId?: string; // ID do dispositivo que criou/modificou
 }
 
 export interface StockItem {
@@ -37,6 +43,8 @@ export interface StockItem {
   unit: string;
   minimumQuantity?: number;
   notes?: string;
+  lastModified?: number; // Timestamp para sincronização
+  deviceId?: string; // ID do dispositivo que criou/modificou
 }
 
 export interface Employee {
@@ -48,6 +56,8 @@ export interface Employee {
   daysWorked: number;
   workedDates?: string[];
   category: 'Employees';
+  lastModified?: number; // Timestamp para sincronização
+  deviceId?: string; // ID do dispositivo que criou/modificou
 }
 
 export type Item = Expense | Project | StockItem | Employee;

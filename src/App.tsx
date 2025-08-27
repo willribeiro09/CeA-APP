@@ -11,7 +11,7 @@ import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems
 import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
-import { simpleSyncService, loadData, saveData } from './lib/syncSimple';
+import { smartSyncService, loadData, saveData, addTimestamp } from './lib/smartSync';
 import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
@@ -126,7 +126,7 @@ export default function App() {
       }
       
       // Inicializar sincronização simples
-      await simpleSyncService.init();
+      await smartSyncService.init();
       
       // Carregar dados iniciais
       const localData = await loadData();
@@ -156,7 +156,7 @@ export default function App() {
       }
 
       // Configurar sincronização em tempo real
-      const cleanup = simpleSyncService.setupRealtimeUpdates((data) => {
+      const cleanup = smartSyncService.setupRealtimeUpdates((data) => {
         console.log('Recebida atualização em tempo real:', {
           expenses: Object.keys(data.expenses || {}).length + ' listas',
           projects: (data.projects || []).length + ' projetos',
@@ -399,17 +399,19 @@ export default function App() {
     console.log(`Atualizando item:`, updatedItem);
     
     try {
+      // Adicionar timestamp e device ID para sincronização
+      const itemWithTimestamp = addTimestamp(updatedItem as any);
       // Verificar o tipo do item usando propriedades específicas
-      if ('description' in updatedItem) {
+      if ('description' in itemWithTimestamp) {
         // É uma despesa
         setExpenses(prevExpenses => {
           const newExpenses = { ...prevExpenses };
           
           // Procurar e atualizar a despesa em todas as listas
           Object.keys(newExpenses).forEach(listName => {
-            const index = newExpenses[listName as ListName].findIndex(expense => expense.id === updatedItem.id);
+            const index = newExpenses[listName as ListName].findIndex(expense => expense.id === itemWithTimestamp.id);
             if (index !== -1) {
-              newExpenses[listName as ListName][index] = updatedItem as Expense;
+              newExpenses[listName as ListName][index] = itemWithTimestamp as Expense;
             }
           });
           
@@ -423,23 +425,23 @@ export default function App() {
           
           return newExpenses;
         });
-      } else if ('client' in updatedItem) {
+      } else if ('client' in itemWithTimestamp) {
         // É um projeto
         setProjects(prevProjects => {
           try {
-            console.log("Atualizando projeto, dados recebidos:", JSON.stringify(updatedItem));
+            console.log("Atualizando projeto, dados recebidos:", JSON.stringify(itemWithTimestamp));
             
             // Verificar se o ID existe
-            if (!updatedItem.id) {
+            if (!itemWithTimestamp.id) {
               console.error("ID do projeto não encontrado nos dados de atualização");
               return prevProjects;
             }
             
-            const index = prevProjects.findIndex(project => project.id === updatedItem.id);
-            console.log(`Procurando projeto com ID ${updatedItem.id}, índice encontrado: ${index}`);
+            const index = prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
+            console.log(`Procurando projeto com ID ${itemWithTimestamp.id}, índice encontrado: ${index}`);
             
             if (index === -1) {
-              console.error("Projeto não encontrado com ID:", updatedItem.id);
+              console.error("Projeto não encontrado com ID:", itemWithTimestamp.id);
               return prevProjects;
             }
             
@@ -449,15 +451,17 @@ export default function App() {
             
             // Criar uma cópia do projeto com todos os campos necessários
             const updatedProject: Project = {
-              id: updatedItem.id || existingProject.id,
-              name: updatedItem.name || existingProject.name,
-              description: updatedItem.description || existingProject.description,
-              client: updatedItem.client || existingProject.client,
-              startDate: updatedItem.startDate || existingProject.startDate,
-              status: updatedItem.status || existingProject.status,
-              location: updatedItem.location || existingProject.location || '',
-              value: updatedItem.value !== undefined ? updatedItem.value : existingProject.value || 0,
-              invoiceOk: updatedItem.invoiceOk !== undefined ? updatedItem.invoiceOk : existingProject.invoiceOk
+              id: itemWithTimestamp.id || existingProject.id,
+              name: itemWithTimestamp.name || existingProject.name,
+              description: itemWithTimestamp.description || existingProject.description,
+              client: itemWithTimestamp.client || existingProject.client,
+              startDate: itemWithTimestamp.startDate || existingProject.startDate,
+              status: itemWithTimestamp.status || existingProject.status,
+              location: itemWithTimestamp.location || existingProject.location || '',
+              value: itemWithTimestamp.value !== undefined ? itemWithTimestamp.value : existingProject.value || 0,
+              invoiceOk: itemWithTimestamp.invoiceOk !== undefined ? itemWithTimestamp.invoiceOk : existingProject.invoiceOk,
+              lastModified: itemWithTimestamp.lastModified,
+              deviceId: itemWithTimestamp.deviceId
             };
             
             console.log("Dados do projeto preparados para atualização:", JSON.stringify(updatedProject));
@@ -482,14 +486,14 @@ export default function App() {
             return prevProjects;
           }
         });
-      } else if ('quantity' in updatedItem) {
+      } else if ('quantity' in itemWithTimestamp) {
         // É um item de estoque
         setStockItems(prevStockItems => {
-          const index = prevStockItems.findIndex(item => item.id === updatedItem.id);
+          const index = prevStockItems.findIndex(item => item.id === itemWithTimestamp.id);
           if (index === -1) return prevStockItems;
           
           const newStockItems = [...prevStockItems];
-          newStockItems[index] = updatedItem as StockItem;
+          newStockItems[index] = itemWithTimestamp as StockItem;
           
           // Salvar as alterações
           saveChanges(createStorageData({
@@ -501,10 +505,10 @@ export default function App() {
           
           return newStockItems;
         });
-      } else if ('employeeName' in updatedItem) {
+      } else if ('employeeName' in itemWithTimestamp) {
         // É um funcionário
         setEmployees(prevEmployees => {
-          if (updatedItem.name === 'Will' || updatedItem.employeeName === 'Will') {
+          if (itemWithTimestamp.name === 'Will' || itemWithTimestamp.employeeName === 'Will') {
             console.log("Tentativa de editar Will através da edição normal de funcionários. Ignorando.");
             return prevEmployees;
           }
@@ -513,9 +517,9 @@ export default function App() {
           
           // Procurar e atualizar o funcionário em todas as semanas
           Object.keys(newEmployees).forEach(weekStartDate => {
-            const index = newEmployees[weekStartDate].findIndex(employee => employee.id === updatedItem.id);
+            const index = newEmployees[weekStartDate].findIndex(employee => employee.id === itemWithTimestamp.id);
             if (index !== -1) {
-              newEmployees[weekStartDate][index] = updatedItem as Employee;
+              newEmployees[weekStartDate][index] = itemWithTimestamp as Employee;
             }
           });
           
@@ -561,7 +565,8 @@ export default function App() {
         item.id = uuidv4();
       }
       
-      const newItem = { ...item, id: item.id };
+      // Adicionar timestamp e device ID para sincronização
+      const newItem = addTimestamp({ ...item, id: item.id });
       console.log("ID gerado para o novo item:", newItem.id);
       
       if (activeCategory === 'Expenses') {
