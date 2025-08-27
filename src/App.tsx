@@ -11,7 +11,7 @@ import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems
 import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
-import { smartSyncService, loadData, saveData, addTimestamp } from './lib/smartSync';
+import { basicSyncService, loadData, saveData } from './lib/basicSync';
 import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
@@ -126,7 +126,7 @@ export default function App() {
       }
       
       // Inicializar sincronização simples
-      await smartSyncService.init();
+      await basicSyncService.init();
       
       // Carregar dados iniciais
       const localData = await loadData();
@@ -156,7 +156,7 @@ export default function App() {
       }
 
       // Configurar sincronização em tempo real
-      const cleanup = smartSyncService.setupRealtimeUpdates((data) => {
+      const cleanup = basicSyncService.setupRealtimeUpdates((data) => {
         console.log('Recebida atualização em tempo real:', {
           expenses: Object.keys(data.expenses || {}).length + ' listas',
           projects: (data.projects || []).length + ' projetos',
@@ -399,8 +399,8 @@ export default function App() {
     console.log(`Atualizando item:`, updatedItem);
     
     try {
-      // Adicionar timestamp e device ID para sincronização
-      const itemWithTimestamp = addTimestamp(updatedItem as any);
+      // Item básico para edição
+      const itemWithTimestamp = updatedItem;
       // Verificar o tipo do item usando propriedades específicas
       if ('description' in itemWithTimestamp) {
         // É uma despesa
@@ -565,8 +565,8 @@ export default function App() {
         item.id = uuidv4();
       }
       
-      // Adicionar timestamp e device ID para sincronização
-      const newItem = addTimestamp({ ...item, id: item.id });
+      // Item básico sem timestamp complexo
+      const newItem = { ...item, id: item.id };
       console.log("ID gerado para o novo item:", newItem.id);
       
       if (activeCategory === 'Expenses') {
