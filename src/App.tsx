@@ -1499,14 +1499,20 @@ export default function App() {
         <Header activeCategory={activeCategory} />
         <Navigation
           activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
+          onCategoryChange={isBackgroundSyncing ? () => {} : setActiveCategory}
+          disabled={isBackgroundSyncing}
         />
         
-        {/* Indicador não-intrusivo de sincronização */}
+        {/* Overlay de bloqueio durante sincronização */}
         {isBackgroundSyncing && (
-          <div className="fixed top-[120px] left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg z-[60] flex items-center gap-2 text-sm">
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            Sincronizando...
+          <div className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 shadow-xl flex items-center gap-4 mx-4">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="text-gray-800">
+                <div className="font-medium">Sincronizando dados...</div>
+                <div className="text-sm text-gray-600">Aguarde, não feche o aplicativo</div>
+              </div>
+            </div>
           </div>
         )}
         
@@ -1518,8 +1524,13 @@ export default function App() {
             <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
               <div className="relative max-w-[800px] mx-auto pb-2">
                 <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
+                  onClick={isBackgroundSyncing ? () => {} : () => setIsDropdownOpen(!isDropdownOpen)}
+                  disabled={isBackgroundSyncing}
+                  className={`w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm flex items-center justify-between ${
+                    isBackgroundSyncing 
+                      ? 'bg-gray-100 cursor-not-allowed opacity-70' 
+                      : 'bg-white hover:bg-gray-50'
+                  }`}
                 >
                     <span className="text-gray-700 font-medium">
                       {selectedList}
@@ -1531,7 +1542,7 @@ export default function App() {
                   />
                 </button>
                 
-                {isDropdownOpen && (
+                {isDropdownOpen && !isBackgroundSyncing && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-35">
                     <button
                       onClick={() => handleListSelect('Carlos')}
@@ -1566,11 +1577,17 @@ export default function App() {
           {(activeCategory === 'Projects') && (
             <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
               <div className="relative max-w-[800px] mx-auto pb-2">
-                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                  <ProjectWeekSelector 
-                    selectedWeekStart={selectedWeekStart}
-                    onWeekChange={handleProjectWeekChange}
-                  />
+                <div className={`w-full px-2 py-2 border border-gray-200 rounded-lg shadow-sm flex items-center justify-between ${
+                  isBackgroundSyncing ? 'bg-gray-100 opacity-70' : 'bg-white'
+                }`}>
+                  {!isBackgroundSyncing ? (
+                    <ProjectWeekSelector 
+                      selectedWeekStart={selectedWeekStart}
+                      onWeekChange={handleProjectWeekChange}
+                    />
+                  ) : (
+                    <div className="text-gray-600 text-sm">Aguarde sincronização...</div>
+                  )}
                   <div className="flex items-center">
                     <span className="text-gray-700 font-medium text-xs">Total:</span>
                     <span className="text-[#5ABB37] text-base font-bold ml-1">
@@ -1591,11 +1608,17 @@ export default function App() {
           {(activeCategory === 'Employees') && (
             <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
               <div className="relative max-w-[800px] mx-auto pb-2">
-                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                  <WeekSelector 
-                    selectedWeekStart={selectedWeekStart}
-                    onWeekChange={handleWeekChange}
-                  />
+                <div className={`w-full px-2 py-2 border border-gray-200 rounded-lg shadow-sm flex items-center justify-between ${
+                  isBackgroundSyncing ? 'bg-gray-100 opacity-70' : 'bg-white'
+                }`}>
+                  {!isBackgroundSyncing ? (
+                    <WeekSelector 
+                      selectedWeekStart={selectedWeekStart}
+                      onWeekChange={handleWeekChange}
+                    />
+                  ) : (
+                    <div className="text-gray-600 text-sm">Aguarde sincronização...</div>
+                  )}
                   <div className="flex items-center">
                     <span className="text-gray-700 font-medium text-xs">Total:</span>
                     <span className="text-[#5ABB37] text-base font-bold ml-1">
@@ -1627,16 +1650,16 @@ export default function App() {
               </div>
             )}
 
-            <ul className="flex flex-col space-y-[8px] m-0 p-0">
+            <ul className={`flex flex-col space-y-[8px] m-0 p-0 ${isBackgroundSyncing ? 'pointer-events-none opacity-70' : ''}`}>
               {activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || [])
                 .filter(isItemFromSelectedDate)
                 .map(expense => (
                   <li key={expense.id} className="list-none">
             <ExpenseItem
               expense={expense}
-              onTogglePaid={handleTogglePaid}
-                      onDelete={(id) => handleDeleteItem(id, 'Expenses')}
-                      onEdit={(expense) => handleEditItem(expense)}
+              onTogglePaid={isBackgroundSyncing ? () => {} : handleTogglePaid}
+                      onDelete={isBackgroundSyncing ? () => {} : (id) => handleDeleteItem(id, 'Expenses')}
+                      onEdit={isBackgroundSyncing ? () => {} : (expense) => handleEditItem(expense)}
                     />
                   </li>
                 ))}
@@ -1649,8 +1672,8 @@ export default function App() {
                 .map(project => (
                   <li key={project.id} className="list-none">
                     <SwipeableItem 
-                      onDelete={() => handleDeleteItem(project.id, 'Projects')}
-                      onEdit={() => handleEditItem(project)}
+                      onDelete={isBackgroundSyncing ? () => {} : () => handleDeleteItem(project.id, 'Projects')}
+                      onEdit={isBackgroundSyncing ? () => {} : () => handleEditItem(project)}
                     >
                       <div className="bg-white p-4 rounded-lg shadow-sm">
                         <div className="flex justify-between items-start">
@@ -1692,8 +1715,8 @@ export default function App() {
               {activeCategory === 'Stock' && stockItems.map(item => (
                 <li key={item.id} className="list-none">
                   <SwipeableItem 
-                    onDelete={() => handleDeleteItem(item.id, 'Stock')}
-                    onEdit={() => handleEditItem(item)}
+                    onDelete={isBackgroundSyncing ? () => {} : () => handleDeleteItem(item.id, 'Stock')}
+                    onEdit={isBackgroundSyncing ? () => {} : () => handleEditItem(item)}
                   >
                     <div className="bg-white p-4 rounded-lg shadow-sm">
                       <div className="flex justify-between items-center">
@@ -1738,10 +1761,11 @@ export default function App() {
                           key="will-fixed"
                           willBaseRate={willBaseRate}
                           willBonus={willBonus}
-                          onReset={resetWillValues}
-                          onLayoff={() => setShowLayoffAlert(true)}
-                          onIncreaseRate={() => setIsRateDialogOpen(true)}
-                          onAddBonus={handleAddBonus}
+                          onReset={isBackgroundSyncing ? () => {} : resetWillValues}
+                          onLayoff={isBackgroundSyncing ? () => {} : () => setShowLayoffAlert(true)}
+                          onIncreaseRate={isBackgroundSyncing ? () => {} : () => setIsRateDialogOpen(true)}
+                          onAddBonus={isBackgroundSyncing ? () => {} : handleAddBonus}
+                          disabled={isBackgroundSyncing}
                         />
                       </li>
                     );
@@ -1785,24 +1809,29 @@ export default function App() {
                         employeeElements.push(
                           <li key={employee.id} className="list-none">
                             <SwipeableItem 
-                              onDelete={() => handleDeleteItem(employee.id, 'Employees')}
-                              onEdit={() => handleEditItem(employee)}
+                              onDelete={isBackgroundSyncing ? () => {} : () => handleDeleteItem(employee.id, 'Employees')}
+                              onEdit={isBackgroundSyncing ? () => {} : () => handleEditItem(employee)}
                             >
                               <div className="bg-white p-2.5 rounded-lg shadow-sm">
                                 <div className="flex items-center justify-between mb-1.5">
                                   <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
                                   <div className="flex items-center gap-1.5">
                                     <button
-                                      onClick={() => {
+                                      onClick={isBackgroundSyncing ? () => {} : () => {
                                         // Usar a função para abrir o calendário
                                         openWorkDaysCalendar(employee);
                                       }}
-                                      className="px-3 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
+                                      disabled={isBackgroundSyncing}
+                                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors flex items-center h-8 ${
+                                        isBackgroundSyncing 
+                                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                                          : 'bg-green-500 text-white hover:bg-green-600'
+                                      }`}
                                     >
                                       Days Worked
                                     </button>
                                     <button
-                                      onClick={() => {
+                                      onClick={isBackgroundSyncing ? () => {} : () => {
                                         // Usar a função para abrir o recibo
                                         openReceipt({
                                           ...employee,
@@ -1810,7 +1839,12 @@ export default function App() {
                                           workedDates: workedDatesInWeek
                                         });
                                       }}
-                                      className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors h-8"
+                                      disabled={isBackgroundSyncing}
+                                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors h-8 ${
+                                        isBackgroundSyncing 
+                                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                                          : 'bg-blue-500 text-white hover:bg-blue-600'
+                                      }`}
                                     >
                                       Receipt
                                     </button>
@@ -1851,22 +1885,32 @@ export default function App() {
       </div>
 
       {/* Mostrar o CalendarButton apenas nos menus relevantes */}
-      {activeCategory !== 'Stock' && (
+      {activeCategory !== 'Stock' && !isBackgroundSyncing && (
         <CalendarButton onClick={handleOpenCalendar} />
       )}
-      <AddButton onClick={() => setIsAddDialogOpen(true)} />
+      {!isBackgroundSyncing && (
+        <AddButton onClick={() => setIsAddDialogOpen(true)} />
+      )}
 
       <AddItemDialog
-        isOpen={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
+        isOpen={isAddDialogOpen && !isBackgroundSyncing}
+        onOpenChange={(open) => {
+          if (!isBackgroundSyncing) {
+            setIsAddDialogOpen(open);
+          }
+        }}
         category={activeCategory}
         onSubmit={handleAddItem}
         selectedWeekStart={selectedWeekStart}
       />
   
       <EditItemDialog
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
+        isOpen={isEditDialogOpen && !isBackgroundSyncing}
+        onOpenChange={(open) => {
+          if (!isBackgroundSyncing) {
+            setIsEditDialogOpen(open);
+          }
+        }}
         item={itemToEdit}
         onSubmit={handleUpdateItem}
         selectedWeekStart={selectedWeekStart}
@@ -1874,7 +1918,14 @@ export default function App() {
 
       {isSupabaseConfigured() && <ConnectionStatus />}
 
-      <Dialog.Root open={showLayoffAlert} onOpenChange={setShowLayoffAlert}>
+      <Dialog.Root 
+        open={showLayoffAlert && !isBackgroundSyncing} 
+        onOpenChange={(open) => {
+          if (!isBackgroundSyncing) {
+            setShowLayoffAlert(open);
+          }
+        }}
+      >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
           <Dialog.Content 
@@ -1895,7 +1946,14 @@ export default function App() {
         </Dialog.Portal>
       </Dialog.Root>
 
-      <Dialog.Root open={isRateDialogOpen} onOpenChange={setIsRateDialogOpen}>
+      <Dialog.Root 
+        open={isRateDialogOpen && !isBackgroundSyncing} 
+        onOpenChange={(open) => {
+          if (!isBackgroundSyncing) {
+            setIsRateDialogOpen(open);
+          }
+        }}
+      >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
           <Dialog.Content 
@@ -1954,13 +2012,24 @@ export default function App() {
       <Calendar
         selectedDate={filterDate || undefined}
         onSelect={handleDateSelect}
-        isOpen={isCalendarOpen}
-        onOpenChange={setIsCalendarOpen}
+        isOpen={isCalendarOpen && !isBackgroundSyncing}
+        onOpenChange={(open) => {
+          if (!isBackgroundSyncing) {
+            setIsCalendarOpen(open);
+          }
+        }}
       />
 
       {/* Adicionar modal para o calendário de dias trabalhados */}
       {selectedEmployee && (
-        <Dialog.Root open={isCalendarDialogOpen} onOpenChange={setIsCalendarDialogOpen}>
+        <Dialog.Root 
+          open={isCalendarDialogOpen && !isBackgroundSyncing} 
+          onOpenChange={(open) => {
+            if (!isBackgroundSyncing) {
+              setIsCalendarDialogOpen(open);
+            }
+          }}
+        >
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
             <Dialog.Content 
@@ -1994,7 +2063,14 @@ export default function App() {
 
       {/* Adicionar modal para o recibo */}
       {receiptEmployee && (
-        <Dialog.Root open={isReceiptDialogOpen} onOpenChange={setIsReceiptDialogOpen}>
+        <Dialog.Root 
+          open={isReceiptDialogOpen && !isBackgroundSyncing} 
+          onOpenChange={(open) => {
+            if (!isBackgroundSyncing) {
+              setIsReceiptDialogOpen(open);
+            }
+          }}
+        >
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
             <Dialog.Content 
