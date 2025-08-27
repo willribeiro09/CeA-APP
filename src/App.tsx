@@ -1851,6 +1851,8 @@ export default function App() {
           <Dialog.Content 
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-[100]"
             onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+            aria-labelledby="layoff-alert-title"
+            aria-describedby="layoff-alert-description"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
@@ -1858,7 +1860,7 @@ export default function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <div className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
+              <div id="layoff-alert-title" className="text-3xl font-bold text-red-500 mb-2 animate-bounce">IMPOSSIBLE!</div>
             </div>
           </Dialog.Content>
         </Dialog.Portal>
@@ -1870,9 +1872,11 @@ export default function App() {
           <Dialog.Content 
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-[100]"
             onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+            aria-labelledby="rate-dialog-title"
+            aria-describedby="rate-dialog-description"
           >
             <div className="flex justify-between items-center mb-4">
-              <Dialog.Title className="text-lg font-semibold">
+              <Dialog.Title id="rate-dialog-title" className="text-lg font-semibold">
                 Adjust New Salary
               </Dialog.Title>
               <Dialog.Close className="text-gray-400 hover:text-gray-600">
@@ -1933,10 +1937,12 @@ export default function App() {
             <Dialog.Content 
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl max-w-md w-[95%] z-[100]"
               onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+              aria-labelledby="calendar-dialog-title"
+              aria-describedby="calendar-dialog-description"
             >
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold">
+                  <h2 id="calendar-dialog-title" className="text-lg font-semibold">
                     Work Days: {selectedEmployee.name}
                   </h2>
                   <button onClick={() => setIsCalendarDialogOpen(false)} className="text-gray-500 hover:text-gray-700">
@@ -1965,9 +1971,11 @@ export default function App() {
             <Dialog.Content 
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl w-[95%] max-w-2xl max-h-[90vh] overflow-y-auto z-[100]"
               onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
+              aria-labelledby="receipt-dialog-title"
+              aria-describedby="receipt-dialog-description"
             >
               <div className="flex justify-between items-center mb-2 sticky top-0 bg-white z-10 pb-2 border-b">
-                <Dialog.Title className="text-lg font-semibold">
+                <Dialog.Title id="receipt-dialog-title" className="text-lg font-semibold">
                   Payment Receipt - {receiptEmployee.name}
                 </Dialog.Title>
                 <Dialog.Close className="text-gray-400 hover:text-gray-600">
