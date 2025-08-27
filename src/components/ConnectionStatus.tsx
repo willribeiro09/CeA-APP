@@ -21,10 +21,11 @@ export function ConnectionStatus() {
         return;
       }
       
-      // Tentar buscar o lastSync para verificar a conexão
+      // Tentar buscar o last_sync_timestamp para verificar a conexão
       const { data, error } = await supabase
         .from('sync_data')
-        .select('lastSync')
+        .select('last_sync_timestamp')
+        .eq('id', '00000000-0000-0000-0000-000000000000')
         .single();
       
       if (error) {
