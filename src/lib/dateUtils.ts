@@ -344,8 +344,8 @@ export function addWeeksSafe(date: Date, weeks: number): Date {
 }
 
 /**
- * Função para gerar semanas para funcionários, começando na segunda e terminando no sábado
- * Usando exatamente as datas especificadas (17 to 22, 24 to 29)
+ * Função para gerar semanas dinâmicas para employees, começando na segunda e terminando no sábado
+ * Formato: "08/26 To 08/31" (MM/dd To MM/dd)
  */
 export function getWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -354,73 +354,112 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
   value: string;
 }> {
   const weeks = [];
+  const today = normalizeDate(currentDate);
   
-  // Semana anterior: 17 to 22
-  const previousWeekStart = new Date(Date.UTC(2024, 2, 17, 12, 0, 0)); // 17 de março de 2024
-  const previousWeekEnd = new Date(Date.UTC(2024, 2, 22, 23, 59, 59)); // 22 de março de 2024
-  weeks.push({
-    startDate: previousWeekStart,
-    endDate: previousWeekEnd,
-    label: "March 17 to 22",
-    value: formatDateToISO(previousWeekStart)
-  });
-
-  // Semana atual: 24 to 29
-  const currentWeekStart = new Date(Date.UTC(2024, 2, 24, 12, 0, 0)); // 24 de março de 2024
-  const currentWeekEnd = new Date(Date.UTC(2024, 2, 29, 23, 59, 59)); // 29 de março de 2024
-  weeks.push({
-    startDate: currentWeekStart,
-    endDate: currentWeekEnd,
-    label: "March 24 to 29",
-    value: formatDateToISO(currentWeekStart)
-  });
-
-  // Próxima semana: 31 to 5 (seguindo o mesmo padrão)
-  const nextWeekStart = new Date(Date.UTC(2024, 2, 31, 12, 0, 0)); // 31 de março de 2024
-  const nextWeekEnd = new Date(Date.UTC(2024, 3, 5, 23, 59, 59)); // 5 de abril de 2024
-  weeks.push({
-    startDate: nextWeekStart,
-    endDate: nextWeekEnd,
-    label: "March 31 to April 5",
-    value: formatDateToISO(nextWeekStart)
-  });
-
-  // Semana 4: 7 to 12 (começa numa segunda e termina num sábado)
-  const week4Start = new Date(Date.UTC(2024, 3, 7, 12, 0, 0)); // 7 de abril de 2024
-  const week4End = new Date(Date.UTC(2024, 3, 12, 23, 59, 59)); // 12 de abril de 2024
-  weeks.push({
-    startDate: week4Start,
-    endDate: week4End,
-    label: "April 7 to 12",
-    value: formatDateToISO(week4Start)
-  });
-
-  // Semana 5: 14 to 19 (começa numa segunda e termina num sábado)
-  const week5Start = new Date(Date.UTC(2024, 3, 14, 12, 0, 0)); // 14 de abril de 2024
-  const week5End = new Date(Date.UTC(2024, 3, 19, 23, 59, 59)); // 19 de abril de 2024
-  weeks.push({
-    startDate: week5Start,
-    endDate: week5End,
-    label: "April 14 to 19",
-    value: formatDateToISO(week5Start)
-  });
-
-  // Semana 6: 21 to 26 (começa numa segunda e termina num sábado)
-  const week6Start = new Date(Date.UTC(2024, 3, 21, 12, 0, 0)); // 21 de abril de 2024
-  const week6End = new Date(Date.UTC(2024, 3, 26, 23, 59, 59)); // 26 de abril de 2024
-  weeks.push({
-    startDate: week6Start,
-    endDate: week6End,
-    label: "April 21 to 26",
-    value: formatDateToISO(week6Start)
-  });
-
+  // Encontrar a segunda-feira da semana atual ou mais próxima
+  const currentWeekMonday = findCurrentWeekMonday(today);
+  
+  // Gerar 3 semanas: anterior, atual e próxima
+  for (let i = -1; i <= 1; i++) {
+    const weekMonday = new Date(currentWeekMonday);
+    weekMonday.setUTCDate(currentWeekMonday.getUTCDate() + (i * 7));
+    
+    const weekStart = new Date(weekMonday);
+    weekStart.setUTCHours(12, 0, 0, 0);
+    
+    const weekEnd = new Date(weekMonday);
+    weekEnd.setUTCDate(weekMonday.getUTCDate() + 5); // Sábado (5 dias após segunda)
+    weekEnd.setUTCHours(23, 59, 59, 999);
+    
+    const label = formatWeekLabel(weekStart, weekEnd);
+    
+    weeks.push({
+      startDate: weekStart,
+      endDate: weekEnd,
+      label: label,
+      value: formatDateToISO(weekStart)
+    });
+  }
+  
   return weeks;
 }
 
 /**
- * Função para gerar semanas para projetos, começando na quarta e terminando na terça
- * Usando exatamente as datas especificadas (19 to 25, 26 to 01 April)
+ * Encontra a segunda-feira da semana atual baseada em uma data de referência
+ * Se a data for domingo, retorna a segunda-feira da semana anterior
+ * Se a data for segunda a sábado, retorna a segunda-feira da semana atual
+ */
+function findCurrentWeekMonday(date: Date): Date {
+  const normalized = normalizeDate(date);
+  const dayOfWeek = normalized.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+  
+  let daysToMonday;
+  
+  if (dayOfWeek === 1) {
+    // Já é segunda-feira
+    daysToMonday = 0;
+  } else if (dayOfWeek === 0) {
+    // Domingo - voltar para segunda-feira da semana anterior
+    daysToMonday = -6;
+  } else {
+    // Terça (2) a Sábado (6) - voltar para segunda-feira desta semana
+    daysToMonday = -(dayOfWeek - 1);
+  }
+  
+  const monday = new Date(normalized);
+  monday.setUTCDate(normalized.getUTCDate() + daysToMonday);
+  monday.setUTCHours(12, 0, 0, 0);
+  
+  return monday;
+}
+
+/**
+ * Encontra a quarta-feira da semana atual baseada em uma data de referência
+ * Se a data for domingo, segunda ou terça, retorna a quarta-feira da semana anterior
+ * Se a data for quarta, quinta, sexta ou sábado, retorna a quarta-feira da semana atual
+ */
+function findCurrentWeekWednesday(date: Date): Date {
+  const normalized = normalizeDate(date);
+  const dayOfWeek = normalized.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+  
+  let daysToWednesday;
+  
+  if (dayOfWeek === 3) {
+    // Já é quarta-feira
+    daysToWednesday = 0;
+  } else if (dayOfWeek < 3) {
+    // Domingo (0), Segunda (1), Terça (2) - voltar para quarta-feira da semana anterior
+    daysToWednesday = -(dayOfWeek + 4);
+  } else {
+    // Quinta (4), Sexta (5), Sábado (6) - voltar para quarta-feira desta semana
+    daysToWednesday = -(dayOfWeek - 3);
+  }
+  
+  const wednesday = new Date(normalized);
+  wednesday.setUTCDate(normalized.getUTCDate() + daysToWednesday);
+  wednesday.setUTCHours(12, 0, 0, 0);
+  
+  return wednesday;
+}
+
+/**
+ * Formata o label da semana no formato "08/27 To 09/02"
+ */
+function formatWeekLabel(startDate: Date, endDate: Date): string {
+  const startMonth = (startDate.getUTCMonth() + 1).toString().padStart(2, '0');
+  const startDay = startDate.getUTCDate().toString().padStart(2, '0');
+  
+  const endMonth = (endDate.getUTCMonth() + 1).toString().padStart(2, '0');
+  const endDay = endDate.getUTCDate().toString().padStart(2, '0');
+  
+  return `${startMonth}/${startDay} To ${endMonth}/${endDay}`;
+}
+
+
+
+/**
+ * Função para gerar semanas dinâmicas para projetos, começando na quarta e terminando na próxima terça
+ * Formato: "08/27 To 09/02" (MM/dd To MM/dd)
  */
 export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -429,67 +468,33 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   value: string;
 }> {
   const weeks = [];
+  const today = normalizeDate(currentDate);
   
-  // Semana anterior: 19 to 25
-  const previousWeekStart = new Date(Date.UTC(2024, 2, 19, 12, 0, 0)); // 19 de março de 2024
-  const previousWeekEnd = new Date(Date.UTC(2024, 2, 25, 23, 59, 59)); // 25 de março de 2024
-  weeks.push({
-    startDate: previousWeekStart,
-    endDate: previousWeekEnd,
-    label: "March 19 to 25",
-    value: formatDateToISO(previousWeekStart)
-  });
-
-  // Semana atual: 26 to 01 April
-  const currentWeekStart = new Date(Date.UTC(2024, 2, 26, 12, 0, 0)); // 26 de março de 2024
-  const currentWeekEnd = new Date(Date.UTC(2024, 3, 1, 23, 59, 59)); // 1 de abril de 2024
-  weeks.push({
-    startDate: currentWeekStart,
-    endDate: currentWeekEnd,
-    label: "March 26 to April 1",
-    value: formatDateToISO(currentWeekStart)
-  });
-
-  // Próxima semana: 2 to 8 (começa numa terça e termina numa segunda)
-  const nextWeekStart = new Date(Date.UTC(2024, 3, 2, 12, 0, 0)); // 2 de abril de 2024
-  const nextWeekEnd = new Date(Date.UTC(2024, 3, 8, 23, 59, 59)); // 8 de abril de 2024
-  weeks.push({
-    startDate: nextWeekStart,
-    endDate: nextWeekEnd,
-    label: "April 2 to 8",
-    value: formatDateToISO(nextWeekStart)
-  });
-
-  // Semana 4: 9 to 15 (começa numa terça e termina numa segunda)
-  const week4Start = new Date(Date.UTC(2024, 3, 9, 12, 0, 0)); // 9 de abril de 2024
-  const week4End = new Date(Date.UTC(2024, 3, 15, 23, 59, 59)); // 15 de abril de 2024
-  weeks.push({
-    startDate: week4Start,
-    endDate: week4End,
-    label: "April 9 to 15",
-    value: formatDateToISO(week4Start)
-  });
-
-  // Semana 5: 16 to 22 (começa numa terça e termina numa segunda)
-  const week5Start = new Date(Date.UTC(2024, 3, 16, 12, 0, 0)); // 16 de abril de 2024
-  const week5End = new Date(Date.UTC(2024, 3, 22, 23, 59, 59)); // 22 de abril de 2024
-  weeks.push({
-    startDate: week5Start,
-    endDate: week5End,
-    label: "April 16 to 22",
-    value: formatDateToISO(week5Start)
-  });
-
-  // Semana 6: 23 to 29 (começa numa terça e termina numa segunda)
-  const week6Start = new Date(Date.UTC(2024, 3, 23, 12, 0, 0)); // 23 de abril de 2024
-  const week6End = new Date(Date.UTC(2024, 3, 29, 23, 59, 59)); // 29 de abril de 2024
-  weeks.push({
-    startDate: week6Start,
-    endDate: week6End,
-    label: "April 23 to 29",
-    value: formatDateToISO(week6Start)
-  });
-
+  // Encontrar a quarta-feira da semana atual ou mais próxima
+  const currentWeekWednesday = findCurrentWeekWednesday(today);
+  
+  // Gerar 3 semanas: anterior, atual e próxima
+  for (let i = -1; i <= 1; i++) {
+    const weekWednesday = new Date(currentWeekWednesday);
+    weekWednesday.setUTCDate(currentWeekWednesday.getUTCDate() + (i * 7));
+    
+    const weekStart = new Date(weekWednesday);
+    weekStart.setUTCHours(12, 0, 0, 0);
+    
+    const weekEnd = new Date(weekWednesday);
+    weekEnd.setUTCDate(weekWednesday.getUTCDate() + 6); // Terça-feira seguinte
+    weekEnd.setUTCHours(23, 59, 59, 999);
+    
+    const label = formatWeekLabel(weekStart, weekEnd);
+    
+    weeks.push({
+      startDate: weekStart,
+      endDate: weekEnd,
+      label: label,
+      value: formatDateToISO(weekStart)
+    });
+  }
+  
   return weeks;
 }
 

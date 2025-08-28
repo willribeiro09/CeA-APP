@@ -1,7 +1,8 @@
 import { format } from 'date-fns';
-import { Check, Trash2 } from 'lucide-react';
+import { Check, Trash2, Repeat } from 'lucide-react';
 import { Expense } from '../types';
 import { SwipeableItem } from './SwipeableItem';
+import { isRecurringExpense, getExpenseStatus } from '../lib/recurringUtils';
 
 interface ExpenseItemProps {
   expense: Expense;
@@ -13,25 +14,11 @@ interface ExpenseItemProps {
 export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: ExpenseItemProps) {
   // Convertendo a string de data para objeto Date
   const dueDate = expense.date ? new Date(expense.date) : new Date();
-  const today = new Date();
   
-  // Calcular a diferença em dias
-  const diffTime = dueDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  // Determinar o status
-  let statusClass = '';
+  // Usar nova lógica de status que considera recorrência
+  const status = getExpenseStatus(expense);
   const isPaid = expense.is_paid || expense.paid;
-  
-  if (isPaid) {
-    statusClass = 'bg-green-50 border-l-4 border-green-500';
-  } else if (diffDays < 0) {
-    // Atrasado
-    statusClass = 'bg-red-50 border-l-4 border-red-500';
-  } else if (diffDays <= 3) {
-    // Próximo do vencimento (3 dias ou menos)
-    statusClass = 'bg-yellow-50 border-l-4 border-yellow-500';
-  }
+  const isRecurring = isRecurringExpense(expense);
 
   return (
     <SwipeableItem
@@ -39,7 +26,7 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: Expense
       onDelete={() => onDelete(expense.id)}
     >
       <div 
-        className={`flex items-center p-4 ${statusClass} transition-colors duration-300`}
+        className={`flex items-center p-4 ${status.class} transition-colors duration-300`}
         onClick={() => onTogglePaid(expense.id)}
       >
         <button
@@ -57,10 +44,27 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: Expense
         </button>
 
         <div className="flex-1 ml-4">
-          <h3 className="font-medium text-gray-900">{expense.description}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-gray-900">
+              {expense.description.replace(/\*[MBW]$/, '')}
+            </h3>
+            {isRecurring && (
+              <Repeat className="w-4 h-4 text-gray-400" title="Recurring expense" />
+            )}
+          </div>
           <p className="text-gray-600 text-sm">
             Due on {format(dueDate, 'MMMM d')}
           </p>
+          {status.overdueDate && status.nextDueDate && (
+            <p className="text-xs text-blue-600">
+              Next due: {format(status.nextDueDate, 'MMM d')}
+            </p>
+          )}
+          {status.nextDueDate && !status.overdueDate && (
+            <p className="text-xs text-blue-600">
+              Next: {format(status.nextDueDate, 'MMM d')}
+            </p>
+          )}
         </div>
 
         <div className="text-right mr-2">
@@ -68,20 +72,9 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: Expense
             ${expense.amount.toFixed(2)}
           </span>
           <p className="text-xs text-gray-500">
-            {isPaid ? 'Paid' : diffDays < 0 ? 'Overdue' : `Due in ${diffDays} days`}
+            {status.text}
           </p>
         </div>
-        {/* Botão de deletar sempre visível */}
-        <button
-          onClick={e => {
-            e.stopPropagation();
-            onDelete(expense.id);
-          }}
-          className="ml-2 p-1 text-gray-400 hover:text-red-600 focus:outline-none"
-          title="Deletar"
-        >
-          <Trash2 size={18} />
-        </button>
       </div>
     </SwipeableItem>
   );

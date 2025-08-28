@@ -1,0 +1,8 @@
+warning: in the working copy of 'src/components/AddItemDialog.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/EditItemDialog.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ExpenseItem.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/dateUtils.ts', LF will be replaced by CRLF the next time Git touches it
+src/components/AddItemDialog.tsx
+src/components/EditItemDialog.tsx
+src/components/ExpenseItem.tsx
+src/lib/dateUtils.ts

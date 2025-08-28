@@ -59,9 +59,24 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     
     if (item && 'description' in item) {
       // É uma despesa
+      const recurrence = data.recurrence as string;
+      
+      // Clean current description from recurrence suffixes
+      let description = (data.description as string)
+        .replace(/\*[MBW]$/, ''); // Remove existing suffixes
+      
+      // Add new recurrence suffix
+      if (recurrence === 'monthly') {
+        description += '*M';
+      } else if (recurrence === 'biweekly') {
+        description += '*B';
+      } else if (recurrence === 'weekly') {
+        description += '*W';
+      }
+      
       itemData = {
         ...item,
-        description: data.description as string,
+        description,
         amount: parseFloat(data.amount as string),
         date: new Date(data.dueDate as string).toISOString(),
         category: 'Expenses'
@@ -211,7 +226,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     type="text"
                     id="description"
                     name="description"
-                    defaultValue={(item as Expense).description}
+                    defaultValue={(item as Expense).description.replace(/\*[MBW]$/, '')}
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
@@ -244,6 +259,26 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
+                </div>
+                <div>
+                  <label htmlFor="recurrence" className="block text-sm font-medium text-gray-700">
+                    Recurrence
+                  </label>
+                  <select
+                    id="recurrence"
+                    name="recurrence"
+                    defaultValue={
+                      (item as Expense).description.endsWith('*M') ? 'monthly' :
+                      (item as Expense).description.endsWith('*B') ? 'biweekly' :
+                      (item as Expense).description.endsWith('*W') ? 'weekly' : 'none'
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  >
+                    <option value="none">One-time expense</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Biweekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
                 </div>
               </>
             )}

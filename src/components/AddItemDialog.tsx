@@ -49,9 +49,20 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
     
     if (category === 'Expenses') {
       const dueDate = data.dueDate ? normalizeDate(new Date(data.dueDate as string)) : new Date();
+      const recurrence = data.recurrence as string;
+      
+      // Add recurrence suffix to description
+      let description = data.description as string;
+      if (recurrence === 'monthly') {
+        description += '*M';
+      } else if (recurrence === 'biweekly') {
+        description += '*B';
+      } else if (recurrence === 'weekly') {
+        description += '*W';
+      }
       
       itemData = {
-        description: data.description as string,
+        description,
         amount: parseFloat(data.amount as string),
         date: dueDate.toISOString(),
         category: 'Expenses',
@@ -205,6 +216,21 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
+                </div>
+                <div>
+                  <label htmlFor="recurrence" className="block text-sm font-medium text-gray-700">
+                    Recurrence
+                  </label>
+                  <select
+                    id="recurrence"
+                    name="recurrence"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                  >
+                    <option value="none">One-time expense</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Biweekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
                 </div>
               </>
             )}
