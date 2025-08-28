@@ -344,23 +344,29 @@ export function addWeeksSafe(date: Date, weeks: number): Date {
 }
 
 /**
- * Função para gerar semanas dinâmicas para employees, começando na segunda e terminando no sábado
+ * Função para gerar semanas para employees, começando apenas com a atual
  * Formato: "08/26 To 08/31" (MM/dd To MM/dd)
+ * Começa com 1 semana e constrói histórico gradualmente
  */
 export function getWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
   endDate: Date;
   label: string;
   value: string;
+  isCurrent: boolean;
+  isPast: boolean;
 }> {
   const weeks = [];
   const today = normalizeDate(currentDate);
   
-  // Encontrar a segunda-feira da semana atual ou mais próxima
+  // Encontrar a segunda-feira da semana atual
   const currentWeekMonday = findCurrentWeekMonday(today);
   
-  // Gerar 3 semanas: anterior, atual e próxima
-  for (let i = -1; i <= 1; i++) {
+  // Por enquanto, apenas 1 semana (atual)
+  // O histórico será construído gradualmente conforme as semanas passam
+  const weeksToGenerate = 1;
+  
+  for (let i = 0; i < weeksToGenerate; i++) {
     const weekMonday = new Date(currentWeekMonday);
     weekMonday.setUTCDate(currentWeekMonday.getUTCDate() + (i * 7));
     
@@ -372,12 +378,16 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
     weekEnd.setUTCHours(23, 59, 59, 999);
     
     const label = formatWeekLabel(weekStart, weekEnd);
+    const isCurrent = true; // Sempre será a semana atual por enquanto
+    const isPast = false;
     
     weeks.push({
       startDate: weekStart,
       endDate: weekEnd,
       label: label,
-      value: formatDateToISO(weekStart)
+      value: formatDateToISO(weekStart),
+      isCurrent: isCurrent,
+      isPast: isPast
     });
   }
   
@@ -458,23 +468,29 @@ function formatWeekLabel(startDate: Date, endDate: Date): string {
 
 
 /**
- * Função para gerar semanas dinâmicas para projetos, começando na quarta e terminando na próxima terça
- * Formato: "08/27 To 09/02" (MM/dd To MM/dd)
+ * Função para gerar semanas para projetos, começando apenas com a atual
+ * Formato: "08/28 To 09/03" (MM/dd To MM/dd)
+ * Começa com 1 semana e constrói histórico gradualmente
  */
 export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
   endDate: Date;
   label: string;
   value: string;
+  isCurrent: boolean;
+  isPast: boolean;
 }> {
   const weeks = [];
   const today = normalizeDate(currentDate);
   
-  // Encontrar a quarta-feira da semana atual ou mais próxima
+  // Encontrar a quarta-feira da semana atual
   const currentWeekWednesday = findCurrentWeekWednesday(today);
   
-  // Gerar 3 semanas: anterior, atual e próxima
-  for (let i = -1; i <= 1; i++) {
+  // Por enquanto, apenas 1 semana (atual)
+  // O histórico será construído gradualmente conforme as semanas passam
+  const weeksToGenerate = 1;
+  
+  for (let i = 0; i < weeksToGenerate; i++) {
     const weekWednesday = new Date(currentWeekWednesday);
     weekWednesday.setUTCDate(currentWeekWednesday.getUTCDate() + (i * 7));
     
@@ -486,12 +502,16 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
     weekEnd.setUTCHours(23, 59, 59, 999);
     
     const label = formatWeekLabel(weekStart, weekEnd);
+    const isCurrent = true; // Sempre será a semana atual por enquanto
+    const isPast = false;
     
     weeks.push({
       startDate: weekStart,
       endDate: weekEnd,
       label: label,
-      value: formatDateToISO(weekStart)
+      value: formatDateToISO(weekStart),
+      isCurrent: isCurrent,
+      isPast: isPast
     });
   }
   

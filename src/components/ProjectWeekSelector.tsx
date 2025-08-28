@@ -10,7 +10,10 @@ interface ProjectWeekSelectorProps {
 export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: ProjectWeekSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [weeks, setWeeks] = useState(getProjectWeeks());
-  const [selectedWeek, setSelectedWeek] = useState(weeks[1]); // Índice 1 é a semana atual agora
+  const [selectedWeek, setSelectedWeek] = useState(() => {
+    const allWeeks = getProjectWeeks();
+    return allWeeks.find(w => w.isCurrent) || allWeeks[allWeeks.length - 1];
+  });
 
   // Atualizar as semanas quando o componente montar
   useEffect(() => {
@@ -20,7 +23,7 @@ export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: Project
     // Encontrar a semana que corresponde à data selecionada
     const matchingWeek = availableWeeks.find(
       week => week.value === selectedWeekStart.toISOString().split('T')[0]
-    ) || availableWeeks[1]; // Índice 1 é a semana atual
+    ) || availableWeeks.find(w => w.isCurrent) || availableWeeks[availableWeeks.length - 1];
     
     setSelectedWeek(matchingWeek);
   }, [selectedWeekStart]);
@@ -52,8 +55,8 @@ export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: Project
       </button>
       
       {isDropdownOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40 min-w-[200px]">
-          {weeks.map((week, index) => (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40 min-w-[200px] max-h-60 overflow-y-auto">
+          {weeks.map((week) => (
             <button
               key={week.value}
               onClick={() => handleWeekSelect(week)}
@@ -63,14 +66,11 @@ export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: Project
             >
               <div className="flex flex-col">
                 <span className="font-medium text-sm">{week.label}</span>
-                {index === 0 && (
-                  <span className="text-xs text-gray-500">Previous week</span>
+                {week.isCurrent && (
+                  <span className="text-xs text-[#5ABB37] font-medium">Current week</span>
                 )}
-                {index === 1 && (
-                  <span className="text-xs text-gray-500">Current week</span>
-                )}
-                {index === 2 && (
-                  <span className="text-xs text-gray-500">Next week</span>
+                {week.isPast && (
+                  <span className="text-xs text-gray-500">Past week</span>
                 )}
               </div>
             </button>
