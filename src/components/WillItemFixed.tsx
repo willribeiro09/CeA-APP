@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { SwipeableItem } from './SwipeableItem';
 
 interface WillItemFixedProps {
@@ -20,6 +20,11 @@ export function WillItemFixed({
   onAddBonus,
   disabled = false
 }: WillItemFixedProps) {
+  // Usar useMemo para evitar recálculos desnecessários
+  const totalAmount = useMemo(() => willBaseRate + willBonus, [willBaseRate, willBonus]);
+  const formattedTotal = useMemo(() => totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 }), [totalAmount]);
+  const formattedBonus = useMemo(() => willBonus.toLocaleString('en-US', { minimumFractionDigits: 2 }), [willBonus]);
+  
   return (
     <SwipeableItem
       onEdit={disabled ? () => {} : onReset}
@@ -54,14 +59,14 @@ export function WillItemFixed({
           <div className="flex items-center justify-between">
             <span className="text-gray-700 text-sm">Amount to Receive:</span>
             <span className="text-xl font-bold text-[#5ABB37]">
-              $ {(willBaseRate + willBonus).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              $ {formattedTotal}
             </span>
           </div>
           {willBonus > 0 && (
             <div className="flex items-center justify-between">
               <span className="text-gray-700 text-sm">Bonus:</span>
               <span className="text-sm font-semibold text-blue-500">
-                $ {willBonus.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                $ {formattedBonus}
               </span>
             </div>
           )}

@@ -29,6 +29,11 @@ export function Calendar({ selectedDate, onSelect, isOpen, onOpenChange }: Calen
             </Dialog.Close>
           </div>
           
+          <Dialog.Title className="sr-only">Selecionar Data</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Calendário para selecionar uma data
+          </Dialog.Description>
+          
           <DayPicker
             mode="single"
             selected={selectedDate || today}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface ConflictEvent {
   message: string;
@@ -9,28 +9,35 @@ export function ConflictNotification() {
   const [notification, setNotification] = useState<ConflictEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
+  // Usar useCallback para evitar recriação da função a cada renderização
+  const handleConflict = useCallback((event: CustomEvent<ConflictEvent>) => {
+    console.log('🔔 Exibindo notificação de conflito:', event.detail);
+    setNotification(event.detail);
+    setIsVisible(true);
+
+    // Auto-hide após 5 segundos
+    setTimeout(() => {
+      setIsVisible(false);
+      setTimeout(() => setNotification(null), 300); // Aguardar animação
+    }, 5000);
+  }, []);
+
+  // Usar useCallback para evitar recriação da função a cada renderização
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+  }, []);
+
   useEffect(() => {
-    const handleConflict = (event: CustomEvent<ConflictEvent>) => {
-      console.log('🔔 Exibindo notificação de conflito:', event.detail);
-      setNotification(event.detail);
-      setIsVisible(true);
-
-      // Auto-hide após 5 segundos
-      setTimeout(() => {
-        setIsVisible(false);
-        setTimeout(() => setNotification(null), 300); // Aguardar animação
-      }, 5000);
-    };
-
     window.addEventListener('syncConflict', handleConflict as EventListener);
 
     return () => {
       window.removeEventListener('syncConflict', handleConflict as EventListener);
     };
-  }, []);
+  }, [handleConflict]);
 
   if (!notification) return null;
 
+  // Usar useMemo para evitar recálculos desnecessários
   const getIcon = () => {
     switch (notification.type) {
       case 'warning':
@@ -89,7 +96,7 @@ export function ConflictNotification() {
           </div>
         </div>
         <button
-          onClick={() => setIsVisible(false)}
+          onClick={handleClose}
           className={`text-lg ${getTextColor()} hover:opacity-75`}
         >
           ×

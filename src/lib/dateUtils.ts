@@ -47,16 +47,12 @@ export function normalizeDate(date: Date): Date {
   const month = date.getMonth();
   const day = date.getDate();
   
-  console.log(`Data original: ${date.toISOString()} (${date.toString()})`);
-  
   // Adicionar 1 dia para compensar o problema de fuso horário
   // O ajuste de +2 está causando problemas, voltamos para +1
   const adjustedDay = day + 1; 
   
   // Criar data com horário meio-dia UTC para evitar problemas de mudança de dia
   const normalized = new Date(Date.UTC(year, month, adjustedDay, 12, 0, 0));
-  
-  console.log(`Data normalizada: ${normalized.toISOString()} (${normalized.toString()})`);
   
   return normalized;
 }
@@ -74,26 +70,10 @@ export function normalizeEmployeeDate(date: Date): Date {
     return new Date();
   }
   
-  // Obter informações do ambiente para diagnóstico
-  const envInfo = getEnvironmentInfo();
-  
-  console.group("=== DIAGNÓSTICO normalizeEmployeeDate ===");
-  console.log("Ambiente:", envInfo);
-  
   // Extrair componentes da data original
   const year = date.getFullYear();
   const month = date.getMonth();
   const day = date.getDate();
-  
-  // Logs para diagnóstico
-  console.log("Data original:", {
-    iso: date.toISOString(),
-    local: date.toString(),
-    dia: date.getDate(),
-    mes: date.getMonth() + 1,
-    ano: date.getFullYear(),
-    tzOffset: date.getTimezoneOffset()
-  });
   
   // Ajuste para dispositivos móveis - testando abordagem robusta
   let adjustedDay = day;
@@ -104,31 +84,13 @@ export function normalizeEmployeeDate(date: Date): Date {
   
   // Em dispositivos móveis, podemos precisar de ajustes adicionais dependendo do comportamento
   if (isMobileDevice()) {
-    console.log("Dispositivo mobile detectado - aplicando ajustes adicionais");
-    
     // Verificar se o dia foi alterado incorretamente devido ao fuso horário
     if (normalized.getUTCDate() !== day) {
-      console.log("Correção necessária: dia UTC difere do dia original");
-      
       // Ajustar explicitamente para o dia correto
       normalized.setUTCDate(day);
       normalized.setUTCHours(12, 0, 0, 0);
     }
   }
-  
-  // Logs para diagnóstico
-  console.log("Data normalizada:", {
-    iso: normalized.toISOString(),
-    local: normalized.toString(),
-    utcDia: normalized.getUTCDate(),
-    utcMes: normalized.getUTCMonth() + 1,
-    utcAno: normalized.getUTCFullYear(),
-    localDia: normalized.getDate(),
-    localMes: normalized.getMonth() + 1,
-    localAno: normalized.getFullYear()
-  });
-  
-  console.groupEnd();
   
   return normalized;
 }

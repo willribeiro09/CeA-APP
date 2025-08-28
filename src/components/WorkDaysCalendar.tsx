@@ -1,39 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths, isSameDay, getDay } from 'date-fns';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { format, eachDayOfInterval, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay, isToday, isSameMonth } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { diagnoseFusoHorario, normalizeEmployeeDate, formatDateToISO } from '../lib/dateUtils';
-import { isMobileDevice, getEnvironmentInfo } from '../lib/deviceUtils';
+import { normalizeEmployeeDate, formatDateToISO } from '../lib/dateUtils';
+import { isMobileDevice } from '../lib/deviceUtils';
 
 interface WorkDaysCalendarProps {
-  employeeId: string;
   initialWorkedDates: string[];
   onDateToggle: (date: string) => void;
-  onClose?: () => void;
-  onReset?: (employeeId: string, weekStartDate: string) => void;
-  weekStartDate?: string;
+  weekStartDate: Date;
+  onWeekChange: (startDate: Date, endDate: Date) => void;
 }
 
-const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
-  employeeId,
-  initialWorkedDates,
-  onDateToggle,
-  onClose,
-  onReset,
-  weekStartDate
-}) => {
-  // Sempre iniciar com o mês atual
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  // Garantir que workedDates seja sempre um array, mesmo que initialWorkedDates seja undefined
+export function WorkDaysCalendar({ 
+  initialWorkedDates, 
+  onDateToggle, 
+  weekStartDate, 
+  onWeekChange 
+}: WorkDaysCalendarProps) {
   const [workedDates, setWorkedDates] = useState<string[]>(initialWorkedDates || []);
+  const [currentWeekStart, setCurrentWeekStart] = useState(weekStartDate);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState<Date | null>(null);
   const [mouseOverDate, setMouseOverDate] = useState<Date | null>(null);
   const [isAdding, setIsAdding] = useState(true);
-
-  // Estado para seleção em dispositivos móveis
-  const [isMobileSelecting, setIsMobileSelecting] = useState(false);
   const [mobileSelectionStart, setMobileSelectionStart] = useState<Date | null>(null);
   const [currentTouchDate, setCurrentTouchDate] = useState<Date | null>(null);
+
+  // Usar useMemo para evitar recálculos desnecessários
+  const weekRange = useMemo(() => {
+    const start = startOfWeek(currentWeekStart, { weekStartsOn: 1 }); // Segunda-feira
+    const end = endOfWeek(currentWeekStart, { weekStartsOn: 1 }); // Domingo
+    return { start, end };
+  }, [currentWeekStart]);
+
+  const weekDays = useMemo(() => {
+    const { start, end } = weekRange;
+    return eachDayOfInterval({ start, end });
+  }, [weekRange]);
+
+  const weekLabel = useMemo(() => {
+    const { start, end } = weekRange;
+    return `${format(start, 'MMM d', { locale: enUS })} - ${format(end, 'MMM d', { locale: enUS })}`;
+  }, [weekRange]);
 
   // Atualizar as datas trabalhadas quando as props mudarem
   useEffect(() => {
@@ -41,25 +49,25 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   }, [initialWorkedDates]);
 
   // Função para verificar se uma data está dentro da seleção atual
-  const isDateInSelection = (date: Date): boolean => {
+  const isDateInSelection = useCallback((date: Date): boolean => {
     if (!isSelecting || !selectionStart || !mouseOverDate) return false;
     
     const start = selectionStart < mouseOverDate ? selectionStart : mouseOverDate;
     const end = selectionStart < mouseOverDate ? mouseOverDate : selectionStart;
     
     return date >= start && date <= end;
-  };
+  }, [isSelecting, selectionStart, mouseOverDate]);
 
   // Função para verificar se uma data já está marcada como trabalhada
-  const isDateWorked = (date: Date): boolean => {
+  const isDateWorked = useCallback((date: Date): boolean => {
     // Usar normalizeEmployeeDate para ajustar a data
     const normalizedDate = normalizeEmployeeDate(date);
     const formattedDate = formatDateToISO(normalizedDate);
     return workedDates.includes(formattedDate);
-  };
+  }, [workedDates]);
 
   // Iniciar a seleção múltipla
-  const handleMouseDown = (date: Date, e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((date: Date, e: React.MouseEvent) => {
     e.preventDefault(); // Impedir comportamento padrão do mousedown
     // Usar normalizeEmployeeDate para ajustar a data
     const normalizedDate = normalizeEmployeeDate(date);
@@ -70,17 +78,17 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
     setIsSelecting(true);
     setSelectionStart(date);
     setMouseOverDate(date);
-  };
+  }, [workedDates]);
 
   // Atualizar a seleção enquanto move o mouse
-  const handleMouseOver = (date: Date) => {
+  const handleMouseOver = useCallback((date: Date) => {
     if (isSelecting) {
       setMouseOverDate(date);
     }
-  };
+  }, [isSelecting]);
 
   // Finalizar a seleção múltipla
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     if (isSelecting && selectionStart && mouseOverDate) {
       // Ordenar as datas de início e fim
       const start = selectionStart < mouseOverDate ? selectionStart : mouseOverDate;
@@ -115,7 +123,7 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
     setIsSelecting(false);
     setSelectionStart(null);
     setMouseOverDate(null);
-  };
+  }, [isSelecting, selectionStart, mouseOverDate, isAdding, workedDates, onDateToggle]);
 
   // Para dispositivos móveis, melhorar a área de toque
   const mobileStyles = isMobileDevice() ? 
@@ -153,48 +161,11 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   // Função para lidar com clique único (para dispositivos móveis)
   const handleClick = (date: Date) => {
     try {
-      // Log de ambiente para diagnóstico
-      const envInfo = getEnvironmentInfo();
-      
       // Usar normalizeEmployeeDate para ajustar a data antes de formatá-la
       const normalizedDate = normalizeEmployeeDate(date);
       const formattedDate = formatDateToISO(normalizedDate);
       
-      // Log para diagnóstico detalhado
-      console.group("=== CLIQUE NO CALENDÁRIO ===");
-      console.log("Ambiente:", envInfo);
-      
-      console.log("Data original:", {
-        iso: date.toISOString(),
-        local: date.toString(),
-        diaOriginal: date.getDate(),
-        mesOriginal: date.getMonth() + 1,
-        anoOriginal: date.getFullYear(),
-        timeZoneOffset: date.getTimezoneOffset()
-      });
-      
-      console.log("Data normalizada:", {
-        iso: normalizedDate.toISOString(),
-        local: normalizedDate.toString(),
-        diaNormalizado: normalizedDate.getUTCDate(),
-        mesNormalizado: normalizedDate.getUTCMonth() + 1,
-        anoNormalizado: normalizedDate.getUTCFullYear()
-      });
-      
-      console.log("Data formatada:", {
-        formattedDate: formattedDate,
-        diaFormatado: formattedDate.split('-')[2],
-        mesFormatado: formattedDate.split('-')[1],
-        anoFormatado: formattedDate.split('-')[0]
-      });
-      
       const isDateWorked = workedDates.includes(formattedDate);
-      console.log("Status:", {
-        jaEstaMarcada: isDateWorked,
-        diasAtuais: workedDates,
-        acao: isDateWorked ? "removendo" : "adicionando"
-      });
-      console.groupEnd();
       
       // Alternar o estado de trabalho da data
       onDateToggle(formattedDate);
@@ -213,62 +184,42 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
   // Função para confirmar todas as datas selecionadas
   const handleConfirm = () => {
     // Garantir que todas as datas foram corretamente processadas
-    console.log("Confirmando datas:", workedDates);
-    
-    // Dupla verificação para garantir que todas as datas foram devidamente processadas
     try {
       // Aguardar um momento para garantir que todas as mudanças de estado foram processadas
       setTimeout(() => {
         // Verificar se as datas confirmadas foram devidamente persistidas
         const dataGarantida = [...workedDates];
-        console.log("Datas garantidas:", dataGarantida);
-        
-        // Fechar o calendário automaticamente
-        if (onClose) {
-          onClose();
-        }
       }, 300);
     } catch (error) {
       console.error("Erro ao confirmar datas:", error);
-      // Tentar novamente após erro
-      if (onClose) {
-        onClose();
-      }
     }
   };
 
   // Função para resetar todas as datas
   const handleReset = () => {
-    // Usar o callback de reset se estiver disponível
-    if (onReset && weekStartDate) {
-      onReset(employeeId, weekStartDate);
-      // Limpar o estado local
-      setWorkedDates([]);
-    } else {
-      // Para cada data trabalhada, chamar onDateToggle para removê-la
-      [...workedDates].forEach(date => {
-        onDateToggle(date);
-      });
-      
-      // Limpar o estado local
-      setWorkedDates([]);
-    }
+    // Para cada data trabalhada, chamar onDateToggle para removê-la
+    [...workedDates].forEach(date => {
+      onDateToggle(date);
+    });
+    
+    // Limpar o estado local
+    setWorkedDates([]);
   };
 
-  // Gerar os dias do mês atual
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  // Gerar os dias da semana atual (removido monthStart, monthEnd, daysInMonth)
+  // const monthStart = startOfMonth(currentMonth);
+  // const monthEnd = endOfMonth(currentMonth);
+  // const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   // Nomes dos dias da semana em inglês
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   // Detectar se é dispositivo móvel para ajustar a UI
   const isMobile = isMobileDevice();
 
   // Iniciar seleção em dispositivos móveis
   const handleMobileMultiSelectStart = (date: Date) => {
-    setIsMobileSelecting(true);
+    setIsSelecting(true);
     setMobileSelectionStart(date);
     setCurrentTouchDate(date);
     
@@ -276,25 +227,18 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
     const normalizedDate = normalizeEmployeeDate(date);
     const formattedDate = formatDateToISO(normalizedDate);
     setIsAdding(!workedDates.includes(formattedDate));
-    
-    console.log("Iniciando seleção múltipla em mobile:", date);
   };
   
   // Atualizar a seleção durante o toque
   const handleMobileMultiSelectMove = (date: Date) => {
-    if (isMobileSelecting && mobileSelectionStart && date !== currentTouchDate) {
+    if (isSelecting && mobileSelectionStart && date !== currentTouchDate) {
       setCurrentTouchDate(date);
-      console.log("Atualizando seleção múltipla em mobile:", date);
     }
   };
   
   // Finalizar a seleção múltipla em dispositivos móveis
   const handleMobileMultiSelectEnd = () => {
-    if (isMobileSelecting && mobileSelectionStart && currentTouchDate) {
-      console.log("Finalizando seleção múltipla em mobile", {
-        inicio: mobileSelectionStart,
-        fim: currentTouchDate
-      });
+    if (isSelecting && mobileSelectionStart && currentTouchDate) {
       
       // Ordenar as datas de início e fim
       const start = mobileSelectionStart < currentTouchDate ? mobileSelectionStart : currentTouchDate;
@@ -325,7 +269,7 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
       });
       
       // Limpar o estado de seleção
-      setIsMobileSelecting(false);
+      setIsSelecting(false);
       setMobileSelectionStart(null);
       setCurrentTouchDate(null);
     }
@@ -336,7 +280,7 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
     // setMultiSelectMode(!multiSelectMode);
     
     // Limpar qualquer seleção em andamento
-    setIsMobileSelecting(false);
+    setIsSelecting(false);
     setMobileSelectionStart(null);
     setCurrentTouchDate(null);
   };
@@ -353,17 +297,25 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
       
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-gray-800 capitalize">
-          {format(currentMonth, 'MMMM yyyy', { locale: enUS })}
+          {weekLabel}
         </h2>
         <div className="flex space-x-2">
           <button
-            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+            onClick={() => {
+              const newWeekStart = subWeeks(currentWeekStart, 1);
+              setCurrentWeekStart(newWeekStart);
+              onWeekChange(newWeekStart, endOfWeek(newWeekStart, { weekStartsOn: 1 }));
+            }}
             className="p-2 rounded-md hover:bg-gray-100"
           >
             &lt;
           </button>
           <button
-            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+            onClick={() => {
+              const newWeekStart = addWeeks(currentWeekStart, 1);
+              setCurrentWeekStart(newWeekStart);
+              onWeekChange(newWeekStart, endOfWeek(newWeekStart, { weekStartsOn: 1 }));
+            }}
             className="p-2 rounded-md hover:bg-gray-100"
           >
             &gt;
@@ -373,26 +325,21 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
 
       <div className="grid grid-cols-7 gap-1">
         {/* Cabeçalho com os dias da semana */}
-        {weekDays.map(day => (
+        {weekDayLabels.map(day => (
           <div key={day} className="text-center font-medium text-gray-500 text-sm">
             {day}
           </div>
         ))}
         
-        {/* Dias do mês e eventos do mouse */}
+        {/* Dias da semana e eventos do mouse */}
         <div 
           className="grid grid-cols-7 gap-1 col-span-7"
           onMouseLeave={handleMouseUp}
           onMouseUp={handleMouseUp}
           onTouchEnd={handleMouseUp}
         >
-          {/* Preenchimento para os dias antes do início do mês */}
-          {Array.from({ length: getDay(monthStart) }).map((_, i) => (
-            <div key={`padding-${i}`} className="h-8" />
-          ))}
-          
-          {/* Dias do mês */}
-          {daysInMonth.map(day => {
+          {/* Dias da semana */}
+          {weekDays.map(day => {
             // Usar normalizeEmployeeDate para verificar corretamente as datas
             const normalizedDate = normalizeEmployeeDate(day);
             const formattedDate = formatDateToISO(normalizedDate);
@@ -425,17 +372,17 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
                 onTouchStart={(e) => {
                   if (isMobile) {
                     e.preventDefault();
-                    if (!isMobileSelecting) {
+                    if (!isSelecting) {
                       handleMobileMultiSelectStart(day);
                     } else {
                       handleMobileMultiSelectMove(day);
                     }
                   } else {
-                    handleTouchStart(day, e);
+                    handleClick(day);
                   }
                 }}
                 onTouchMove={(e) => {
-                  if (isMobile && isMobileSelecting) {
+                  if (isMobile && isSelecting) {
                     e.preventDefault();
                     
                     // Identificar o elemento sob o toque
@@ -453,11 +400,11 @@ const WorkDaysCalendar: React.FC<WorkDaysCalendarProps> = ({
                   }
                 }}
                 onTouchEnd={() => {
-                  if (isMobile && isMobileSelecting) {
+                  if (isMobile && isSelecting) {
                     handleMobileMultiSelectEnd();
                   }
                 }}
-                onClick={() => isMobile && !isMobileSelecting && handleClick(day)}
+                onClick={() => isMobile && !isSelecting && handleClick(day)}
                 data-date={format(day, 'yyyy-MM-dd')}
                 aria-label={`${day.getDate()} ${format(day, 'MMMM yyyy')}`}
                 role="button"

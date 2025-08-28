@@ -1,20 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 export function ConnectionStatus() {
   const [status, setStatus] = useState<'online' | 'offline'>('offline');
 
-  useEffect(() => {
-    // Verificar status inicial
-    checkStatus();
-    
-    // Verificar a cada 30 segundos
-    const interval = setInterval(checkStatus, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  const checkStatus = async () => {
+  // Usar useCallback para evitar recriação da função a cada renderização
+  const checkStatus = useCallback(async () => {
     try {
       if (!supabase) {
         setStatus('offline');
@@ -39,7 +30,17 @@ export function ConnectionStatus() {
       console.error('Error checking connection status:', error);
       setStatus('offline');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // Verificar status inicial
+    checkStatus();
+    
+    // Verificar a cada 60 segundos (aumentado de 30 para reduzir verificações)
+    const interval = setInterval(checkStatus, 60000);
+    
+    return () => clearInterval(interval);
+  }, [checkStatus]);
 
   return (
     <div className="fixed top-0 right-0 m-2 p-2 bg-white rounded-md shadow-sm text-xs flex items-center">

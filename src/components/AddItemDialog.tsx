@@ -159,15 +159,19 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         >
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-lg font-semibold">
-              {category === 'Expenses' ? 'New Expense' : 
-               category === 'Projects' ? 'New Project' : 
-               category === 'Stock' ? 'New Inventory Item' :
-               'New Employee'}
+              {category === 'Expenses' ? 'Adicionar Despesa' : 
+               category === 'Projects' ? 'Adicionar Projeto' : 
+               category === 'Stock' ? 'Adicionar Item ao Estoque' : 'Adicionar Funcionário'}
             </Dialog.Title>
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
             </Dialog.Close>
           </div>
+          <Dialog.Description className="sr-only">
+            Formulário para adicionar {category === 'Expenses' ? 'uma nova despesa' : 
+             category === 'Projects' ? 'um novo projeto' : 
+             category === 'Stock' ? 'um novo item ao estoque' : 'um novo funcionário'}
+          </Dialog.Description>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             {errors.find(error => error.field === 'form') && (

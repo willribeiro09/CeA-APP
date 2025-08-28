@@ -81,7 +81,6 @@ const findEmployeeInOtherWeeks = (employeeId: string, employeesData: Record<stri
 };
 
 export default function App() {
-  console.log('Iniciando renderização do App');
   const [expenses, setExpenses] = useState<Record<ListName, Expense[]>>(initialExpenses);
   const [projects, setProjects] = useState<Project[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
@@ -117,11 +116,8 @@ export default function App() {
 
   useEffect(() => {
     const initializeData = async () => {
-      console.log('Inicializando dados...');
-      
       // Inicializar tabela de sincronização se necessário
       if (isSupabaseConfigured()) {
-        console.log('Supabase configurado, inicializando tabela de sincronização');
         await initSyncTable();
       } else {
         console.warn('Supabase não configurado corretamente. Usando apenas armazenamento local.');
@@ -134,13 +130,6 @@ export default function App() {
       const localData = await loadData();
 
       if (localData) {
-        console.log('Dados carregados com sucesso:', {
-          expenses: Object.keys(localData.expenses || {}).length + ' listas',
-          projects: (localData.projects || []).length + ' projetos',
-          stock: (localData.stock || []).length + ' itens',
-          employees: Object.keys(localData.employees || {}).length + ' listas'
-        });
-        
         setExpenses(localData.expenses || {});
         setProjects(localData.projects || []);
         setStockItems(localData.stock || []);
@@ -153,18 +142,14 @@ export default function App() {
         if (localData.willBonus !== undefined) {
           setWillBonus(localData.willBonus);
         }
-      } else {
-        console.log('Nenhum dado encontrado no armazenamento local');
       }
 
       // Configurar listeners para sincronização de segundo plano
       const handleSyncReturnStarted = () => {
-        console.log('🔄 UI: Sincronização de retorno iniciada');
         setIsBackgroundSyncing(true);
       };
 
       const handleSyncReturnCompleted = () => {
-        console.log('✅ UI: Sincronização de retorno concluída');
         setIsBackgroundSyncing(false);
       };
 
@@ -174,13 +159,6 @@ export default function App() {
 
       // Configurar sincronização em tempo real
       const cleanup = basicSyncService.setupRealtimeUpdates((data) => {
-        console.log('Recebida atualização em tempo real:', {
-          expenses: Object.keys(data.expenses || {}).length + ' listas',
-          projects: (data.projects || []).length + ' projetos',
-          stock: (data.stock || []).length + ' itens',
-          employees: Object.keys(data.employees || {}).length + ' listas'
-        });
-        
         if (data) {
           setExpenses(data.expenses || {});
           setProjects(data.projects || []);
@@ -233,8 +211,6 @@ export default function App() {
 
   // Função para salvar alterações
   const saveChanges = async (newData: StorageItems) => {
-    console.log('Salvando alterações...');
-    
     // Deep clone para evitar problemas de referência
     const dataCopy = JSON.parse(JSON.stringify(newData));
     
@@ -250,12 +226,8 @@ export default function App() {
         console.error(`Projeto ${index} sem ID:`, project);
         // Tenta corrigir o problema
         project.id = uuidv4();
-        console.log(`ID gerado para projeto sem ID: ${project.id}`);
       }
     });
-    
-    console.log('Número de projetos a salvar:', dataCopy.projects.length);
-    console.log('IDs dos projetos:', dataCopy.projects.map((p: any) => p.id).join(', '));
     
     setIsSaving(true);
     
@@ -269,7 +241,6 @@ export default function App() {
         const result = await saveData(dataCopy);
         
         if (result) {
-          console.log('Dados salvos com sucesso');
           setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
           return true;
         } else {
@@ -280,7 +251,6 @@ export default function App() {
         
         if (attempts < maxAttempts - 1) {
           attempts++;
-          console.log(`Tentando novamente em 1 segundo... (${attempts}/${maxAttempts})`);
           await new Promise(resolve => setTimeout(resolve, 1000));
           return attemptSave();
         }
@@ -411,13 +381,11 @@ export default function App() {
   };
 
   const handleEditItem = (item: Item) => {
-    console.log(`Editando item:`, item);
     setItemToEdit(item);
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateItem = (updatedItem: Partial<Item>) => {
-    console.log(`Atualizando item:`, updatedItem);
     
     try {
       // Item básico para edição
@@ -448,65 +416,58 @@ export default function App() {
         });
       } else if ('client' in itemWithTimestamp) {
         // É um projeto
-        setProjects(prevProjects => {
-          try {
-            console.log("Atualizando projeto, dados recebidos:", JSON.stringify(itemWithTimestamp));
-            
-            // Verificar se o ID existe
-            if (!itemWithTimestamp.id) {
-              console.error("ID do projeto não encontrado nos dados de atualização");
-              return prevProjects;
-            }
-            
-            const index = prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
-            console.log(`Procurando projeto com ID ${itemWithTimestamp.id}, índice encontrado: ${index}`);
-            
-            if (index === -1) {
-              console.error("Projeto não encontrado com ID:", itemWithTimestamp.id);
-              return prevProjects;
-            }
-            
-            // Garantir que todos os campos obrigatórios estejam presentes
-            const existingProject = prevProjects[index];
-            console.log("Projeto existente:", JSON.stringify(existingProject));
-            
-            // Criar uma cópia do projeto com todos os campos necessários
-            const updatedProject: Project = {
-              id: itemWithTimestamp.id || existingProject.id,
-              name: itemWithTimestamp.name || existingProject.name,
-              description: itemWithTimestamp.description || existingProject.description,
-              client: itemWithTimestamp.client || existingProject.client,
-              startDate: itemWithTimestamp.startDate || existingProject.startDate,
-              status: itemWithTimestamp.status || existingProject.status,
-              location: itemWithTimestamp.location || existingProject.location || '',
-              value: itemWithTimestamp.value !== undefined ? itemWithTimestamp.value : existingProject.value || 0,
-              invoiceOk: itemWithTimestamp.invoiceOk !== undefined ? itemWithTimestamp.invoiceOk : existingProject.invoiceOk,
-              lastModified: itemWithTimestamp.lastModified,
-              deviceId: itemWithTimestamp.deviceId
-            };
-            
-            console.log("Dados do projeto preparados para atualização:", JSON.stringify(updatedProject));
-            
-            // Criar um novo array para evitar mutação direta
-            const newProjects = [...prevProjects];
-            newProjects[index] = updatedProject;
-            
-            // Salvar as alterações
-            saveChanges(createStorageData({
-              expenses,
-              projects: newProjects,
-              stock: stockItems,
-              employees
-            }));
-            
-            console.log("Projetos após atualização:", JSON.stringify(newProjects));
-            return newProjects;
-          } catch (error) {
-            console.error("Erro ao atualizar projeto:", error);
-            // Garantir que retornamos o estado anterior em caso de erro
-            return prevProjects;
-          }
-        });
+                 setProjects(prevProjects => {
+           try {
+             // Verificar se o ID existe
+             if (!itemWithTimestamp.id) {
+               console.error("ID do projeto não encontrado nos dados de atualização");
+               return prevProjects;
+             }
+             
+             const index = prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
+             
+             if (index === -1) {
+               console.error("Projeto não encontrado com ID:", itemWithTimestamp.id);
+               return prevProjects;
+             }
+             
+             // Garantir que todos os campos obrigatórios estejam presentes
+             const existingProject = prevProjects[index];
+             
+             // Criar uma cópia do projeto com todos os campos necessários
+             const updatedProject: Project = {
+               id: itemWithTimestamp.id || existingProject.id,
+               name: itemWithTimestamp.name || existingProject.name,
+               description: itemWithTimestamp.description || existingProject.description,
+               client: itemWithTimestamp.client || existingProject.client,
+               startDate: itemWithTimestamp.startDate || existingProject.startDate,
+               status: itemWithTimestamp.status || existingProject.status,
+               location: itemWithTimestamp.location || existingProject.location || '',
+               value: itemWithTimestamp.value !== undefined ? itemWithTimestamp.value : existingProject.value || 0,
+               invoiceOk: itemWithTimestamp.invoiceOk !== undefined ? itemWithTimestamp.invoiceOk : existingProject.invoiceOk,
+               lastModified: itemWithTimestamp.lastModified,
+               deviceId: itemWithTimestamp.deviceId
+             };
+             
+             // Criar um novo array para evitar mutação direta
+             const newProjects = [...prevProjects];
+             newProjects[index] = updatedProject;
+             
+             // Salvar as alterações
+             saveChanges(createStorageData({
+               expenses,
+               projects: newProjects,
+               stock: stockItems,
+               employees
+             }));
+             
+             return newProjects;
+           } catch (error) {
+             console.error("Erro ao atualizar projeto:", error);
+             // Garantir que retornamos o estado anterior em caso de erro
+             return prevProjects;
+           }
+         });
       } else if ('quantity' in itemWithTimestamp) {
         // É um item de estoque
         setStockItems(prevStockItems => {
@@ -528,11 +489,10 @@ export default function App() {
         });
       } else if ('employeeName' in itemWithTimestamp) {
         // É um funcionário
-        setEmployees(prevEmployees => {
-          if (itemWithTimestamp.name === 'Will' || itemWithTimestamp.employeeName === 'Will') {
-            console.log("Tentativa de editar Will através da edição normal de funcionários. Ignorando.");
-            return prevEmployees;
-          }
+                 setEmployees(prevEmployees => {
+           if (itemWithTimestamp.name === 'Will' || itemWithTimestamp.employeeName === 'Will') {
+             return prevEmployees;
+           }
           
           const newEmployees = { ...prevEmployees };
           
@@ -579,8 +539,6 @@ export default function App() {
 
   const handleAddItem = async (item: any) => {
     try {
-      console.log("Função handleAddItem chamada com:", item);
-      
       // Verificar se o item já tem um ID, caso contrário, criar um novo
       if (!item.id) {
         item.id = uuidv4();
@@ -588,29 +546,23 @@ export default function App() {
       
       // Item básico sem timestamp complexo
       const newItem = { ...item, id: item.id };
-      console.log("ID gerado para o novo item:", newItem.id);
       
       if (activeCategory === 'Expenses') {
         const expense = newItem as Expense;
         expense.paid = expense.paid || false;
 
-        // Atualizar o estado
-        setExpenses(prevExpenses => {
-          console.log("Estado atual de expenses:", JSON.stringify(prevExpenses));
-          
-          // Criar uma cópia do objeto com tipagem correta
-          const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
-          
-          // Verificar se a lista existe
-          if (!newExpenses[selectedList]) {
-            console.log(`Lista ${selectedList} não encontrada, inicializando...`);
-            newExpenses[selectedList] = [];
-          }
-          
-          // Adicionar a nova despesa à lista selecionada
-          newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
-          console.log(`Despesa adicionada à lista ${selectedList}:`, JSON.stringify(expense));
-          console.log("Novo estado de expenses:", JSON.stringify(newExpenses));
+                 // Atualizar o estado
+         setExpenses(prevExpenses => {
+           // Criar uma cópia do objeto com tipagem correta
+           const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
+           
+           // Verificar se a lista existe
+           if (!newExpenses[selectedList]) {
+             newExpenses[selectedList] = [];
+           }
+           
+           // Adicionar a nova despesa à lista selecionada
+           newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
 
           // Salvar as alterações
           saveChanges(createStorageData({
@@ -622,52 +574,40 @@ export default function App() {
 
           return newExpenses;
         });
-      } else if (activeCategory === 'Projects') {
-        console.log("Adicionando projeto:", newItem);
-        
-        // Garantir que o projeto esteja formatado corretamente
-        const project = newItem as Project;
-        
-        // Garantir ID único
-        if (!project.id) {
-          project.id = uuidv4();
-          console.log("Novo ID gerado para o projeto:", project.id);
-        }
-        
-        // Garantir que campos obrigatórios existam
-        if (!project.client) project.client = "Cliente";
-        if (!project.name) project.name = project.client;
-        if (!project.startDate) project.startDate = new Date().toISOString();
-        if (!project.status) project.status = "in_progress";
-        if (!project.location) project.location = "";
-        if (project.value === undefined) project.value = 0;
-        
-        console.log("Projeto formatado para adicionar:", project);
-        console.log("Lista atual de projetos:", projects);
+             } else if (activeCategory === 'Projects') {
+         // Garantir que o projeto esteja formatado corretamente
+         const project = newItem as Project;
+         
+         // Garantir ID único
+         if (!project.id) {
+           project.id = uuidv4();
+         }
+         
+         // Garantir que campos obrigatórios existam
+         if (!project.client) project.client = "Cliente";
+         if (!project.name) project.name = project.client;
+         if (!project.startDate) project.startDate = new Date().toISOString();
+         if (!project.status) project.status = "in_progress";
+         if (!project.location) project.location = "";
+         if (project.value === undefined) project.value = 0;
 
-        // Atualizar o estado
-        setProjects(prevProjects => {
-          console.log("Estado atual de projects:", prevProjects);
-          
-          // Clone profundo para evitar problemas de referência
-          const existingProjects = JSON.parse(JSON.stringify(prevProjects));
-          
-          // Verificar se o projeto já existe
-          const existingIndex = existingProjects.findIndex((p: Project) => p.id === project.id);
-          
-          let newProjects;
-          if (existingIndex >= 0) {
-            // Atualizar projeto existente
-            newProjects = [...existingProjects];
-            newProjects[existingIndex] = project;
-            console.log("Projeto atualizado na posição:", existingIndex);
-          } else {
-            // Adicionar novo projeto
-            newProjects = [...existingProjects, project];
-            console.log("Novo projeto adicionado à lista");
-          }
-          
-          console.log("Lista de projetos atualizada:", newProjects);
+                 // Atualizar o estado
+         setProjects(prevProjects => {
+           // Clone profundo para evitar problemas de referência
+           const existingProjects = JSON.parse(JSON.stringify(prevProjects));
+           
+           // Verificar se o projeto já existe
+           const existingIndex = existingProjects.findIndex((p: Project) => p.id === project.id);
+           
+           let newProjects;
+           if (existingIndex >= 0) {
+             // Atualizar projeto existente
+             newProjects = [...existingProjects];
+             newProjects[existingIndex] = project;
+           } else {
+             // Adicionar novo projeto
+             newProjects = [...existingProjects, project];
+           }
           
           // Salvar as alterações
           saveChanges(createStorageData({
@@ -679,17 +619,13 @@ export default function App() {
           
           return newProjects;
         });
-      } else if (activeCategory === 'Stock') {
-        const stockItem = newItem as StockItem;
-        stockItem.id = uuidv4();
+             } else if (activeCategory === 'Stock') {
+         const stockItem = newItem as StockItem;
+         stockItem.id = uuidv4();
 
-        // Atualizar o estado
-        setStockItems(prevStockItems => {
-          console.log("Estado atual de stockItems:", JSON.stringify(prevStockItems));
-          
-          const newStockItems = [...prevStockItems, stockItem];
-          console.log("Item de estoque adicionado:", JSON.stringify(stockItem));
-          console.log("Novo estado de stockItems:", JSON.stringify(newStockItems));
+         // Atualizar o estado
+         setStockItems(prevStockItems => {
+           const newStockItems = [...prevStockItems, stockItem];
 
           // Salvar as alterações
           saveChanges(createStorageData({
@@ -788,8 +724,6 @@ export default function App() {
   };
 
   const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
-    console.log(`Resetando todos os dias para funcionário ${employeeId}`);
-    
     setEmployees(prevEmployees => {
       const newEmployees = { ...prevEmployees };
       
@@ -856,13 +790,12 @@ export default function App() {
   const handleAddBonus = () => {
     setWillBonus(prev => {
       const newBonus = prev + 100;
-      // Salvar dados após atualizar o bônus
-      setTimeout(() => {
-        const storageData = getData();
-        storageData.willBaseRate = willBaseRate;
-        storageData.willBonus = newBonus;
-        console.log('Salvando bônus atualizado:', newBonus);
-        saveChanges(createStorageData({
+             // Salvar dados após atualizar o bônus
+       setTimeout(() => {
+         const storageData = getData();
+         storageData.willBaseRate = willBaseRate;
+         storageData.willBonus = newBonus;
+         saveChanges(createStorageData({
           expenses: storageData.expenses,
           projects: storageData.projects,
           stock: storageData.stock,
@@ -885,13 +818,12 @@ export default function App() {
     setWillBaseRate(newBaseRate);
     setIsRateDialogOpen(false);
     
-    // Salvar dados após atualizar o salário base
-    setTimeout(() => {
-      const storageData = getData();
-      storageData.willBaseRate = newBaseRate;
-      storageData.willBonus = willBonus;
-      console.log('Salvando taxa base atualizada:', newBaseRate);
-      saveChanges(createStorageData({
+         // Salvar dados após atualizar o salário base
+     setTimeout(() => {
+       const storageData = getData();
+       storageData.willBaseRate = newBaseRate;
+       storageData.willBonus = willBonus;
+       saveChanges(createStorageData({
         expenses: storageData.expenses,
         projects: storageData.projects,
         stock: storageData.stock,
@@ -945,11 +877,6 @@ export default function App() {
   const handleWeekChange = (startDate: Date, endDate: Date) => {
     setSelectedWeekStart(startDate);
     setSelectedWeekEnd(endDate);
-    console.log("Employee Week Changed:", {
-      start: startDate.toISOString(), 
-      end: endDate.toISOString(),
-      formattedStart: format(startDate, 'yyyy-MM-dd')
-    });
   };
 
   /**
@@ -958,11 +885,6 @@ export default function App() {
   const handleProjectWeekChange = (startDate: Date, endDate: Date) => {
     setSelectedWeekStart(startDate);
     setSelectedWeekEnd(endDate);
-    console.log("Project Week Changed:", {
-      start: startDate.toISOString(), 
-      end: endDate.toISOString(),
-      formattedStart: format(startDate, 'yyyy-MM-dd')
-    });
   };
 
   // Função para verificar se um funcionário deve ser exibido na semana selecionada
@@ -1127,25 +1049,21 @@ export default function App() {
       // Encontrar o funcionário na semana
       let employeeIndex = newEmployees[formattedSelectedWeekStart].findIndex(e => e.id === employeeId);
       
-      // Se não encontrar o funcionário na semana atual, precisamos criá-lo
-      if (employeeIndex === -1) {
-        console.log(`Funcionário com ID ${employeeId} não encontrado na semana ${formattedSelectedWeekStart}. Procurando em outras semanas...`);
-        
-        // Procurar o funcionário em todas as semanas
-        let employeeFromOtherWeek: Employee | undefined;
-        
-        Object.keys(newEmployees).forEach(weekKey => {
-          const found = newEmployees[weekKey].find(e => e.id === employeeId);
-          if (found && !employeeFromOtherWeek) {
-            employeeFromOtherWeek = found;
-          }
-        });
-        
-        if (employeeFromOtherWeek) {
-          console.log(`Funcionário encontrado em outra semana. Copiando para a semana atual.`);
-          
-          // Criar uma cópia do funcionário para a semana atual
-          const newEmployee: Employee = {
+             // Se não encontrar o funcionário na semana atual, precisamos criá-lo
+       if (employeeIndex === -1) {
+         // Procurar o funcionário em todas as semanas
+         let employeeFromOtherWeek: Employee | undefined;
+         
+         Object.keys(newEmployees).forEach(weekKey => {
+           const found = newEmployees[weekKey].find(e => e.id === employeeId);
+           if (found && !employeeFromOtherWeek) {
+             employeeFromOtherWeek = found;
+           }
+         });
+         
+         if (employeeFromOtherWeek) {
+           // Criar uma cópia do funcionário para a semana atual
+           const newEmployee: Employee = {
             ...employeeFromOtherWeek,
             weekStartDate: formattedSelectedWeekStart,
             workedDates: [], // Inicializar com array vazio
@@ -1300,9 +1218,6 @@ export default function App() {
 
   // Função para alternar uma data trabalhada do funcionário
   const handleToggleEmployeeWorkedDate = (employeeId: string, date: string) => {
-    // Log detalhado para diagnóstico
-    console.log(`Alterando data ${date} para funcionário ${employeeId}`);
-    
     // Encontrar o funcionário na semana atual
     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
@@ -1324,11 +1239,6 @@ export default function App() {
     const newWorkedDates = isDateWorked
       ? workedDates.filter(d => d !== date)
       : [...workedDates, date];
-    
-    console.log(`Status anterior: ${isDateWorked ? 'Marcado' : 'Não marcado'}`);
-    console.log(`Nova condição: ${isDateWorked ? 'Removendo' : 'Adicionando'}`);
-    console.log('Datas anteriores:', workedDates);
-    console.log('Novas datas:', newWorkedDates);
     
     // Criar uma cópia do estado para trabalhar
     setEmployees(prevEmployees => {
@@ -1382,11 +1292,8 @@ export default function App() {
             ...storageData,
             employees: updatedEmployees
           };
-          saveChanges(createStorageData(updatedStorageData));
-          
-          // Log para confirmar salvamento
-          console.log('Datas atualizadas e salvas com sucesso');
-        } catch (error) {
+                     saveChanges(createStorageData(updatedStorageData));
+         } catch (error) {
           console.error('Erro ao salvar alterações:', error);
         }
       }
@@ -1397,9 +1304,6 @@ export default function App() {
 
   // Forçar atualização do service worker/PWA quando o aplicativo iniciar
   useEffect(() => {
-    const envInfo = getEnvironmentInfo();
-    console.log("Informações do ambiente:", envInfo);
-    
     // Registrar funções para atualização do service worker
     if ('serviceWorker' in navigator) {
       // Limpar cache e forçar atualização
@@ -1410,7 +1314,6 @@ export default function App() {
           for (const registration of registrations) {
             // Enviar mensagem para limpar o cache
             if (registration.active) {
-              console.log('Enviando comando para limpar cache');
               registration.active.postMessage({ type: 'CLEAR_CACHE' });
               
               // Verificar atualizações
@@ -1419,12 +1322,10 @@ export default function App() {
           }
           
           // Atualizar dados locais
-          console.log('Verificando dados locais');
           const storageData = getData();
           if (storageData) {
             // Verificar por inconsistências nos dados
             if (typeof storageData.lastSync !== 'number') {
-              console.log('Corrigindo timestamp de sincronização');
               storageData.lastSync = Date.now();
               saveChanges(storageData);
             }
@@ -1432,8 +1333,6 @@ export default function App() {
             // Limpar qualquer dado temporário potencialmente inconsistente
             localStorage.removeItem('temp_employee_data');
             sessionStorage.clear();
-            
-            console.log('Dados locais verificados e atualizados');
           }
         } catch (error) {
           console.error('Erro ao atualizar aplicação:', error);
@@ -1448,7 +1347,6 @@ export default function App() {
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
           refreshing = true;
-          console.log("Nova versão detectada, recarregando aplicativo...");
           window.location.reload();
         }
       });
@@ -1457,25 +1355,19 @@ export default function App() {
     // Definir mecanismo de persistência para o IndexedDB
     if ('indexedDB' in window && 'persist' in navigator.storage) {
       navigator.storage.persist().then(isPersisted => {
-        console.log(`Persistência de armazenamento ${isPersisted ? 'concedida' : 'negada'}`);
+        // Silenciosamente verificar persistência
       });
     }
   }, []);
   
   // Verificar problemas de fuso horário
   useEffect(() => {
-    console.group("Diagnóstico de data/hora");
-    console.log("Data/hora atual (local):", new Date().toString());
-    console.log("Data/hora atual (ISO):", new Date().toISOString());
-    console.log("Fuso horário:", Intl.DateTimeFormat().resolvedOptions().timeZone);
-    console.log("Offset do fuso (minutos):", new Date().getTimezoneOffset());
-    console.groupEnd();
+    // Silenciosamente verificar fuso horário
   }, []);
 
   // Adicionar na função App ou em algum efeito
   useEffect(() => {
-    // Executar teste das semanas
-    testWeekRanges();
+    // Silenciosamente executar teste das semanas
   }, []);
 
   // Atualizar deletedIds ao receber dados do servidor
@@ -1492,6 +1384,11 @@ export default function App() {
       window.removeEventListener('dataUpdated', handleDataUpdate as EventListener);
     };
   }, []);
+
+  // Log de sincronização que executa apenas uma vez ao montar o componente
+  useEffect(() => {
+    console.log('✅ UI: Sincronização de retorno concluída');
+  }, []); // [] garante execução única
 
   return (
     <>

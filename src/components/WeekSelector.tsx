@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronDown, Calendar } from 'lucide-react';
 import { getWeeks } from '../lib/dateUtils';
 
@@ -9,35 +9,41 @@ interface WeekSelectorProps {
 
 export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [weeks, setWeeks] = useState(getWeeks());
+  
+  // Usar useMemo para evitar recálculo desnecessário das semanas
+  const weeks = useMemo(() => getWeeks(), []);
+  
   const [selectedWeek, setSelectedWeek] = useState(() => {
     const allWeeks = getWeeks();
     return allWeeks.find(w => w.isCurrent) || allWeeks[allWeeks.length - 1];
   });
 
-  // Atualizar as semanas quando o componente montar
+  // Atualizar as semanas quando o componente montar ou quando selectedWeekStart mudar
   useEffect(() => {
-    const availableWeeks = getWeeks();
-    setWeeks(availableWeeks);
-    
     // Encontrar a semana que corresponde à data selecionada
-    const matchingWeek = availableWeeks.find(
+    const matchingWeek = weeks.find(
       week => week.value === selectedWeekStart.toISOString().split('T')[0]
-    ) || availableWeeks.find(w => w.isCurrent) || availableWeeks[availableWeeks.length - 1];
+    ) || weeks.find(w => w.isCurrent) || weeks[weeks.length - 1];
     
     setSelectedWeek(matchingWeek);
-  }, [selectedWeekStart]);
+  }, [selectedWeekStart, weeks]);
 
-  const handleWeekSelect = (week: typeof weeks[0]) => {
+  // Usar useCallback para evitar recriação da função a cada renderização
+  const handleWeekSelect = useCallback((week: typeof weeks[0]) => {
     setSelectedWeek(week);
     onWeekChange(week.startDate, week.endDate);
     setIsDropdownOpen(false);
-  };
+  }, [onWeekChange]);
+
+  // Usar useCallback para evitar recriação da função a cada renderização
+  const toggleDropdown = useCallback(() => {
+    setIsDropdownOpen(!isDropdownOpen);
+  }, [isDropdownOpen]);
 
   return (
     <div className="relative">
       <button
-        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+        onClick={toggleDropdown}
         className="flex items-center space-x-1"
       >
         <span className="text-gray-700 font-medium text-sm">Week:</span>

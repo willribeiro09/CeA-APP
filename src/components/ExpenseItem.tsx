@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { Check, Trash2, Repeat } from 'lucide-react';
+import { useMemo } from 'react';
 import { Expense } from '../types';
 import { SwipeableItem } from './SwipeableItem';
 import { isRecurringExpense, getExpenseStatus } from '../lib/recurringUtils';
@@ -12,13 +13,15 @@ interface ExpenseItemProps {
 }
 
 export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: ExpenseItemProps) {
-  // Convertendo a string de data para objeto Date
-  const dueDate = expense.date ? new Date(expense.date) : new Date();
-  
-  // Usar nova lógica de status que considera recorrência
-  const status = getExpenseStatus(expense);
-  const isPaid = expense.is_paid || expense.paid;
-  const isRecurring = isRecurringExpense(expense);
+  // Usar useMemo para evitar recálculos desnecessários
+  const dueDate = useMemo(() => expense.date ? new Date(expense.date) : new Date(), [expense.date]);
+  const status = useMemo(() => getExpenseStatus(expense), [expense]);
+  const isPaid = useMemo(() => expense.is_paid || expense.paid, [expense.is_paid, expense.paid]);
+  const isRecurring = useMemo(() => isRecurringExpense(expense), [expense]);
+  const cleanDescription = useMemo(() => expense.description.replace(/\*[MBW]$/, ''), [expense.description]);
+  const formattedAmount = useMemo(() => expense.amount.toFixed(2), [expense.amount]);
+  const formattedDueDate = useMemo(() => format(dueDate, 'MMMM d'), [dueDate]);
+  const nextDueFormatted = useMemo(() => status.nextDueDate ? format(status.nextDueDate, 'MMM d') : '', [status.nextDueDate]);
 
   return (
     <SwipeableItem
@@ -46,30 +49,30 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: Expense
         <div className="flex-1 ml-4">
           <div className="flex items-center gap-2">
             <h3 className="font-medium text-gray-900">
-              {expense.description.replace(/\*[MBW]$/, '')}
+              {cleanDescription}
             </h3>
             {isRecurring && (
               <Repeat className="w-4 h-4 text-gray-400" title="Recurring expense" />
             )}
           </div>
           <p className="text-gray-600 text-sm">
-            Due on {format(dueDate, 'MMMM d')}
+            Due on {formattedDueDate}
           </p>
           {status.overdueDate && status.nextDueDate && (
             <p className="text-xs text-blue-600">
-              Next due: {format(status.nextDueDate, 'MMM d')}
+              Next due: {nextDueFormatted}
             </p>
           )}
           {status.nextDueDate && !status.overdueDate && (
             <p className="text-xs text-blue-600">
-              Next: {format(status.nextDueDate, 'MMM d')}
+              Next: {nextDueFormatted}
             </p>
           )}
         </div>
 
         <div className="text-right mr-2">
           <span className="font-medium text-[#5ABB37]">
-            ${expense.amount.toFixed(2)}
+            ${formattedAmount}
           </span>
           <p className="text-xs text-gray-500">
             {status.text}

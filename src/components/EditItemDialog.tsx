@@ -199,15 +199,19 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         >
           <div className="flex justify-between items-center mb-4">
             <Dialog.Title className="text-lg font-semibold">
-              {itemCategory === 'Expenses' ? 'Editar Despesa' : 
-               itemCategory === 'Projects' ? 'Editar Projeto' : 
-               itemCategory === 'Stock' ? 'Editar Item de Estoque' :
-               'Editar Funcionário'}
+              {item && 'description' in item ? 'Editar Despesa' : 
+               item && 'client' in item ? 'Editar Projeto' : 
+               item && 'name' in item && 'quantity' in item ? 'Editar Item do Estoque' : 'Editar Funcionário'}
             </Dialog.Title>
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
             </Dialog.Close>
           </div>
+          <Dialog.Description className="sr-only">
+            Formulário para editar {item && 'description' in item ? 'a despesa selecionada' : 
+             item && 'client' in item ? 'o projeto selecionado' : 
+             item && 'name' in item && 'quantity' in item ? 'o item do estoque selecionado' : 'o funcionário selecionado'}
+          </Dialog.Description>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             {errors.find(error => error.field === 'form') && (

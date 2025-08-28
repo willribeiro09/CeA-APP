@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, ReactNode } from 'react';
+import React, { useState, useRef, useEffect, ReactNode, useCallback } from 'react';
 import { Edit, Trash2, RotateCcw } from 'lucide-react';
 
 export interface SwipeableItemProps {
@@ -24,35 +24,34 @@ export function SwipeableItem({
   const swipeDistance = useRef<number>(0);
   const itemRef = useRef<HTMLDivElement>(null);
   
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    currentX.current = startX.current;
+  // Usar useCallback para evitar recriação das funções a cada renderização
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    startX.current = touch.clientX;
+    currentX.current = touch.clientX;
     swipeDistance.current = 0;
-  };
+  }, []);
   
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!startX.current) return;
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (startX.current === null) return;
     
-    currentX.current = e.touches[0].clientX;
-    const diff = (startX.current - currentX.current);
+    const touch = e.touches[0];
+    currentX.current = touch.clientX;
     
-    // Limitar o swipe para a esquerda apenas (valores positivos)
-    swipeDistance.current = Math.max(0, diff);
-    
-    // Limitar a distância máxima de swipe
-    const maxSwipe = 150;
-    swipeDistance.current = Math.min(swipeDistance.current, maxSwipe);
-    
-    // Aplicar a transformação
     if (itemRef.current) {
-      itemRef.current.style.transform = `translateX(-${swipeDistance.current}px)`;
+      const deltaX = currentX.current - startX.current;
+      swipeDistance.current = deltaX;
+      
+      // Limitar o swipe para a esquerda (valores negativos)
+      const limitedDeltaX = Math.min(0, Math.max(-150, deltaX));
+      itemRef.current.style.transform = `translateX(${limitedDeltaX}px)`;
     }
     
     // Atualizar o estado de swipe
     setIsSwiped(swipeDistance.current > 50);
-  };
+  }, []);
   
-  const handleTouchEnd = () => {
+  const handleTouchEnd = useCallback(() => {
     // Snap para a posição aberta ou fechada
     if (swipeDistance.current > 50) {
       // Abrir completamente
@@ -67,28 +66,28 @@ export function SwipeableItem({
     
     startX.current = null;
     currentX.current = null;
-  };
+  }, []);
   
-  const resetSwipe = () => {
+  const resetSwipe = useCallback(() => {
     if (itemRef.current) {
       itemRef.current.style.transform = 'translateX(0)';
     }
     setIsSwiped(false);
     swipeDistance.current = 0;
-  };
-  
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (itemRef.current && !itemRef.current.contains(e.target as Node) && isSwiped) {
-        resetSwipe();
-      }
-    };
+  }, []);
 
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (itemRef.current && !itemRef.current.contains(e.target as Node) && isSwiped) {
+      resetSwipe();
+    }
+  }, [isSwiped, resetSwipe]);
+
+  useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isSwiped]);
+  }, [handleClickOutside]);
   
   return (
     <div style={{ overflow: 'hidden', borderRadius: '0.75rem' }}>
