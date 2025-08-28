@@ -21,6 +21,12 @@ export const basicSyncService = {
   syncInProgress: false, // Para evitar syncs simultâneos
   isSyncingOnReturn: false, // Flag específica para sync de retorno do segundo plano
   syncCallbacks: new Set<() => void>(), // Callbacks para notificar quando sync termina
+  
+  // NOVO: Sistema de debounce inteligente para reduzir syncs excessivos
+  syncQueue: [] as Array<() => void>,
+  debounceTimer: null as NodeJS.Timeout | null,
+  minSyncInterval: 8000, // Mínimo 8 segundos entre syncs (aumentado de 2s)
+  maxSyncInterval: 60000, // Máximo 1 minuto entre syncs
 
   async init() {
     if (!supabase || this.isInitialized) return;
@@ -38,23 +44,78 @@ export const basicSyncService = {
     await this.loadInitialData();
   },
 
+  // NOVO: Sistema de debounce inteligente para sincronização
+  queueSync(syncFunction: () => void) {
+    const now = Date.now();
+    
+    // Se já passou tempo suficiente desde o último sync, executar imediatamente
+    if (now - this.lastSyncTime >= this.minSyncInterval) {
+      syncFunction();
+      return;
+    }
+    
+    // Adicionar à fila de sync
+    this.syncQueue.push(syncFunction);
+    
+    // Limpar timer anterior se existir
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
+    
+    // Calcular delay baseado no tempo desde o último sync
+    const timeSinceLastSync = now - this.lastSyncTime;
+    const delay = Math.max(2000, this.minSyncInterval - timeSinceLastSync);
+    
+    // Configurar timer para executar syncs em lote
+    this.debounceTimer = setTimeout(() => {
+      this.executeQueuedSyncs();
+    }, delay);
+  },
+
+  // NOVO: Executar syncs em lote
+  async executeQueuedSyncs() {
+    if (this.syncQueue.length === 0) return;
+    
+    const now = Date.now();
+    
+    // Verificar se já passou tempo suficiente
+    if (now - this.lastSyncTime < this.minSyncInterval) {
+      // Ainda não passou tempo suficiente, reagendar
+      const remainingTime = this.minSyncInterval - (now - this.lastSyncTime);
+      this.debounceTimer = setTimeout(() => {
+        this.executeQueuedSyncs();
+      }, remainingTime);
+      return;
+    }
+    
+    console.log(`🔄 Executando ${this.syncQueue.length} syncs em lote (debounce inteligente)...`);
+    
+    // Executar apenas o último sync da fila (mais recente)
+    const latestSync = this.syncQueue[this.syncQueue.length - 1];
+    this.syncQueue = []; // Limpar fila
+    
+    if (latestSync) {
+      latestSync();
+    }
+    
+    this.debounceTimer = null;
+  },
+
   setupBackgroundDetection() {
     let lastCheckTime = Date.now();
     let lastFocusTime = Date.now();
     
-    // DETECÇÃO IMEDIATA - PWA e navegador
-    const immediateSync = () => {
-      // Reset do debounce para ser quase instantâneo
-      this.lastSyncTime = 0;
-      this.handleAppReturn();
+    // DETECÇÃO INTELIGENTE - Com debounce para reduzir spam
+    const queueSync = () => {
+      this.queueSync(() => this.handleAppReturn());
     };
 
     // 1. Visibilitychange - Detecta mudança de aba/janela (mais confiável)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         const now = Date.now();
-        console.log('🚀 IMEDIATO: App voltou (visibilitychange) - sincronização instantânea...');
-        immediateSync();
+        console.log('🚀 App voltou (visibilitychange) - sincronização em fila...');
+        queueSync();
         lastCheckTime = now;
         lastFocusTime = now;
       }
@@ -63,8 +124,8 @@ export const basicSyncService = {
     // 2. Focus - Detectar foco da janela
     window.addEventListener('focus', () => {
       const now = Date.now();
-      console.log('🎯 IMEDIATO: App recebeu foco (focus) - sincronização instantânea...');
-      immediateSync();
+      console.log('🎯 App recebeu foco (focus) - sincronização em fila...');
+      queueSync();
       lastCheckTime = now;
       lastFocusTime = now;
     });
@@ -72,50 +133,47 @@ export const basicSyncService = {
     // 3. PWA: Pageshow - Específico para volta do cache/background
     window.addEventListener('pageshow', (event) => {
       const now = Date.now();
-      // Sempre sincronizar no pageshow, independente de persisted
-      console.log('📱 PWA IMEDIATO: App voltou (pageshow) - sincronização instantânea...');
-      console.log('- Event persisted:', event.persisted);
-      console.log('- Time since last focus:', now - lastFocusTime, 'ms');
-      immediateSync();
+      console.log('📱 PWA: App voltou (pageshow) - sincronização em fila...');
+      queueSync();
       lastCheckTime = now;
     });
 
     // 4. PWA: Resume - Evento específico de PWA
     document.addEventListener('resume', () => {
       const now = Date.now();
-      console.log('📱 PWA IMEDIATO: App resumed (resume) - sincronização instantânea...');
-      immediateSync();
+      console.log('📱 PWA: App resumed (resume) - sincronização em fila...');
+      queueSync();
       lastCheckTime = now;
     });
 
-    // 5. DETECÇÃO TEMPORAL AGRESSIVA - Para casos onde eventos não disparam
+    // 5. DETECÇÃO TEMPORAL INTELIGENTE - Reduzida para evitar spam
     setInterval(() => {
       if (!document.hidden && navigator.onLine) {
         const now = Date.now();
-        // Verificação a cada 15 segundos se passou mais de 30s sem sync
-        if (now - lastCheckTime > 30000) {
-          console.log('⏰ TEMPORAL: Verificação agressiva (30s+) - sincronização...');
+        // Verificação a cada 45 segundos se passou mais de 90s sem sync
+        if (now - lastCheckTime > 90000) {
+          console.log('⏰ Verificação inteligente (90s+) - sincronização...');
           this.handleAppReturn();
           lastCheckTime = now;
         }
       }
-    }, 15000); // Verifica a cada 15 segundos
+    }, 45000); // Verifica a cada 45 segundos (aumentado de 15s)
 
     // 6. PWA: Detectar mudanças no estado online/offline
     window.addEventListener('online', () => {
-      console.log('🌐 ONLINE: Conectividade restaurada - sincronização...');
-      setTimeout(() => immediateSync(), 100); // Pequeno delay para estabilizar
+      console.log('🌐 ONLINE: Conectividade restaurada - sincronização em fila...');
+      setTimeout(() => queueSync(), 100); // Pequeno delay para estabilizar
     });
 
-    console.log('🔧 Detecção de segundo plano configurada com sincronização IMEDIATA');
+    console.log('🔧 Detecção configurada com DEBOUNCE INTELIGENTE para reduzir spam');
   },
 
   async handleAppReturn() {
     const now = Date.now();
     
-    // Debounce reduzido para 2 segundos (mais ágil)
-    if (now - this.lastSyncTime < 2000) {
-      console.log('⏭️ Sync recente, ignorando...');
+    // Debounce aumentado para 8 segundos (mais estável)
+    if (now - this.lastSyncTime < this.minSyncInterval) {
+      console.log('⏭️ Sync muito recente, ignorando...');
       return;
     }
     
@@ -130,7 +188,7 @@ export const basicSyncService = {
     this.lastSyncTime = now;
     
     try {
-      console.log('🚀 Sincronização IMEDIATA após volta do segundo plano...');
+      console.log('🚀 Sincronização após volta do segundo plano...');
       
       // Verificar se está online antes de tentar
       if (!navigator.onLine) {
@@ -141,11 +199,11 @@ export const basicSyncService = {
       // Notificar que sync de retorno começou
       window.dispatchEvent(new CustomEvent('syncReturnStarted'));
       
-      // SEMPRE carregar dados mais recentes do servidor COM PRIORIDADE MÁXIMA
+      // Carregar dados mais recentes do servidor
       const serverData = await this.loadInitialData();
       
       if (serverData) {
-        console.log('✅ Dados sincronizados IMEDIATAMENTE após volta');
+        console.log('✅ Dados sincronizados após volta');
         // Disparar evento para atualizar UI
         window.dispatchEvent(new CustomEvent('dataUpdated', { 
           detail: serverData 
@@ -252,14 +310,15 @@ export const basicSyncService = {
           lastSync: data.last_sync_timestamp || Date.now()
         };
         
-        console.log('✅ Dados carregados do servidor');
+        // Salvar dados do servidor localmente
         storage.save(serverData);
+        console.log('✅ Dados do servidor carregados e salvos');
         return serverData;
       }
       
       return null;
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('❌ Erro ao carregar dados do servidor:', error);
       return null;
     }
   },
@@ -334,6 +393,16 @@ export const basicSyncService = {
   // Verificar se está sincronizando ao retornar do segundo plano
   isSyncingFromBackground() {
     return this.isSyncingOnReturn;
+  },
+
+  // NOVO: Método para limpar timers e filas
+  cleanup() {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+    this.syncQueue = [];
+    console.log('🔄 Sync limpo e resetado');
   }
 };
 
@@ -386,7 +455,11 @@ if (typeof window !== 'undefined') {
     getStatus: () => ({
       initialized: basicSyncService.isInitialized,
       hasChannel: !!basicSyncService.channel,
-      channelState: basicSyncService.channel?.state
+      channelState: basicSyncService.channel?.state,
+      lastSyncTime: basicSyncService.lastSyncTime,
+      syncInProgress: basicSyncService.syncInProgress,
+      queueLength: basicSyncService.syncQueue.length,
+      debounceTimer: !!basicSyncService.debounceTimer
     }),
     loadFromServer: () => basicSyncService.loadInitialData(),
     forceSync: async () => {
@@ -431,43 +504,38 @@ if (typeof window !== 'undefined') {
     },
     // PWA ESPECÍFICO
     isPWA: () => {
-      return window.matchMedia('(display-mode: standalone)').matches || 
-             window.navigator.standalone === true;
+      return window.matchMedia('(display-mode: standalone)').matches ||
+             (window.navigator as any).standalone === true;
     },
-    getPWAInfo: () => {
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                   window.navigator.standalone === true;
-      console.log('📱 PWA Info:');
-      console.log('- É PWA:', isPWA);
-      console.log('- Online:', navigator.onLine);
-      console.log('- Document hidden:', document.hidden);
-      console.log('- Last sync:', new Date(basicSyncService.lastSyncTime).toLocaleTimeString());
-      console.log('- Sync in progress:', basicSyncService.syncInProgress);
-      return { isPWA, online: navigator.onLine, hidden: document.hidden };
+    getPWAStatus: () => {
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                    (window.navigator as any).standalone === true;
+      
+      return {
+        isPWA,
+        displayMode: window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser',
+        userAgent: navigator.userAgent,
+        platform: navigator.platform
+      };
     },
-    forcePWASync: async () => {
-      console.log('🚀 Forçando sync PWA (ignorando debounce)...');
-      basicSyncService.lastSyncTime = 0; // Reset debounce
-      basicSyncService.syncInProgress = false; // Reset lock
-      await basicSyncService.handleAppReturn();
+    // NOVO: Controles de debounce
+    setSyncInterval: (minMs: number, maxMs: number) => {
+      basicSyncService.minSyncInterval = minMs;
+      basicSyncService.maxSyncInterval = maxMs;
+      console.log(`⚙️ Intervalos de sync configurados: Min: ${minMs}ms, Max: ${maxMs}ms`);
     },
-    // NOVOS MÉTODOS PARA SYNC DE RETORNO
-    isSyncingFromBackground: () => basicSyncService.isSyncingFromBackground(),
-    getSyncStatus: () => ({
-      syncInProgress: basicSyncService.syncInProgress,
-      isSyncingOnReturn: basicSyncService.isSyncingOnReturn,
-      lastSyncTime: new Date(basicSyncService.lastSyncTime).toLocaleTimeString(),
-      registeredCallbacks: basicSyncService.syncCallbacks.size
-    }),
-    simulateBackgroundReturn: async () => {
-      console.log('🧪 TESTE: Simulando volta do segundo plano...');
-      // Simular que saiu do segundo plano há tempo suficiente
-      basicSyncService.lastSyncTime = Date.now() - 10000;
-      // Disparar eventos de volta
-      window.dispatchEvent(new Event('focus'));
-      setTimeout(() => {
-        document.dispatchEvent(new Event('visibilitychange'));
-      }, 100);
+    clearSyncQueue: () => {
+      basicSyncService.cleanup();
+    },
+    testDebounce: () => {
+      console.log('🧪 Testando sistema de debounce...');
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+          basicSyncService.queueSync(() => {
+            console.log(`🔄 Sync ${i + 1} executado`);
+          });
+        }, i * 100);
+      }
     },
     testInstantSync: () => {
       console.log('⚡ TESTE: Sincronização instantânea...');
