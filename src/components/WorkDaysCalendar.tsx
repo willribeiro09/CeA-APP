@@ -9,6 +9,10 @@ interface WorkDaysCalendarProps {
   onDateToggle: (date: string) => void;
   weekStartDate: Date;
   onWeekChange: (startDate: Date, endDate: Date) => void;
+  // Props adicionais que podem ser passadas
+  employeeId?: string;
+  onClose?: () => void;
+  onReset?: () => void;
 }
 
 export function WorkDaysCalendar({ 

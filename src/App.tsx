@@ -1914,8 +1914,12 @@ export default function App() {
                   initialWorkedDates={selectedEmployee.workedDates || []}
                   onDateToggle={(date) => handleToggleEmployeeWorkedDate(selectedEmployee.id, date)}
                   onClose={() => setIsCalendarDialogOpen(false)}
-                  onReset={handleResetEmployee}
-                  weekStartDate={selectedEmployee.weekStartDate}
+                  onReset={() => handleResetEmployee(selectedEmployee.id, selectedEmployee.weekStartDate)}
+                  weekStartDate={new Date(selectedEmployee.weekStartDate)}
+                  onWeekChange={(startDate, endDate) => {
+                    // Atualizar a semana do funcionário se necessário
+                    console.log('Week changed:', startDate, endDate);
+                  }}
                 />
               </div>
             </Dialog.Content>
