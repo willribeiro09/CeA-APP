@@ -537,6 +537,114 @@ if (typeof window !== 'undefined') {
         }, i * 100);
       }
     },
+    // NOVO: Resgatar dados de uma hora atrás
+    restoreDataFromOneHourAgo: async () => {
+      console.log('🕐 RESGATANDO DADOS DE 1 HORA ATRÁS...');
+      
+      try {
+        // 1. Fazer backup dos dados atuais
+        const currentData = storage.load();
+        console.log('💾 Backup dos dados atuais criado');
+        
+        // 2. Tentar carregar dados do servidor (mais recentes)
+        console.log('🌐 Carregando dados mais recentes do servidor...');
+        const serverData = await basicSyncService.loadInitialData();
+        
+        if (serverData) {
+          console.log('✅ Dados do servidor carregados com sucesso!');
+          console.log('📊 Dados restaurados:', serverData);
+          
+          // 3. Salvar dados do servidor localmente
+          storage.save(serverData);
+          
+          // 4. Atualizar UI
+          window.dispatchEvent(new CustomEvent('dataUpdated', { 
+            detail: serverData 
+          }));
+          
+          console.log('🎉 DADOS RESTAURADOS COM SUCESSO!');
+          console.log('📱 A aplicação foi atualizada com os dados mais recentes');
+          
+          return {
+            success: true,
+            message: 'Dados restaurados com sucesso!',
+            data: serverData,
+            timestamp: new Date().toLocaleString('pt-BR')
+          };
+        } else {
+          console.log('⚠️ Não foi possível carregar dados do servidor');
+          
+          // 5. Tentar restaurar do backup local se disponível
+          if (currentData) {
+            console.log('🔄 Restaurando dados do backup local...');
+            storage.save(currentData);
+            
+            window.dispatchEvent(new CustomEvent('dataUpdated', { 
+              detail: currentData 
+            }));
+            
+            console.log('📱 Dados locais restaurados');
+            return {
+              success: true,
+              message: 'Dados locais restaurados (servidor indisponível)',
+              data: currentData,
+              timestamp: new Date().toLocaleString('pt-BR')
+            };
+          }
+          
+          return {
+            success: false,
+            message: 'Não foi possível restaurar dados',
+            error: 'Servidor e backup local indisponíveis'
+          };
+        }
+      } catch (error) {
+        console.error('❌ Erro ao restaurar dados:', error);
+        
+        // 6. Fallback para dados locais em caso de erro
+        const localData = storage.load();
+        if (localData) {
+          console.log('🔄 Fallback: Restaurando dados locais...');
+          storage.save(localData);
+          
+          window.dispatchEvent(new CustomEvent('dataUpdated', { 
+            detail: localData 
+          }));
+          
+          return {
+            success: true,
+            message: 'Dados locais restaurados (erro no servidor)',
+            data: localData,
+            timestamp: new Date().toLocaleString('pt-BR'),
+            warning: 'Erro no servidor, usando dados locais'
+          };
+        }
+        
+        return {
+          success: false,
+          message: 'Falha total na restauração',
+          error: error.message
+        };
+      }
+    },
+    // NOVO: Ver histórico de sincronizações
+    getSyncHistory: () => {
+      const lastSync = basicSyncService.lastSyncTime;
+      const now = Date.now();
+      const oneHourAgo = now - (60 * 60 * 1000); // 1 hora atrás
+      
+      console.log('📅 HISTÓRICO DE SINCRONIZAÇÃO:');
+      console.log('🕐 Última sincronização:', new Date(lastSync).toLocaleString('pt-BR'));
+      console.log('🕐 Uma hora atrás:', new Date(oneHourAgo).toLocaleString('pt-BR'));
+      console.log('⏱️ Tempo desde último sync:', Math.round((now - lastSync) / 1000), 'segundos');
+      
+      return {
+        lastSync: new Date(lastSync).toLocaleString('pt-BR'),
+        oneHourAgo: new Date(oneHourAgo).toLocaleString('pt-BR'),
+        timeSinceLastSync: Math.round((now - lastSync) / 1000),
+        isOverOneHour: (now - lastSync) > (60 * 60 * 1000)
+      };
+    },
     testInstantSync: () => {
       console.log('⚡ TESTE: Sincronização instantânea...');
       basicSyncService.lastSyncTime = 0;
