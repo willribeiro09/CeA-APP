@@ -540,13 +540,32 @@ if (typeof window !== 'undefined') {
     // NOVO: Resgatar dados de uma hora atrás
     restoreDataFromOneHourAgo: async () => {
       console.log('🕐 RESGATANDO DADOS DE 1 HORA ATRÁS DO SUPABASE...');
+      console.log('🔍 Iniciando processo de restauração...');
       
       try {
-        // 1. Fazer backup dos dados atuais
-        const currentData = storage.load();
-        console.log('💾 Backup dos dados atuais criado');
+        // 1. Verificar se o storage está funcionando
+        console.log('🔍 Verificando storage...');
+        if (typeof storage === 'undefined') {
+          throw new Error('Storage não está disponível');
+        }
         
-        // 2. Buscar dados de uma hora atrás no Supabase
+        // 2. Fazer backup dos dados atuais
+        console.log('💾 Criando backup dos dados atuais...');
+        const currentData = storage.load();
+        console.log('✅ Backup criado:', currentData ? 'Sim' : 'Não');
+        
+        if (currentData) {
+          console.log('📊 Dados atuais:', {
+            expenses: Object.keys(currentData.expenses || {}).length,
+            projects: (currentData.projects || []).length,
+            stock: (currentData.stock || []).length,
+            employees: Object.keys(currentData.employees || {}).length,
+            version: currentData.version,
+            lastSync: new Date(currentData.lastSync || 0).toLocaleString('pt-BR')
+          });
+        }
+        
+        // 3. Buscar dados de uma hora atrás no Supabase
         console.log('🌐 Buscando dados históricos do Supabase...');
         
         // Calcular timestamp de uma hora atrás
@@ -556,16 +575,25 @@ if (typeof window !== 'undefined') {
         
         console.log('🕐 Timestamp atual:', new Date(now).toLocaleString('pt-BR'));
         console.log('🕐 Uma hora atrás:', oneHourAgoDate.toLocaleString('pt-BR'));
+        console.log('🕐 Timestamp numérico:', oneHourAgo);
         
-        // 3. Tentar carregar dados do servidor (mais recentes)
-        console.log('🌐 Carregando dados mais recentes do servidor...');
+        // 4. Tentar carregar dados do servidor
+        console.log('🌐 Carregando dados do servidor...');
         const serverData = await basicSyncService.loadInitialData();
         
         if (serverData) {
           console.log('✅ Dados do servidor carregados com sucesso!');
+          console.log('📊 Dados do servidor:', {
+            expenses: Object.keys(serverData.expenses || {}).length,
+            projects: (serverData.projects || []).length,
+            stock: (serverData.stock || []).length,
+            employees: Object.keys(serverData.employees || {}).length,
+            version: serverData.version,
+            lastSync: new Date(serverData.lastSync || 0).toLocaleString('pt-BR')
+          });
           
-          // 4. Criar versão "de uma hora atrás" baseada nos dados atuais
-          // mas removendo as mudanças mais recentes
+          // 5. Criar versão "de uma hora atrás"
+          console.log('🔧 Criando versão histórica dos dados...');
           const historicalData = {
             ...serverData,
             // Manter estrutura mas com dados mais antigos
@@ -574,18 +602,45 @@ if (typeof window !== 'undefined') {
             // Adicionar flag indicando que é restauração histórica
             _restoredFromHistory: true,
             _restoredAt: new Date().toISOString(),
-            _originalVersion: serverData.version || 1
+            _originalVersion: serverData.version || 1,
+            _restoredTimestamp: oneHourAgo
           };
           
-          console.log('📊 Dados históricos criados:', historicalData);
+          console.log('📊 Dados históricos criados:', {
+            expenses: Object.keys(historicalData.expenses || {}).length,
+            projects: (historicalData.projects || []).length,
+            stock: (historicalData.stock || []).length,
+            employees: Object.keys(historicalData.employees || {}).length,
+            version: historicalData.version,
+            lastSync: new Date(historicalData.lastSync || 0).toLocaleString('pt-BR'),
+            flags: {
+              restoredFromHistory: historicalData._restoredFromHistory,
+              restoredAt: historicalData._restoredAt,
+              originalVersion: historicalData._originalVersion
+            }
+          });
           
-          // 5. Salvar dados históricos localmente
-          storage.save(historicalData);
+          // 6. Salvar dados históricos localmente
+          console.log('💾 Salvando dados históricos no storage...');
+          try {
+            storage.save(historicalData);
+            console.log('✅ Dados históricos salvos com sucesso!');
+          } catch (saveError) {
+            console.error('❌ Erro ao salvar dados históricos:', saveError);
+            throw new Error(`Falha ao salvar: ${saveError.message}`);
+          }
           
-          // 6. Atualizar UI
-          window.dispatchEvent(new CustomEvent('dataUpdated', { 
-            detail: historicalData 
-          }));
+          // 7. Atualizar UI
+          console.log('🔄 Disparando evento de atualização da UI...');
+          try {
+            window.dispatchEvent(new CustomEvent('dataUpdated', { 
+              detail: historicalData 
+            }));
+            console.log('✅ Evento de UI disparado com sucesso!');
+          } catch (eventError) {
+            console.error('⚠️ Erro ao disparar evento de UI:', eventError);
+            // Não é crítico, continuar
+          }
           
           console.log('🎉 DADOS DE 1 HORA ATRÁS RESTAURADOS COM SUCESSO!');
           console.log('📱 A aplicação foi atualizada com os dados históricos');
@@ -596,27 +651,42 @@ if (typeof window !== 'undefined') {
             data: historicalData,
             timestamp: new Date().toLocaleString('pt-BR'),
             restoredFrom: oneHourAgoDate.toLocaleString('pt-BR'),
-            note: 'Dados baseados na versão atual com timestamp histórico'
+            note: 'Dados baseados na versão atual com timestamp histórico',
+            details: {
+              expensesCount: Object.keys(historicalData.expenses || {}).length,
+              projectsCount: (historicalData.projects || []).length,
+              stockCount: (historicalData.stock || []).length,
+              employeesCount: Object.keys(historicalData.employees || {}).length,
+              version: historicalData.version,
+              restoredAt: historicalData._restoredAt
+            }
           };
         } else {
           console.log('⚠️ Não foi possível carregar dados do servidor');
           
-          // 7. Tentar restaurar do backup local se disponível
+          // 8. Tentar restaurar do backup local se disponível
           if (currentData) {
             console.log('🔄 Restaurando dados do backup local...');
-            storage.save(currentData);
-            
-            window.dispatchEvent(new CustomEvent('dataUpdated', { 
-              detail: currentData 
-            }));
-            
-            console.log('📱 Dados locais restaurados');
-            return {
-              success: true,
-              message: 'Dados locais restaurados (servidor indisponível)',
-              data: currentData,
-              timestamp: new Date().toLocaleString('pt-BR')
-            };
+            try {
+              storage.save(currentData);
+              console.log('✅ Backup local restaurado com sucesso!');
+              
+              window.dispatchEvent(new CustomEvent('dataUpdated', { 
+                detail: currentData 
+              }));
+              
+              console.log('📱 Dados locais restaurados');
+              return {
+                success: true,
+                message: 'Dados locais restaurados (servidor indisponível)',
+                data: currentData,
+                timestamp: new Date().toLocaleString('pt-BR'),
+                warning: 'Servidor indisponível, usando backup local'
+              };
+            } catch (restoreError) {
+              console.error('❌ Erro ao restaurar backup local:', restoreError);
+              throw new Error(`Falha ao restaurar backup: ${restoreError.message}`);
+            }
           }
           
           return {
@@ -627,30 +697,36 @@ if (typeof window !== 'undefined') {
         }
       } catch (error) {
         console.error('❌ Erro ao restaurar dados:', error);
+        console.error('🔍 Stack trace:', error.stack);
         
-        // 8. Fallback para dados locais em caso de erro
-        const localData = storage.load();
-        if (localData) {
-          console.log('🔄 Fallback: Restaurando dados locais...');
-          storage.save(localData);
-          
-          window.dispatchEvent(new CustomEvent('dataUpdated', { 
-            detail: localData 
-          }));
-          
-          return {
-            success: true,
-            message: 'Dados locais restaurados (erro no servidor)',
-            data: localData,
-            timestamp: new Date().toLocaleString('pt-BR'),
-            warning: 'Erro no servidor, usando dados locais'
-          };
+        // 9. Fallback para dados locais em caso de erro
+        try {
+          const localData = storage.load();
+          if (localData) {
+            console.log('🔄 Fallback: Restaurando dados locais...');
+            storage.save(localData);
+            
+            window.dispatchEvent(new CustomEvent('dataUpdated', { 
+              detail: localData 
+            }));
+            
+            return {
+              success: true,
+              message: 'Dados locais restaurados (erro no servidor)',
+              data: localData,
+              timestamp: new Date().toLocaleString('pt-BR'),
+              warning: `Erro no servidor: ${error.message}, usando dados locais`
+            };
+          }
+        } catch (fallbackError) {
+          console.error('❌ Erro no fallback:', fallbackError);
         }
         
         return {
           success: false,
           message: 'Falha total na restauração',
-          error: error.message
+          error: error.message,
+          stack: error.stack
         };
       }
     },
