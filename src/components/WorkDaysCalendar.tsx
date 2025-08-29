@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { format, eachDayOfInterval, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay, isToday, isSameMonth } from 'date-fns';
+import { format, eachDayOfInterval, startOfWeek, endOfWeek, addMonths, subMonths, isSameDay, isToday, isSameMonth } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { normalizeEmployeeDate, formatDateToISO } from '../lib/dateUtils';
 import { isMobileDevice } from '../lib/deviceUtils';
@@ -19,10 +19,11 @@ export function WorkDaysCalendar({
   initialWorkedDates, 
   onDateToggle, 
   weekStartDate, 
-  onWeekChange 
+  onWeekChange,
+  onClose
 }: WorkDaysCalendarProps) {
   const [workedDates, setWorkedDates] = useState<string[]>(initialWorkedDates || []);
-  const [currentWeekStart, setCurrentWeekStart] = useState(weekStartDate);
+  const [currentMonth, setCurrentMonth] = useState(new Date(weekStartDate));
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState<Date | null>(null);
   const [mouseOverDate, setMouseOverDate] = useState<Date | null>(null);
@@ -30,22 +31,23 @@ export function WorkDaysCalendar({
   const [mobileSelectionStart, setMobileSelectionStart] = useState<Date | null>(null);
   const [currentTouchDate, setCurrentTouchDate] = useState<Date | null>(null);
 
-  // Usar useMemo para evitar recálculos desnecessários
-  const weekRange = useMemo(() => {
-    const start = startOfWeek(currentWeekStart, { weekStartsOn: 1 }); // Segunda-feira
-    const end = endOfWeek(currentWeekStart, { weekStartsOn: 1 }); // Domingo
+  // Usar useMemo para calcular o mês completo
+  const monthRange = useMemo(() => {
+    const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
     return { start, end };
-  }, [currentWeekStart]);
+  }, [currentMonth]);
 
-  const weekDays = useMemo(() => {
-    const { start, end } = weekRange;
-    return eachDayOfInterval({ start, end });
-  }, [weekRange]);
+  const monthDays = useMemo(() => {
+    const { start, end } = monthRange;
+    const startOfFirstWeek = startOfWeek(start, { weekStartsOn: 1 }); // Segunda-feira
+    const endOfLastWeek = endOfWeek(end, { weekStartsOn: 1 }); // Domingo
+    return eachDayOfInterval({ start: startOfFirstWeek, end: endOfLastWeek });
+  }, [monthRange]);
 
-  const weekLabel = useMemo(() => {
-    const { start, end } = weekRange;
-    return `${format(start, 'MMM d', { locale: enUS })} - ${format(end, 'MMM d', { locale: enUS })}`;
-  }, [weekRange]);
+  const monthLabel = useMemo(() => {
+    return format(currentMonth, 'MMMM yyyy', { locale: enUS });
+  }, [currentMonth]);
 
   // Atualizar as datas trabalhadas quando as props mudarem
   useEffect(() => {
@@ -121,6 +123,11 @@ export function WorkDaysCalendar({
           }
         }
       });
+      
+      // Limpar o estado de seleção
+      setIsSelecting(false);
+      setMobileSelectionStart(null);
+      setCurrentTouchDate(null);
     }
     
     // Limpar o estado de seleção
@@ -187,13 +194,25 @@ export function WorkDaysCalendar({
 
   // Função para confirmar todas as datas selecionadas
   const handleConfirm = () => {
-    // Garantir que todas as datas foram corretamente processadas
     try {
-      // Aguardar um momento para garantir que todas as mudanças de estado foram processadas
-      setTimeout(() => {
-        // Verificar se as datas confirmadas foram devidamente persistidas
-        const dataGarantida = [...workedDates];
-      }, 300);
+      console.log('✅ Confirmando datas trabalhadas:', workedDates);
+      
+      // Garantir que todas as datas foram corretamente processadas
+      // As datas já foram salvas via onDateToggle durante a seleção
+      
+      // Fechar o modal se a prop onClose estiver disponível
+      if (onClose) {
+        onClose();
+      }
+      
+      // Disparar evento de confirmação
+      window.dispatchEvent(new CustomEvent('workDaysConfirmed', { 
+        detail: { 
+          workedDates,
+          message: 'Datas trabalhadas confirmadas com sucesso!'
+        } 
+      }));
+      
     } catch (error) {
       console.error("Erro ao confirmar datas:", error);
     }
@@ -202,7 +221,7 @@ export function WorkDaysCalendar({
   // Função para resetar todas as datas
   const handleReset = () => {
     // Para cada data trabalhada, chamar onDateToggle para removê-la
-    [...workedDates].forEach(date => {
+    workedDates.forEach(date => {
       onDateToggle(date);
     });
     
@@ -210,60 +229,39 @@ export function WorkDaysCalendar({
     setWorkedDates([]);
   };
 
-  // Gerar os dias da semana atual (removido monthStart, monthEnd, daysInMonth)
-  // const monthStart = startOfMonth(currentMonth);
-  // const monthEnd = endOfMonth(currentMonth);
-  // const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-  // Nomes dos dias da semana em inglês
-  const weekDayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  // Detectar se é dispositivo móvel para ajustar a UI
-  const isMobile = isMobileDevice();
-
-  // Iniciar seleção em dispositivos móveis
+  // Funções para seleção múltipla em dispositivos móveis
   const handleMobileMultiSelectStart = (date: Date) => {
+    const normalizedDate = normalizeEmployeeDate(date);
+    const formattedDate = formatDateToISO(normalizedDate);
+    
+    setIsAdding(!workedDates.includes(formattedDate));
     setIsSelecting(true);
     setMobileSelectionStart(date);
     setCurrentTouchDate(date);
-    
-    // Determinar se estamos adicionando ou removendo
-    const normalizedDate = normalizeEmployeeDate(date);
-    const formattedDate = formatDateToISO(normalizedDate);
-    setIsAdding(!workedDates.includes(formattedDate));
   };
-  
-  // Atualizar a seleção durante o toque
+
   const handleMobileMultiSelectMove = (date: Date) => {
-    if (isSelecting && mobileSelectionStart && date !== currentTouchDate) {
+    if (isSelecting) {
       setCurrentTouchDate(date);
     }
   };
-  
-  // Finalizar a seleção múltipla em dispositivos móveis
+
   const handleMobileMultiSelectEnd = () => {
     if (isSelecting && mobileSelectionStart && currentTouchDate) {
-      
-      // Ordenar as datas de início e fim
       const start = mobileSelectionStart < currentTouchDate ? mobileSelectionStart : currentTouchDate;
       const end = mobileSelectionStart < currentTouchDate ? currentTouchDate : mobileSelectionStart;
       
-      // Obter todas as datas no intervalo
       const datesInRange = eachDayOfInterval({ start, end });
       
-      // Aplicar a operação (adicionar ou remover) a todas as datas no intervalo
       datesInRange.forEach(date => {
-        // Usar normalizeEmployeeDate para ajustar a data
         const normalizedDate = normalizeEmployeeDate(date);
         const formattedDate = formatDateToISO(normalizedDate);
         
         const isCurrentlyWorked = workedDates.includes(formattedDate);
         
-        // Se estamos adicionando e não está marcado, ou removendo e está marcado
         if ((isAdding && !isCurrentlyWorked) || (!isAdding && isCurrentlyWorked)) {
           onDateToggle(formattedDate);
           
-          // Atualizar o estado local para refletir a mudança
           if (isAdding) {
             setWorkedDates(prev => [...prev, formattedDate]);
           } else {
@@ -271,44 +269,31 @@ export function WorkDaysCalendar({
           }
         }
       });
-      
-      // Limpar o estado de seleção
-      setIsSelecting(false);
-      setMobileSelectionStart(null);
-      setCurrentTouchDate(null);
     }
-  };
-
-  const toggleMultiSelectMode = () => {
-    // Não é mais necessário, mas mantemos a função para limpar seleções
-    // setMultiSelectMode(!multiSelectMode);
     
-    // Limpar qualquer seleção em andamento
     setIsSelecting(false);
     setMobileSelectionStart(null);
     setCurrentTouchDate(null);
   };
 
+  // Verificar se é dispositivo móvel
+  const isMobile = isMobileDevice();
+
+  // Labels dos dias da semana
+  const weekDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
-      {/* Informações de ambiente para depuração - só visível durante desenvolvimento */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-yellow-100 p-2 mb-2 text-xs">
-          <p>Ambiente: {isMobile ? 'Mobile' : 'Desktop'}</p>
-          <p>Fuso: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
-        </div>
-      )}
-      
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-gray-800 capitalize">
-          {weekLabel}
+          {monthLabel}
         </h2>
         <div className="flex space-x-2">
           <button
             onClick={() => {
-              const newWeekStart = subWeeks(currentWeekStart, 1);
-              setCurrentWeekStart(newWeekStart);
-              onWeekChange(newWeekStart, endOfWeek(newWeekStart, { weekStartsOn: 1 }));
+              const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+              setCurrentMonth(newMonth);
+              onWeekChange(newMonth, new Date(newMonth.getFullYear(), newMonth.getMonth() + 1, 0));
             }}
             className="p-2 rounded-md hover:bg-gray-100"
           >
@@ -316,9 +301,9 @@ export function WorkDaysCalendar({
           </button>
           <button
             onClick={() => {
-              const newWeekStart = addWeeks(currentWeekStart, 1);
-              setCurrentWeekStart(newWeekStart);
-              onWeekChange(newWeekStart, endOfWeek(newWeekStart, { weekStartsOn: 1 }));
+              const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+              setCurrentMonth(newMonth);
+              onWeekChange(newMonth, new Date(newMonth.getFullYear(), newMonth.getMonth() + 1, 0));
             }}
             className="p-2 rounded-md hover:bg-gray-100"
           >
@@ -335,15 +320,15 @@ export function WorkDaysCalendar({
           </div>
         ))}
         
-        {/* Dias da semana e eventos do mouse */}
+        {/* Dias do mês e eventos do mouse */}
         <div 
           className="grid grid-cols-7 gap-1 col-span-7"
           onMouseLeave={handleMouseUp}
           onMouseUp={handleMouseUp}
           onTouchEnd={handleMouseUp}
         >
-          {/* Dias da semana */}
-          {weekDays.map(day => {
+          {/* Dias do mês */}
+          {monthDays.map(day => {
             // Usar normalizeEmployeeDate para verificar corretamente as datas
             const normalizedDate = normalizeEmployeeDate(day);
             const formattedDate = formatDateToISO(normalizedDate);

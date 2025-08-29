@@ -188,7 +188,7 @@ export const basicSyncService = {
     this.lastSyncTime = now;
     
     try {
-      console.log('🚀 Sincronização após volta do segundo plano...');
+      console.log('🚀 Sincronização SEGURA após volta do segundo plano...');
       
       // Verificar se está online antes de tentar
       if (!navigator.onLine) {
@@ -199,15 +199,15 @@ export const basicSyncService = {
       // Notificar que sync de retorno começou
       window.dispatchEvent(new CustomEvent('syncReturnStarted'));
       
-      // Carregar dados mais recentes do servidor
+      // PASSO 1: SEMPRE carregar dados mais recentes do servidor primeiro
+      console.log('🔄 PASSO 1: Verificando dados do servidor...');
       const serverData = await this.loadInitialData();
       
-      if (serverData) {
-        console.log('✅ Dados sincronizados após volta');
-        // Disparar evento para atualizar UI
-        window.dispatchEvent(new CustomEvent('dataUpdated', { 
-          detail: serverData 
-        }));
+      // PASSO 2: Sincronizar dados locais (que serão mesclados com os do servidor)
+      console.log('🔄 PASSO 2: Sincronizando dados locais...');
+      const localData = storage.load();
+      if (localData) {
+        await this.sync(localData);
       }
       
       // Notificar que sync de retorno terminou
@@ -221,6 +221,8 @@ export const basicSyncService = {
           console.error('Erro em callback de sync:', err);
         }
       });
+      
+      console.log('✅ Sincronização SEGURA concluída - dados preservados!');
       
     } catch (error) {
       console.error('❌ Erro ao sincronizar após volta:', error);
