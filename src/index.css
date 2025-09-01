@@ -80,6 +80,8 @@
   transform: translateZ(0); /* Força aceleração de hardware */
   backface-visibility: hidden; /* Melhora o desempenho */
   perspective: 1000px; /* Melhora o desempenho */
+  /* Scroll padding para evitar que os botões flutuantes cubram o último item */
+  scroll-padding-bottom: 8rem; /* 128px - espaço suficiente para os botões */
 }
 
 /* Prevenir movimento da lista quando inputs nativos são focados */
@@ -90,6 +92,28 @@ input[type="time"],
 input[type="week"] {
   position: relative;
   z-index: 10;
+}
+
+/* Estilos para botões flutuantes e espaçamento da lista */
+.floating-buttons-safe-area {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Garantir que o último item da lista seja visível */
+.list-bottom-spacing {
+  min-height: 8rem; /* 128px - espaço mínimo para os botões */
+}
+
+/* Scroll padding para dispositivos que não suportam scroll-padding-bottom */
+.scroll-pb-32 {
+  scroll-padding-bottom: 8rem; /* 128px */
+}
+
+/* Fallback para navegadores mais antigos */
+@supports not (scroll-padding-bottom: 8rem) {
+  .main-list-container {
+    padding-bottom: 8rem;
+  }
 }
 
 /* Estilos personalizados */

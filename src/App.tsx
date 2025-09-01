@@ -1501,7 +1501,7 @@ export default function App() {
           )}
         </div>
         
-        <main className="px-4 pb-20">
+        <main className="px-4 pb-28">
           <div 
             className="max-w-[800px] mx-auto relative z-0 hide-scrollbar main-list-container" 
           >
@@ -1742,6 +1742,9 @@ export default function App() {
                 </>
               )}
             </ul>
+            
+            {/* Espaçamento para evitar que os botões flutuantes cubram o último item */}
+            <div className="list-bottom-spacing"></div>
           </div>
         </main>
       </div>
