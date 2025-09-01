@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, ReactNode, useCallback } from 'react';
-import { Edit, Trash2, RotateCcw } from 'lucide-react';
+import { Edit, RotateCcw, Trash2 } from 'lucide-react';
 
 export interface SwipeableItemProps {
   children: ReactNode;
@@ -54,28 +54,42 @@ export function SwipeableItem({
       const deltaX = currentX.current - startX.current;
       swipeDistance.current = deltaX;
       
-      // Limitar o swipe para a esquerda (valores negativos)
-      const limitedDeltaX = Math.min(0, Math.max(-150, deltaX));
-      itemRef.current.style.transform = `translateX(${limitedDeltaX}px)`;
+      if (isSwiped) {
+        // Se já está aberto, permitir arrastar de volta para fechar
+        // Começar de -150px (posição aberta) e permitir valores positivos
+        const newPosition = Math.max(-150, -150 + deltaX);
+        itemRef.current.style.transform = `translateX(${newPosition}px)`;
+      } else {
+        // Se está fechado, permitir arrastar para a esquerda para abrir
+        const limitedDeltaX = Math.min(0, Math.max(-150, deltaX));
+        itemRef.current.style.transform = `translateX(${limitedDeltaX}px)`;
+      }
     }
     
-    // Atualizar o estado de swipe
-    setIsSwiped(Math.abs(swipeDistance.current) > 50);
-  }, []);
+    // Atualizar o estado de swipe baseado na posição atual
+    if (itemRef.current) {
+      const transform = itemRef.current.style.transform;
+      const currentPosition = parseInt(transform.replace('translateX(', '').replace('px)', '') || '0');
+      setIsSwiped(currentPosition < -25); // Threshold menor para melhor responsividade
+    }
+  }, [isSwiped]);
   
   const handleTouchEnd = useCallback(() => {
     if (!isDragging.current) return;
     
-    // Snap para a posição aberta ou fechada
-    if (Math.abs(swipeDistance.current) > 50) {
-      // Abrir completamente
-      if (itemRef.current) {
+    if (itemRef.current) {
+      const transform = itemRef.current.style.transform;
+      const currentPosition = parseInt(transform.replace('translateX(', '').replace('px)', '') || '0');
+      
+      // Snap para a posição aberta ou fechada
+      if (currentPosition < -75) {
+        // Abrir completamente
         itemRef.current.style.transform = 'translateX(-150px)';
+        setIsSwiped(true);
+      } else {
+        // Fechar
+        resetSwipe();
       }
-      setIsSwiped(true);
-    } else {
-      // Fechar
-      resetSwipe();
     }
     
     startX.current = null;
@@ -101,28 +115,42 @@ export function SwipeableItem({
       const deltaX = currentX.current - startX.current;
       swipeDistance.current = deltaX;
       
-      // Limitar o swipe para a esquerda (valores negativos)
-      const limitedDeltaX = Math.min(0, Math.max(-150, deltaX));
-      itemRef.current.style.transform = `translateX(${limitedDeltaX}px)`;
+      if (isSwiped) {
+        // Se já está aberto, permitir arrastar de volta para fechar
+        // Começar de -150px (posição aberta) e permitir valores positivos
+        const newPosition = Math.max(-150, -150 + deltaX);
+        itemRef.current.style.transform = `translateX(${newPosition}px)`;
+      } else {
+        // Se está fechado, permitir arrastar para a esquerda para abrir
+        const limitedDeltaX = Math.min(0, Math.max(-150, deltaX));
+        itemRef.current.style.transform = `translateX(${limitedDeltaX}px)`;
+      }
     }
     
-    // Atualizar o estado de swipe
-    setIsSwiped(Math.abs(swipeDistance.current) > 50);
-  }, []);
+    // Atualizar o estado de swipe baseado na posição atual
+    if (itemRef.current) {
+      const transform = itemRef.current.style.transform;
+      const currentPosition = parseInt(transform.replace('translateX(', '').replace('px)', '') || '0');
+      setIsSwiped(currentPosition < -25); // Threshold menor para melhor responsividade
+    }
+  }, [isSwiped]);
 
   const handleMouseUp = useCallback(() => {
     if (!isDragging.current) return;
     
-    // Snap para a posição aberta ou fechada
-    if (Math.abs(swipeDistance.current) > 50) {
-      // Abrir completamente
-      if (itemRef.current) {
+    if (itemRef.current) {
+      const transform = itemRef.current.style.transform;
+      const currentPosition = parseInt(transform.replace('translateX(', '').replace('px)', '') || '0');
+      
+      // Snap para a posição aberta ou fechada
+      if (currentPosition < -75) {
+        // Abrir completamente
         itemRef.current.style.transform = 'translateX(-150px)';
+        setIsSwiped(true);
+      } else {
+        // Fechar
+        resetSwipe();
       }
-      setIsSwiped(true);
-    } else {
-      // Fechar
-      resetSwipe();
     }
     
     startX.current = null;
@@ -236,7 +264,12 @@ export function SwipeableItem({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onMouseDown={handleMouseDown}
-          onClick={isSwiped ? resetSwipe : undefined}
+          onClick={(e) => {
+            if (isSwiped) {
+              e.stopPropagation();
+              resetSwipe();
+            }
+          }}
         >
           {children}
         </div>
