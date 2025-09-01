@@ -629,7 +629,11 @@ if (typeof window !== 'undefined') {
             console.log('✅ Dados históricos salvos com sucesso!');
           } catch (saveError) {
             console.error('❌ Erro ao salvar dados históricos:', saveError);
-            throw new Error(`Falha ao salvar: ${saveError.message}`);
+            if (saveError instanceof Error) {
+              throw new Error(`Falha ao salvar: ${saveError.message}`);
+            } else {
+              throw new Error('Falha ao salvar dados históricos');
+            }
           }
           
           // 7. Atualizar UI
@@ -687,7 +691,11 @@ if (typeof window !== 'undefined') {
               };
             } catch (restoreError) {
               console.error('❌ Erro ao restaurar backup local:', restoreError);
-              throw new Error(`Falha ao restaurar backup: ${restoreError.message}`);
+              if (restoreError instanceof Error) {
+                throw new Error(`Falha ao restaurar backup: ${restoreError.message}`);
+              } else {
+                throw new Error('Falha ao restaurar backup local');
+              }
             }
           }
           
@@ -699,7 +707,9 @@ if (typeof window !== 'undefined') {
         }
       } catch (error) {
         console.error('❌ Erro ao restaurar dados:', error);
-        console.error('🔍 Stack trace:', error.stack);
+        if (error instanceof Error) {
+          console.error('🔍 Stack trace:', error.stack);
+        }
         
         // 9. Fallback para dados locais em caso de erro
         try {
@@ -717,7 +727,7 @@ if (typeof window !== 'undefined') {
               message: 'Dados locais restaurados (erro no servidor)',
               data: localData,
               timestamp: new Date().toLocaleString('pt-BR'),
-              warning: `Erro no servidor: ${error.message}, usando dados locais`
+              warning: `Erro no servidor: ${error instanceof Error ? error.message : 'Erro desconhecido'}, usando dados locais`
             };
           }
         } catch (fallbackError) {
@@ -727,8 +737,8 @@ if (typeof window !== 'undefined') {
         return {
           success: false,
           message: 'Falha total na restauração',
-          error: error.message,
-          stack: error.stack
+          error: error instanceof Error ? error.message : 'Erro desconhecido',
+          stack: error instanceof Error ? error.stack : undefined
         };
       }
     },

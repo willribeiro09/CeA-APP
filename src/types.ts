@@ -71,6 +71,7 @@ export interface StorageItems {
   willBaseRate?: number;
   willBonus?: number;
   deletedIds?: string[];
+  version?: number; // Adicionando propriedade version opcional
 }
 
 export type SyncData = StorageItems;
