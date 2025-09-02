@@ -1554,7 +1554,7 @@ export default function App() {
                   <div className="flex items-center">
                     <span className="text-gray-700 font-medium text-xs">Total:</span>
                     <span className="text-[#5ABB37] text-base font-bold ml-1">
-                      ${calculateEmployeesTotal().toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${calculateEmployeesTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
