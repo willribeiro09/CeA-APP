@@ -10,32 +10,39 @@ interface ProjectWeekSelectorProps {
 export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: ProjectWeekSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
-  // Usar useMemo para evitar recálculo desnecessário das semanas
+  // Obter semanas (fonte de verdade)
   const weeks = useMemo(() => getProjectWeeks(), []);
+
+  // Detecção robusta de semana atual baseada no "now" entre start/end
+  const now = useMemo(() => new Date(), []);
+  const currentWeek = useMemo(() => {
+    const containsNow = (w: typeof weeks[number]) => now >= w.startDate && now <= w.endDate;
+    return weeks.find(containsNow) || weeks.find(w => w.isCurrent) || weeks[0];
+  }, [weeks, now]);
+
+  // Ordenar com a atual primeiro e as passadas depois
+  const orderedWeeks = useMemo(() => {
+    if (!currentWeek) return weeks;
+    const rest = weeks.filter(w => w !== currentWeek);
+    return [currentWeek, ...rest];
+  }, [weeks, currentWeek]);
   
-  const [selectedWeek, setSelectedWeek] = useState(() => {
-    const allWeeks = getProjectWeeks();
-    return allWeeks.find(w => w.isCurrent) || allWeeks[allWeeks.length - 1];
-  });
+  const [selectedWeek, setSelectedWeek] = useState(() => currentWeek);
 
-  // Atualizar as semanas quando o componente montar ou quando selectedWeekStart mudar
+  // Atualizar seleção ao montar ou quando a prop selectedWeekStart mudar
   useEffect(() => {
-    // Encontrar a semana que corresponde à data selecionada
-    const matchingWeek = weeks.find(
+    const matchingWeek = orderedWeeks.find(
       week => week.value === selectedWeekStart.toISOString().split('T')[0]
-    ) || weeks.find(w => w.isCurrent) || weeks[weeks.length - 1];
-    
+    ) || currentWeek;
     setSelectedWeek(matchingWeek);
-  }, [selectedWeekStart, weeks]);
+  }, [selectedWeekStart, orderedWeeks, currentWeek]);
 
-  // Usar useCallback para evitar recriação da função a cada renderização
   const handleWeekSelect = useCallback((week: typeof weeks[0]) => {
     setSelectedWeek(week);
     onWeekChange(week.startDate, week.endDate);
     setIsDropdownOpen(false);
   }, [onWeekChange]);
 
-  // Usar useCallback para evitar recriação da função a cada renderização
   const toggleDropdown = useCallback(() => {
     setIsDropdownOpen(!isDropdownOpen);
   }, [isDropdownOpen]);
@@ -62,7 +69,7 @@ export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: Project
       
       {isDropdownOpen && (
         <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40 min-w-[200px] max-h-60 overflow-y-auto">
-          {weeks.map((week) => (
+          {orderedWeeks.map((week) => (
             <button
               key={week.value}
               onClick={() => handleWeekSelect(week)}
@@ -72,11 +79,11 @@ export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: Project
             >
               <div className="flex flex-col">
                 <span className="font-medium text-sm">{week.label}</span>
-                {week.isCurrent && (
+                {week === currentWeek && (
                   <span className="text-xs text-[#5ABB37] font-medium">Current week</span>
                 )}
-                {week.isPast && (
-                  <span className="text-xs text-gray-500">Past week</span>
+                {week !== currentWeek && (
+                  <span className="text-xs text-gray-500">Last week</span>
                 )}
               </div>
             </button>

@@ -931,10 +931,17 @@ export default function App() {
   // Função para atualizar as datas da semana com base na categoria
   const updateWeekDatesForCategory = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
     const today = new Date();
-    const weekStart = getProjectWeekStart(today);
-    const weekEnd = getProjectWeekEnd(today);
-    setSelectedWeekStart(weekStart);
-    setSelectedWeekEnd(weekEnd);
+    if (category === 'Employees') {
+      const weekStart = getEmployeeWeekStart(today);
+      const weekEnd = getEmployeeWeekEnd(today);
+      setSelectedWeekStart(weekStart);
+      setSelectedWeekEnd(weekEnd);
+    } else {
+      const weekStart = getProjectWeekStart(today);
+      const weekEnd = getProjectWeekEnd(today);
+      setSelectedWeekStart(weekStart);
+      setSelectedWeekEnd(weekEnd);
+    }
   };
 
   // Atualizar as datas da semana quando a categoria mudar
@@ -946,6 +953,25 @@ export default function App() {
   useEffect(() => {
     updateWeekDatesForCategory(activeCategory);
   }, []);
+
+  // Rollover automático específico de Employees: quando acabar o sábado, vira para nova semana
+  useEffect(() => {
+    if (activeCategory !== 'Employees') return;
+    const now = new Date();
+    const currentEnd = getEmployeeWeekEnd(now); // sábado 23:59:59.999
+    const delay = currentEnd.getTime() - now.getTime() + 1;
+
+    if (delay <= 0) {
+      updateWeekDatesForCategory('Employees');
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      updateWeekDatesForCategory('Employees');
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [activeCategory, selectedWeekStart, selectedWeekEnd]);
 
   // Função para ordenar despesas por data de vencimento (mais atrasadas primeiro)
   const sortExpensesByDueDate = (expenseList: Expense[]) => {
@@ -1390,6 +1416,42 @@ export default function App() {
     console.log('✅ UI: Sincronização de retorno concluída');
   }, []); // [] garante execução única
 
+  // Garantir que, ao abrir o app, estejamos sempre na current week (Projects)
+  useEffect(() => {
+    const now = new Date();
+    const start = getProjectWeekStart(now);
+    const end = getProjectWeekEnd(now);
+    setSelectedWeekStart(start);
+    setSelectedWeekEnd(end);
+  }, []);
+
+  // Rollover automático: quando acabar a terça-feira (fim da semana), vira para a nova current week
+  useEffect(() => {
+    // agendar apenas quando estivermos em Projects (para evitar atualizações desnecessárias)
+    // mas manter neutro caso mudemos a categoria: o cálculo sempre usa as funções de Projects
+    const now = new Date();
+    const currentWeekEnd = getProjectWeekEnd(now); // termina na terça às 23:59:59.999 UTC
+    const delay = currentWeekEnd.getTime() - now.getTime() + 1; // próximo ms vira nova semana
+
+    if (delay <= 0) {
+      // já passou; atualiza imediatamente para a nova semana
+      const nextStart = getProjectWeekStart(new Date());
+      const nextEnd = getProjectWeekEnd(new Date());
+      setSelectedWeekStart(nextStart);
+      setSelectedWeekEnd(nextEnd);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const nextStart = getProjectWeekStart(new Date());
+      const nextEnd = getProjectWeekEnd(new Date());
+      setSelectedWeekStart(nextStart);
+      setSelectedWeekEnd(nextEnd);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [selectedWeekStart, selectedWeekEnd]);
+
   return (
     <>
       <div className="min-h-screen bg-gray-50">
@@ -1467,7 +1529,7 @@ export default function App() {
                   <div className="flex items-center">
                     <span className="text-gray-700 font-medium text-xs">Total:</span>
                     <span className="text-[#5ABB37] text-base font-bold ml-1">
-                      ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
@@ -1785,7 +1847,7 @@ export default function App() {
 
       <Dialog.Root 
         open={showLayoffAlert && !isBackgroundSyncing} 
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           if (!isBackgroundSyncing) {
             setShowLayoffAlert(open);
           }
@@ -1813,7 +1875,7 @@ export default function App() {
 
       <Dialog.Root 
         open={isRateDialogOpen && !isBackgroundSyncing} 
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           if (!isBackgroundSyncing) {
             setIsRateDialogOpen(open);
           }
@@ -1889,7 +1951,7 @@ export default function App() {
       {selectedEmployee && (
         <Dialog.Root 
           open={isCalendarDialogOpen && !isBackgroundSyncing} 
-          onOpenChange={(open) => {
+          onOpenChange={(open: boolean) => {
             if (!isBackgroundSyncing) {
               setIsCalendarDialogOpen(open);
             }
@@ -1918,10 +1980,11 @@ export default function App() {
                   onDateToggle={(date) => handleToggleEmployeeWorkedDate(selectedEmployee.id, date)}
                   onClose={() => setIsCalendarDialogOpen(false)}
                   onReset={() => handleResetEmployee(selectedEmployee.id, selectedEmployee.weekStartDate)}
-                  weekStartDate={new Date(selectedEmployee.weekStartDate)}
+                  weekStartDate={selectedWeekStart}
                   onWeekChange={(startDate, endDate) => {
-                    // Atualizar a semana do funcionário se necessário
-                    console.log('Week changed:', startDate, endDate);
+                    // Atualizar a semana exibida ao navegar no calendário, mantendo alinhado ao selector
+                    setSelectedWeekStart(startDate);
+                    setSelectedWeekEnd(endDate);
                   }}
                 />
               </div>
@@ -1934,7 +1997,7 @@ export default function App() {
       {receiptEmployee && (
         <Dialog.Root 
           open={isReceiptDialogOpen && !isBackgroundSyncing} 
-          onOpenChange={(open) => {
+          onOpenChange={(open: boolean) => {
             if (!isBackgroundSyncing) {
               setIsReceiptDialogOpen(open);
             }

@@ -76,7 +76,7 @@ export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorPr
                   <span className="text-xs text-[#5ABB37] font-medium">Current week</span>
                 )}
                 {week.isPast && (
-                  <span className="text-xs text-gray-500">Past week</span>
+                  <span className="text-xs text-gray-500">Last week</span>
                 )}
               </div>
             </button>

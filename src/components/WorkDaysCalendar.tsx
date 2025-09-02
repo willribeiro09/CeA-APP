@@ -31,6 +31,14 @@ export function WorkDaysCalendar({
   const [mobileSelectionStart, setMobileSelectionStart] = useState<Date | null>(null);
   const [currentTouchDate, setCurrentTouchDate] = useState<Date | null>(null);
 
+  // Garantir que, ao trocar de semana (ou abrir na semana atual), o mês exibido acompanha a weekStartDate
+  useEffect(() => {
+    const safeWeekStart = normalizeEmployeeDate(weekStartDate);
+    // Fixar o mês no primeiro dia do mês da semana usando construtor LOCAL
+    const syncedMonth = new Date(safeWeekStart.getFullYear(), safeWeekStart.getMonth(), 1);
+    setCurrentMonth(syncedMonth);
+  }, [weekStartDate]);
+
   // Usar useMemo para calcular o mês completo
   const monthRange = useMemo(() => {
     const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);

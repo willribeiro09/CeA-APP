@@ -236,12 +236,11 @@ export function getEmployeeWeekEnd(date: Date): Date {
  * Versão segura que usa a abordagem de UTC
  */
 export function getProjectWeekStart(date: Date): Date {
-  const normalized = normalizeDate(date);
-  const dayOfWeek = normalized.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+  // Usar data "segura" no próprio dia (sem deslocamento de +1)
+  const safe = createSafeDate(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayOfWeek = safe.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
   
   // Para projetos, a semana começa na quarta-feira
-  // Se for antes de quarta (0,1,2), voltar para quarta anterior
-  // Se for depois de quarta (4,5,6), voltar para quarta desta semana
   let daysToAdjust;
   if (dayOfWeek === 3) {
     daysToAdjust = 0;
@@ -251,9 +250,8 @@ export function getProjectWeekStart(date: Date): Date {
     daysToAdjust = dayOfWeek - 3; // Voltar para quarta desta semana
   }
   
-  // Criar nova data com a quarta-feira
-  const weekStartDate = new Date(normalized);
-  weekStartDate.setUTCDate(normalized.getUTCDate() - daysToAdjust);
+  const weekStartDate = new Date(safe);
+  weekStartDate.setUTCDate(safe.getUTCDate() - daysToAdjust);
   weekStartDate.setUTCHours(12, 0, 0, 0); // Meio-dia UTC
   
   return weekStartDate;
@@ -306,9 +304,8 @@ export function addWeeksSafe(date: Date, weeks: number): Date {
 }
 
 /**
- * Função para gerar semanas para employees, começando apenas com a atual
- * Formato: "08/26 To 08/31" (MM/dd To MM/dd)
- * Começa com 1 semana e constrói histórico gradualmente
+ * Função para gerar semanas para employees: Current week primeiro, depois Last week
+ * Formato: "MM/DD To MM/DD"
  */
 export function getWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -318,41 +315,36 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
   isCurrent: boolean;
   isPast: boolean;
 }> {
-  const weeks = [];
-  const today = normalizeDate(currentDate);
-  
-  // Encontrar a segunda-feira da semana atual
+  const today = createSafeDate(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   const currentWeekMonday = findCurrentWeekMonday(today);
-  
-  // Por enquanto, apenas 1 semana (atual)
-  // O histórico será construído gradualmente conforme as semanas passam
-  const weeksToGenerate = 1;
-  
-  for (let i = 0; i < weeksToGenerate; i++) {
+
+  // Construir Current (i=0) e Last (i=-1) nesta ordem
+  const indices = [0, -1];
+  const now = new Date();
+  const weeks = indices.map(i => {
     const weekMonday = new Date(currentWeekMonday);
     weekMonday.setUTCDate(currentWeekMonday.getUTCDate() + (i * 7));
-    
+
     const weekStart = new Date(weekMonday);
     weekStart.setUTCHours(12, 0, 0, 0);
-    
+
     const weekEnd = new Date(weekMonday);
-    weekEnd.setUTCDate(weekMonday.getUTCDate() + 5); // Sábado (5 dias após segunda)
+    weekEnd.setUTCDate(weekMonday.getUTCDate() + 5); // sábado
     weekEnd.setUTCHours(23, 59, 59, 999);
-    
-    const label = formatWeekLabel(weekStart, weekEnd);
-    const isCurrent = true; // Sempre será a semana atual por enquanto
-    const isPast = false;
-    
-    weeks.push({
+
+    const isCurrent = now >= weekStart && now <= weekEnd;
+    const isPast = now > weekEnd;
+
+    return {
       startDate: weekStart,
       endDate: weekEnd,
-      label: label,
+      label: formatWeekLabel(weekStart, weekEnd),
       value: formatDateToISO(weekStart),
-      isCurrent: isCurrent,
-      isPast: isPast
-    });
-  }
-  
+      isCurrent,
+      isPast
+    };
+  });
+
   return weeks;
 }
 
@@ -391,24 +383,21 @@ function findCurrentWeekMonday(date: Date): Date {
  * Se a data for quarta, quinta, sexta ou sábado, retorna a quarta-feira da semana atual
  */
 function findCurrentWeekWednesday(date: Date): Date {
-  const normalized = normalizeDate(date);
-  const dayOfWeek = normalized.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+  // Usar data "segura" no próprio dia (sem deslocamento de +1)
+  const safe = createSafeDate(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayOfWeek = safe.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
   
   let daysToWednesday;
-  
   if (dayOfWeek === 3) {
-    // Já é quarta-feira
     daysToWednesday = 0;
   } else if (dayOfWeek < 3) {
-    // Domingo (0), Segunda (1), Terça (2) - voltar para quarta-feira da semana anterior
-    daysToWednesday = -(dayOfWeek + 4);
+    daysToWednesday = -(dayOfWeek + 4); // voltar para quarta anterior
   } else {
-    // Quinta (4), Sexta (5), Sábado (6) - voltar para quarta-feira desta semana
-    daysToWednesday = -(dayOfWeek - 3);
+    daysToWednesday = -(dayOfWeek - 3); // voltar para quarta desta semana
   }
   
-  const wednesday = new Date(normalized);
-  wednesday.setUTCDate(normalized.getUTCDate() + daysToWednesday);
+  const wednesday = new Date(safe);
+  wednesday.setUTCDate(safe.getUTCDate() + daysToWednesday);
   wednesday.setUTCHours(12, 0, 0, 0);
   
   return wednesday;
@@ -430,9 +419,8 @@ function formatWeekLabel(startDate: Date, endDate: Date): string {
 
 
 /**
- * Função para gerar semanas para projetos, começando apenas com a atual
- * Formato: "08/28 To 09/03" (MM/dd To MM/dd)
- * Começa com 1 semana e constrói histórico gradualmente
+ * Função para gerar semanas para projetos: apenas a Current week (sem Last por enquanto)
+ * Formato: "MM/DD To MM/DD"
  */
 export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -442,42 +430,27 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   isCurrent: boolean;
   isPast: boolean;
 }> {
-  const weeks = [];
-  const today = normalizeDate(currentDate);
-  
-  // Encontrar a quarta-feira da semana atual
+  const today = createSafeDate(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   const currentWeekWednesday = findCurrentWeekWednesday(today);
-  
-  // Por enquanto, apenas 1 semana (atual)
-  // O histórico será construído gradualmente conforme as semanas passam
-  const weeksToGenerate = 1;
-  
-  for (let i = 0; i < weeksToGenerate; i++) {
-    const weekWednesday = new Date(currentWeekWednesday);
-    weekWednesday.setUTCDate(currentWeekWednesday.getUTCDate() + (i * 7));
-    
-    const weekStart = new Date(weekWednesday);
-    weekStart.setUTCHours(12, 0, 0, 0);
-    
-    const weekEnd = new Date(weekWednesday);
-    weekEnd.setUTCDate(weekWednesday.getUTCDate() + 6); // Terça-feira seguinte
-    weekEnd.setUTCHours(23, 59, 59, 999);
-    
-    const label = formatWeekLabel(weekStart, weekEnd);
-    const isCurrent = true; // Sempre será a semana atual por enquanto
-    const isPast = false;
-    
-    weeks.push({
-      startDate: weekStart,
-      endDate: weekEnd,
-      label: label,
-      value: formatDateToISO(weekStart),
-      isCurrent: isCurrent,
-      isPast: isPast
-    });
-  }
-  
-  return weeks;
+
+  const weekStart = new Date(currentWeekWednesday);
+  weekStart.setUTCHours(12, 0, 0, 0);
+
+  const weekEnd = new Date(currentWeekWednesday);
+  weekEnd.setUTCDate(currentWeekWednesday.getUTCDate() + 6); // Terça
+  weekEnd.setUTCHours(23, 59, 59, 999);
+
+  const now = new Date();
+  const isCurrent = now >= weekStart && now <= weekEnd;
+
+  return [{
+    startDate: weekStart,
+    endDate: weekEnd,
+    label: formatWeekLabel(weekStart, weekEnd),
+    value: formatDateToISO(weekStart),
+    isCurrent,
+    isPast: false
+  }];
 }
 
 /**
