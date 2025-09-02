@@ -892,39 +892,23 @@ export default function App() {
 
   const calculateEmployeesTotal = () => {
     let total = 0;
-    
-    // Obter todos os funcionários de todas as semanas
-    const allEmployees: Employee[] = [];
-    Object.keys(employees).forEach(weekKey => {
-      employees[weekKey].forEach(employee => {
-        // Verificar se o funcionário já está na lista (evitar duplicatas)
-        if (!allEmployees.some(e => e.id === employee.id)) {
-          allEmployees.push(employee);
-        }
-      });
-    });
-    
-    // Não filtra mais por semana, mostra todos os funcionários
-    const filteredEmployees = allEmployees;
-    
-    // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
+
+    // Obter os funcionários específicos da semana selecionada
     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
 
-    // Calcular o total
-    filteredEmployees.forEach(employee => {
-      // Encontrar o registro específico do funcionário para a semana selecionada
-      const weekEmployee = weekEmployees.find(e => e.id === employee.id);
-      const daysWorked = weekEmployee ? weekEmployee.daysWorked : 0;
-      
-      // Adicionar ao total
-      total += (employee.dailyRate || 250) * daysWorked;
+    // Somar somente os dados da semana selecionada
+    weekEmployees.forEach((employee) => {
+      const daysWorked = employee?.daysWorked || 0;
+      const dailyRate = typeof employee?.dailyRate === 'number' && !isNaN(employee.dailyRate)
+        ? employee.dailyRate
+        : 250;
+      total += dailyRate * daysWorked;
     });
-    
-    // Adicionar o valor do Will (valor fixo semanal + bônus)
-    // Will recebe 200 pela semana toda (não é por dia)
+
+    // Adicionar valor fixo do Will + bônus
     total += willBaseRate + willBonus;
-    
+
     return total;
   };
 
@@ -1551,12 +1535,6 @@ export default function App() {
                     selectedWeekStart={selectedWeekStart}
                     onWeekChange={isBackgroundSyncing ? () => {} : handleWeekChange}
                   />
-                  <div className="flex items-center">
-                    <span className="text-gray-700 font-medium text-xs">Total:</span>
-                    <span className="text-[#5ABB37] text-base font-bold ml-1">
-                      ${calculateEmployeesTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
