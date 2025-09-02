@@ -19,6 +19,22 @@ export interface Expense {
   deviceId?: string; // ID do dispositivo que criou/modificou
 }
 
+export interface ProjectPhoto {
+  id: string;
+  projectId: string;
+  filename?: string;
+  path: string;
+  url: string;
+  fileSize?: number;
+  mimeType?: string;
+  uploadedAt: string;
+  editedAt?: string;
+  deviceId?: string;
+  isEdited?: boolean;
+  originalPhotoId?: string;
+  metadata?: Record<string, any>;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -32,6 +48,7 @@ export interface Project {
   location?: string;
   value?: number;
   invoiceOk?: boolean;
+  photos?: ProjectPhoto[];
   lastModified?: number; // Timestamp para sincronização
   deviceId?: string; // ID do dispositivo que criou/modificou
 }

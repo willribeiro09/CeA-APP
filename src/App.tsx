@@ -7,7 +7,7 @@ import { AddButton } from './components/AddButton';
 import { Calendar } from './components/Calendar';
 import { AddItemDialog } from './components/AddItemDialog';
 import { EditItemDialog } from './components/EditItemDialog';
-import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems, SyncData } from './types';
+import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems, SyncData, ProjectPhoto } from './types';
 import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
@@ -28,6 +28,9 @@ import { WeekSelector } from './components/WeekSelector';
 import EmployeeReceipt from './components/EmployeeReceipt';
 import WorkDaysCalendar from './components/WorkDaysCalendar';
 import { ConflictNotification } from './components/ConflictNotification';
+import ProjectSummaryDialog from './components/ProjectSummaryDialog';
+import ImageEditor from './components/ImageEditor';
+import { PhotoService } from './lib/photoService';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   formatDateToISO, 
@@ -113,6 +116,11 @@ export default function App() {
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   // Estado para sincronização de retorno do segundo plano
   const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
+  // Estados para resumo do projeto e editor de imagens
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isProjectSummaryOpen, setIsProjectSummaryOpen] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
+  const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -131,7 +139,16 @@ export default function App() {
 
       if (localData) {
         setExpenses(localData.expenses || {});
-        setProjects(localData.projects || []);
+        
+        // Carregar projetos e sincronizar fotos
+        const projects = localData.projects || [];
+        setProjects(projects);
+        
+        // Sincronizar fotos para cada projeto em background
+        if (isSupabaseConfigured() && projects.length > 0) {
+          syncProjectPhotos(projects);
+        }
+        
         setStockItems(localData.stock || []);
         setEmployees(localData.employees || {});
         
@@ -275,6 +292,69 @@ export default function App() {
       console.error('Erro fatal ao salvar:', finalError);
       setIsSaving(false);
     }
+  };
+
+  // Função para sincronizar fotos dos projetos
+  const syncProjectPhotos = async (projects: Project[]) => {
+    try {
+      for (const project of projects) {
+        const serverPhotos = await PhotoService.syncProjectPhotos(project.id);
+        if (serverPhotos.length > 0) {
+          // Atualizar o projeto com as fotos do servidor
+          setProjects(prevProjects => 
+            prevProjects.map(p => 
+              p.id === project.id 
+                ? { ...p, photos: serverPhotos }
+                : p
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Erro na sincronização de fotos:', error);
+    }
+  };
+
+  // Funções para lidar com fotos dos projetos
+  const handleOpenProjectSummary = (project: Project) => {
+    setSelectedProject(project);
+    setIsProjectSummaryOpen(true);
+  };
+
+  const handleProjectPhotosChange = (projectId: string, photos: ProjectPhoto[]) => {
+    setProjects(prevProjects => {
+      const updatedProjects = prevProjects.map(p => 
+        p.id === projectId ? { ...p, photos } : p
+      );
+      
+      // Salvar no storage
+      saveChanges(createStorageData({
+        expenses,
+        projects: updatedProjects,
+        stock: stockItems,
+        employees
+      }));
+      
+      return updatedProjects;
+    });
+    
+    // Atualizar o projeto selecionado se for o mesmo
+    if (selectedProject && selectedProject.id === projectId) {
+      setSelectedProject({ ...selectedProject, photos });
+    }
+  };
+
+  const handleOpenPhotoEditor = (photo: ProjectPhoto) => {
+    setSelectedPhoto(photo);
+    setIsImageEditorOpen(true);
+  };
+
+  const handleSaveEditedPhoto = (editedPhoto: ProjectPhoto) => {
+    if (!selectedProject) return;
+    
+    const updatedPhotos = [...(selectedProject.photos || []), editedPhoto];
+    handleProjectPhotosChange(selectedProject.id, updatedPhotos);
+    setIsImageEditorOpen(false);
   };
 
   const handleTogglePaid = (id: string) => {
@@ -1585,7 +1665,10 @@ export default function App() {
                       onDelete={isBackgroundSyncing ? () => {} : () => handleDeleteItem(project.id, 'Projects')}
                       onEdit={isBackgroundSyncing ? () => {} : () => handleEditItem(project)}
                     >
-                      <div className="bg-white p-4 rounded-lg shadow-sm">
+                      <div 
+                        className="bg-white p-4 rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={isBackgroundSyncing ? () => {} : () => handleOpenProjectSummary(project)}
+                      >
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-medium text-gray-900">{project.client}</h3>
@@ -1602,7 +1685,13 @@ export default function App() {
                           </div>
                         </div>
                         <div className="mt-2 flex justify-between items-center">
-                          <div></div>
+                          <div className="flex items-center gap-2">
+                            {project.photos && project.photos.length > 0 && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                                {project.photos.length} foto{project.photos.length !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center space-x-2">
                             {project.invoiceOk && (
                               <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
@@ -2009,6 +2098,33 @@ export default function App() {
           </Dialog.Portal>
         </Dialog.Root>
       )}
+
+      {/* Pop-up de resumo do projeto */}
+      <ProjectSummaryDialog
+        project={selectedProject}
+        open={isProjectSummaryOpen && !isBackgroundSyncing}
+        onOpenChange={(open) => {
+          if (!isBackgroundSyncing) {
+            setIsProjectSummaryOpen(open);
+            if (!open) setSelectedProject(null);
+          }
+        }}
+        onPhotosChange={handleProjectPhotosChange}
+        onOpenEditor={handleOpenPhotoEditor}
+      />
+
+      {/* Editor de imagens */}
+      <ImageEditor
+        photo={selectedPhoto}
+        open={isImageEditorOpen && !isBackgroundSyncing}
+        onOpenChange={(open) => {
+          if (!isBackgroundSyncing) {
+            setIsImageEditorOpen(open);
+            if (!open) setSelectedPhoto(null);
+          }
+        }}
+        onSave={handleSaveEditedPhoto}
+      />
     </>
   );
 }
