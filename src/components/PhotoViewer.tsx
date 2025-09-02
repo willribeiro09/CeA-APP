@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Edit3, Trash2 } from 'lucide-react';
+import { X, Edit3, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { ProjectPhoto } from '../types';
 
 type Props = {
@@ -88,6 +88,14 @@ export default function PhotoViewer({ photo, open, onOpenChange, onEdit, onDelet
     setPosition({ x: 0, y: 0 });
   };
 
+  const zoomIn = () => {
+    setScale(prev => Math.min(prev * 1.5, 5)); // Máximo 5x zoom
+  };
+
+  const zoomOut = () => {
+    setScale(prev => Math.max(prev / 1.5, 0.1)); // Mínimo 0.1x zoom
+  };
+
   const handleDelete = () => {
     if (photo && confirm('Tem certeza que deseja deletar esta foto?')) {
       onDelete(photo);
@@ -152,6 +160,24 @@ export default function PhotoViewer({ photo, open, onOpenChange, onEdit, onDelet
               draggable={false}
               crossOrigin="anonymous"
             />
+
+            {/* Botões de Zoom - Canto inferior esquerdo */}
+            <div className="absolute bottom-4 left-4 flex flex-col gap-2">
+              <button
+                onClick={zoomIn}
+                className="w-12 h-12 bg-black/70 hover:bg-black/90 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-6 h-6" />
+              </button>
+              <button
+                onClick={zoomOut}
+                className="w-12 h-12 bg-black/70 hover:bg-black/90 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-6 h-6" />
+              </button>
+            </div>
           </div>
 
           {/* Footer Info */}

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Pencil, Minus, Square, Circle, Type, Undo2, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { X, Pencil, Minus, Square, Circle, Type, Undo2, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { ProjectPhoto } from '../types';
 import { PhotoService } from '../lib/photoService';
 import { getEnvironmentInfo } from '../lib/deviceUtils';
@@ -42,6 +42,10 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
   const [history, setHistory] = useState<DrawAction[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  const [canvasScale, setCanvasScale] = useState(1);
+  const [canvasPosition, setCanvasPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!photo) return;
@@ -121,6 +125,40 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     setHistory([]);
   };
 
+  // Funções de zoom do canvas
+  const zoomIn = () => {
+    setCanvasScale(prev => Math.min(prev * 1.2, 3)); // Máximo 3x zoom
+  };
+
+  const zoomOut = () => {
+    setCanvasScale(prev => Math.max(prev / 1.2, 0.5)); // Mínimo 0.5x zoom
+  };
+
+  const resetZoom = () => {
+    setCanvasScale(1);
+    setCanvasPosition({ x: 0, y: 0 });
+  };
+
+  // Função para detectar se é um gesto de dois dedos
+  const isTwoFingerGesture = (e: React.TouchEvent) => {
+    return e.touches.length === 2;
+  };
+
+  // Função para calcular a distância entre dois pontos
+  const getDistance = (touch1: Touch, touch2: Touch) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Função para calcular o ponto médio entre dois toques
+  const getMidpoint = (touch1: Touch, touch2: Touch) => {
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2
+    };
+  };
+
   // Obter posição tanto para mouse quanto touch
   const getPos = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
@@ -138,14 +176,22 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     }
     
     return { 
-      x: (clientX - rect.left) * scaleX, 
-      y: (clientY - rect.top) * scaleY 
+      x: (clientX - rect.left) * scaleX / canvasScale, 
+      y: (clientY - rect.top) * scaleY / canvasScale 
     };
   };
 
   const begin = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!photo) return;
     e.preventDefault();
+    
+    // Se for um gesto de dois dedos, iniciar pan
+    if ('touches' in e && isTwoFingerGesture(e)) {
+      setIsPanning(true);
+      const midpoint = getMidpoint(e.touches[0], e.touches[1]);
+      setLastPanPoint(midpoint);
+      return;
+    }
     
     const pos = getPos(e);
     setDrawing(true);
@@ -167,8 +213,24 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
   };
 
   const move = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!drawing) return;
     e.preventDefault();
+    
+    // Se estiver fazendo pan com dois dedos
+    if (isPanning && 'touches' in e && e.touches.length === 2) {
+      const midpoint = getMidpoint(e.touches[0], e.touches[1]);
+      const deltaX = midpoint.x - lastPanPoint.x;
+      const deltaY = midpoint.y - lastPanPoint.y;
+      
+      setCanvasPosition(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
+      
+      setLastPanPoint(midpoint);
+      return;
+    }
+    
+    if (!drawing) return;
     
     const pos = getPos(e);
     const ctx = canvasRef.current!.getContext('2d');
@@ -218,8 +280,15 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
   };
 
   const end = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!drawing) return;
     e.preventDefault();
+    
+    // Finalizar pan se estiver ativo
+    if (isPanning) {
+      setIsPanning(false);
+      return;
+    }
+    
+    if (!drawing) return;
     
     setDrawing(false);
     
@@ -434,6 +503,19 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
                 <span className="text-white text-sm w-6 text-center">{size}</span>
               </div>
 
+              {/* Zoom indicator */}
+              <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-2">
+                <span className="text-gray-300 text-sm">Zoom:</span>
+                <span className="text-white text-sm font-medium">{Math.round(canvasScale * 100)}%</span>
+              </div>
+
+              {/* Pan indicator */}
+              {isPanning && (
+                <div className="flex items-center gap-2 bg-blue-600 rounded-lg px-3 py-2">
+                  <span className="text-white text-sm font-medium">Pan Mode</span>
+                </div>
+              )}
+
               {/* Action buttons */}
               <button
                 onClick={undo}
@@ -470,7 +552,7 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
           </div>
 
           {/* Canvas Container */}
-          <div className="flex-1 overflow-hidden bg-black flex items-center justify-center p-4">
+          <div className="flex-1 overflow-hidden bg-black flex items-center justify-center p-4 relative">
             <div className="relative max-w-full max-h-full">
               <canvas
                 ref={canvasRef}
@@ -484,9 +566,37 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
                 className="max-w-full max-h-full object-contain border border-gray-600 rounded-lg touch-none"
                 style={{ 
                   display: 'block',
-                  background: 'white'
+                  background: 'white',
+                  transform: `translate(${canvasPosition.x}px, ${canvasPosition.y}px) scale(${canvasScale})`,
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.2s ease-out'
                 }}
               />
+            </div>
+
+            {/* Botões de Zoom - Canto inferior direito */}
+            <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
+              <button
+                onClick={zoomIn}
+                className="w-12 h-12 bg-gray-800/90 hover:bg-gray-700/90 text-white rounded-full flex items-center justify-center transition-colors shadow-lg border border-gray-600"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-6 h-6" />
+              </button>
+              <button
+                onClick={zoomOut}
+                className="w-12 h-12 bg-gray-800/90 hover:bg-gray-700/90 text-white rounded-full flex items-center justify-center transition-colors shadow-lg border border-gray-600"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-6 h-6" />
+              </button>
+              <button
+                onClick={resetZoom}
+                className="w-12 h-12 bg-gray-800/90 hover:bg-gray-700/90 text-white rounded-full flex items-center justify-center transition-colors shadow-lg border border-gray-600"
+                title="Reset Zoom"
+              >
+                <RotateCcw className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
