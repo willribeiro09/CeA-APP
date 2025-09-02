@@ -58,13 +58,13 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
-      // Calcular dimensões para ajustar à tela
+      // Calcular dimensões para preencher a tela (mais agressivo)
       const container = canvas.parentElement;
       if (!container) return;
       
       const containerRect = container.getBoundingClientRect();
-      const containerWidth = containerRect.width - 32; // padding
-      const containerHeight = containerRect.height - 32; // padding
+      const containerWidth = containerRect.width - 16; // padding reduzido
+      const containerHeight = containerRect.height - 16; // padding reduzido
       
       const imgAspectRatio = img.width / img.height;
       const containerAspectRatio = containerWidth / containerHeight;
@@ -72,13 +72,21 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
       let canvasWidth, canvasHeight;
       
       if (imgAspectRatio > containerAspectRatio) {
-        // Imagem é mais larga - ajustar pela largura
+        // Imagem é mais larga - preencher pela largura
         canvasWidth = containerWidth;
         canvasHeight = containerWidth / imgAspectRatio;
       } else {
-        // Imagem é mais alta - ajustar pela altura
+        // Imagem é mais alta - preencher pela altura
         canvasHeight = containerHeight;
         canvasWidth = containerHeight * imgAspectRatio;
+      }
+      
+      // Garantir que a imagem seja grande o suficiente para boa qualidade
+      const minSize = 800; // Tamanho mínimo para manter qualidade
+      if (canvasWidth < minSize || canvasHeight < minSize) {
+        const scale = Math.max(minSize / canvasWidth, minSize / canvasHeight);
+        canvasWidth *= scale;
+        canvasHeight *= scale;
       }
       
       // Definir dimensões do canvas
@@ -177,13 +185,13 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
       
       if (!ctx) return;
       
-      // Calcular dimensões para ajustar à tela
+      // Calcular dimensões para preencher a tela (mais agressivo)
       const container = canvas.parentElement;
       if (!container) return;
       
       const containerRect = container.getBoundingClientRect();
-      const containerWidth = containerRect.width - 32; // padding
-      const containerHeight = containerRect.height - 32; // padding
+      const containerWidth = containerRect.width - 16; // padding reduzido
+      const containerHeight = containerRect.height - 16; // padding reduzido
       
       const imgAspectRatio = img.width / img.height;
       const containerAspectRatio = containerWidth / containerHeight;
@@ -191,13 +199,21 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
       let canvasWidth, canvasHeight;
       
       if (imgAspectRatio > containerAspectRatio) {
-        // Imagem é mais larga - ajustar pela largura
+        // Imagem é mais larga - preencher pela largura
         canvasWidth = containerWidth;
         canvasHeight = containerWidth / imgAspectRatio;
       } else {
-        // Imagem é mais alta - ajustar pela altura
+        // Imagem é mais alta - preencher pela altura
         canvasHeight = containerHeight;
         canvasWidth = containerHeight * imgAspectRatio;
+      }
+      
+      // Garantir que a imagem seja grande o suficiente para boa qualidade
+      const minSize = 800; // Tamanho mínimo para manter qualidade
+      if (canvasWidth < minSize || canvasHeight < minSize) {
+        const scale = Math.max(minSize / canvasWidth, minSize / canvasHeight);
+        canvasWidth *= scale;
+        canvasHeight *= scale;
       }
       
       // Definir dimensões do canvas
@@ -274,15 +290,30 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     // Salvar estado antes de começar a desenhar
     saveToHistory();
     
-    if (tool === 'freehand') {
       const ctx = canvasRef.current!.getContext('2d');
       if (!ctx) return;
+    
+    // Configurar estilo para todas as ferramentas
       ctx.strokeStyle = color;
       ctx.lineWidth = size;
       ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+    ctx.lineJoin = 'round';
+    
+    if (tool === 'freehand') {
       ctx.beginPath();
       ctx.moveTo(pos.x, pos.y);
+    } else if (tool === 'text') {
+      // Para texto, não fazer nada aqui, será feito no end
+    } else {
+      // Para formas (line, rectangle, circle), começar o desenho
+      ctx.beginPath();
+      if (tool === 'line') {
+        ctx.moveTo(pos.x, pos.y);
+      } else if (tool === 'rectangle') {
+        ctx.moveTo(pos.x, pos.y);
+      } else if (tool === 'circle') {
+        ctx.moveTo(pos.x, pos.y);
+      }
     }
   };
 
@@ -311,10 +342,11 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     if (!ctx || !imgRef.current) return;
     
     if (tool === 'freehand') {
+      // Para desenho livre, continuar a linha
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
-    } else {
-      // Para formas, redesenhar a partir do histórico
+    } else if (tool === 'line' && start) {
+      // Para linha, redesenhar do início ao ponto atual
       if (history.length > 0) {
         const lastState = history[history.length - 1];
         ctx.putImageData(lastState.data, 0, 0);
@@ -326,31 +358,48 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
       ctx.lineWidth = size;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      
-      if (tool === 'line' && start) {
         ctx.beginPath();
         ctx.moveTo(start.x, start.y);
         ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
+    } else if (tool === 'rectangle' && start) {
+      // Para retângulo, redesenhar do início ao ponto atual
+      if (history.length > 0) {
+        const lastState = history[history.length - 1];
+        ctx.putImageData(lastState.data, 0, 0);
+      } else if (originalImageData) {
+        ctx.putImageData(originalImageData, 0, 0);
       }
       
-      if (tool === 'rectangle' && start) {
-        const width = pos.x - start.x;
-        const height = pos.y - start.y;
-        ctx.beginPath();
-        ctx.rect(start.x, start.y, width, height);
-        ctx.stroke();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      const width = pos.x - start.x;
+      const height = pos.y - start.y;
+      ctx.rect(start.x, start.y, width, height);
+      ctx.stroke();
+    } else if (tool === 'circle' && start) {
+      // Para círculo, redesenhar do início ao ponto atual
+      if (history.length > 0) {
+        const lastState = history[history.length - 1];
+        ctx.putImageData(lastState.data, 0, 0);
+      } else if (originalImageData) {
+        ctx.putImageData(originalImageData, 0, 0);
       }
       
-      if (tool === 'circle' && start) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
         const dx = pos.x - start.x;
         const dy = pos.y - start.y;
         const r = Math.sqrt(dx*dx + dy*dy);
-        ctx.beginPath();
         ctx.arc(start.x, start.y, r, 0, Math.PI * 2);
         ctx.stroke();
       }
-    }
   };
 
   const end = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -366,14 +415,52 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     
     setDrawing(false);
     
+    const pos = getPos(e);
+    const ctx = canvasRef.current!.getContext('2d');
+    if (!ctx) return;
+    
     if (tool === 'text' && text && start) {
-      const ctx = canvasRef.current!.getContext('2d');
-      if (!ctx) return;
       ctx.fillStyle = color;
       ctx.font = `${Math.max(16, size * 4)}px Arial, sans-serif`;
       ctx.fillText(text, start.x, start.y);
       setText(''); // Limpar texto após usar
+    } else if (tool === 'line' && start) {
+      // Finalizar linha do ponto inicial ao ponto final
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    } else if (tool === 'rectangle' && start) {
+      // Finalizar retângulo do ponto inicial ao ponto final
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      const width = pos.x - start.x;
+      const height = pos.y - start.y;
+      ctx.rect(start.x, start.y, width, height);
+      ctx.stroke();
+    } else if (tool === 'circle' && start) {
+      // Finalizar círculo do ponto inicial ao ponto final
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      const dx = pos.x - start.x;
+      const dy = pos.y - start.y;
+      const r = Math.sqrt(dx*dx + dy*dy);
+      ctx.arc(start.x, start.y, r, 0, Math.PI * 2);
+      ctx.stroke();
     }
+    
+    // Limpar estado de início
+    setStart(null);
   };
 
   const handleSave = async () => {
@@ -382,7 +469,7 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     setIsEditing(true);
     
     const canvas = canvasRef.current!;
-    const dataUrl = canvas.toDataURL('image/png', 0.92);
+    const dataUrl = canvas.toDataURL('image/png', 1.0); // Qualidade máxima
     const deviceInfo = getEnvironmentInfo();
     
     try {
@@ -628,19 +715,22 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
           {/* Canvas Container */}
           <div className="flex-1 overflow-hidden bg-black flex items-center justify-center p-4 relative">
             <div className="relative max-w-full max-h-full">
-              <canvas
-                ref={canvasRef}
-                onMouseDown={begin}
-                onMouseMove={move}
-                onMouseUp={end}
-                onMouseLeave={end}
+            <canvas
+              ref={canvasRef}
+              onMouseDown={begin}
+              onMouseMove={move}
+              onMouseUp={end}
+              onMouseLeave={end}
                 onTouchStart={begin}
                 onTouchMove={move}
                 onTouchEnd={end}
-                className="max-w-full max-h-full object-contain border border-gray-600 rounded-lg touch-none"
+                className="border border-gray-600 rounded-lg touch-none"
                 style={{ 
                   display: 'block',
                   background: 'white',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
                   transform: `translate(${canvasPosition.x}px, ${canvasPosition.y}px) scale(${canvasScale})`,
                   transformOrigin: 'center center',
                   transition: 'transform 0.2s ease-out'
