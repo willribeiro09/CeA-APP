@@ -55,16 +55,47 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     img.onload = () => {
       imgRef.current = img;
       const canvas = canvasRef.current!;
-      canvas.width = img.width;
-      canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      ctx.drawImage(img, 0, 0);
+      
+      // Calcular dimensões para ajustar à tela
+      const container = canvas.parentElement;
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width - 32; // padding
+      const containerHeight = containerRect.height - 32; // padding
+      
+      const imgAspectRatio = img.width / img.height;
+      const containerAspectRatio = containerWidth / containerHeight;
+      
+      let canvasWidth, canvasHeight;
+      
+      if (imgAspectRatio > containerAspectRatio) {
+        // Imagem é mais larga - ajustar pela largura
+        canvasWidth = containerWidth;
+        canvasHeight = containerWidth / imgAspectRatio;
+      } else {
+        // Imagem é mais alta - ajustar pela altura
+        canvasHeight = containerHeight;
+        canvasWidth = containerHeight * imgAspectRatio;
+      }
+      
+      // Definir dimensões do canvas
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      
+      // Desenhar imagem ajustada
+      ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
       
       // Salvar estado original para reset
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setOriginalImageData(imageData);
       setHistory([]);
+      
+      // Resetar zoom e posição para ajustar à tela
+      setCanvasScale(1);
+      setCanvasPosition({ x: 0, y: 0 });
     };
   }, [photo]);
 
@@ -137,6 +168,49 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
   const resetZoom = () => {
     setCanvasScale(1);
     setCanvasPosition({ x: 0, y: 0 });
+    
+    // Redesenhar a imagem ajustada à tela
+    if (imgRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      const img = imgRef.current;
+      
+      if (!ctx) return;
+      
+      // Calcular dimensões para ajustar à tela
+      const container = canvas.parentElement;
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width - 32; // padding
+      const containerHeight = containerRect.height - 32; // padding
+      
+      const imgAspectRatio = img.width / img.height;
+      const containerAspectRatio = containerWidth / containerHeight;
+      
+      let canvasWidth, canvasHeight;
+      
+      if (imgAspectRatio > containerAspectRatio) {
+        // Imagem é mais larga - ajustar pela largura
+        canvasWidth = containerWidth;
+        canvasHeight = containerWidth / imgAspectRatio;
+      } else {
+        // Imagem é mais alta - ajustar pela altura
+        canvasHeight = containerHeight;
+        canvasWidth = containerHeight * imgAspectRatio;
+      }
+      
+      // Definir dimensões do canvas
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      
+      // Desenhar imagem ajustada
+      ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+      
+      // Salvar estado original para reset
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setOriginalImageData(imageData);
+    }
   };
 
   // Função para detectar se é um gesto de dois dedos
@@ -176,8 +250,8 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     }
     
     return { 
-      x: (clientX - rect.left) * scaleX / canvasScale, 
-      y: (clientY - rect.top) * scaleY / canvasScale 
+      x: (clientX - rect.left) * scaleX, 
+      y: (clientY - rect.top) * scaleY 
     };
   };
 
