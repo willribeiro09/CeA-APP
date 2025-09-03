@@ -653,9 +653,11 @@ export default function App() {
   };
 
   const handleAddItem = async (item: any) => {
+    console.log('🚀 handleAddItem chamada com:', item);
     // PROTEÇÃO: Executar apenas quando app não estiver bloqueado
     executeWhenUnblocked(async () => {
       try {
+      console.log('🔍 Dentro de executeWhenUnblocked, item:', item);
       // Verificar se o item já tem um ID, caso contrário, criar um novo
       if (!item.id) {
         item.id = uuidv4();
@@ -755,11 +757,14 @@ export default function App() {
           return newStockItems;
         });
       } else if (activeCategory === 'Employees') {
+        console.log('👥 Processando funcionário, activeCategory:', activeCategory);
         const employee = newItem as Employee;
+        console.log('👥 Employee data:', employee);
         
         // Normalizar a data de início da semana para evitar problemas de fuso horário
         const normalizedWeekStart = normalizeDate(selectedWeekStart);
         const weekStartDate = formatDateToISO(normalizedWeekStart);
+        console.log('👥 Datas processadas:', { normalizedWeekStart, weekStartDate, selectedWeekStart });
         
         // Inicializar os campos importantes do funcionário
         employee.workedDates = [];
@@ -774,30 +779,36 @@ export default function App() {
           employee.dailyRate = 250;
         }
         
-        // Verificar se já existe este funcionário em alguma semana
-        let employeeExists = false;
-        const employeeId = employee.id;
+        // Verificar se já existe este funcionário apenas na semana selecionada
+        const weekEmployees = employees[weekStartDate] || [];
+        const employeeExistsInWeek = weekEmployees.some(e => e.name === employee.name);
         
-        // Procurar o funcionário em todas as semanas
-        Object.keys(employees).forEach(weekKey => {
-          if (employees[weekKey].some(e => e.name === employee.name)) {
-            employeeExists = true;
-          }
-        });
-        
-        // Se o funcionário já existe, mostrar um alerta
-        if (employeeExists) {
-          alert(`Funcionário "${employee.name}" já existe.`);
+        // Se o funcionário já existe nesta semana, mostrar um alerta
+        if (employeeExistsInWeek) {
+          alert(`Funcionário "${employee.name}" já existe nesta semana.`);
           return;
         }
         
         // Adicionar o funcionário à semana selecionada
         setEmployees(prevEmployees => {
           const weekEmployees = prevEmployees[weekStartDate] || [];
+          console.log('🔍 DEBUG - Adicionando funcionário:', {
+            employeeName: employee.name,
+            weekStartDate,
+            weekEmployeesBefore: weekEmployees.length,
+            employeeData: employee
+          });
+          
           const updatedEmployees = {
             ...prevEmployees,
             [weekStartDate]: [...weekEmployees, employee]
           };
+          
+          console.log('🔍 DEBUG - Após adicionar:', {
+            weekStartDate,
+            employeesInWeek: updatedEmployees[weekStartDate].length,
+            allEmployees: Object.keys(updatedEmployees)
+          });
           
           // Salvar as alterações
           saveChanges(createStorageData({
@@ -1772,19 +1783,16 @@ export default function App() {
                   {(() => {
                     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
                     
-                    // Obter TODOS os funcionários de todas as semanas
-                    const allEmployees: Employee[] = [];
-                    Object.keys(employees).forEach(weekKey => {
-                      employees[weekKey].forEach(employee => {
-                        // Evitar duplicatas baseado no ID
-                        if (!allEmployees.some(e => e.id === employee.id)) {
-                          allEmployees.push(employee);
-                        }
-                      });
-                    });
+                    // Mostrar apenas os funcionários da semana selecionada
+                    const employeesInSelectedWeek = (employees[formattedSelectedWeekStart] || []).filter(employee => employee.name !== 'Will');
                     
-                    // Mostrar TODOS os funcionários (exceto Will que é fixo)
-                    const employeesInSelectedWeek = allEmployees.filter(employee => employee.name !== 'Will');
+                    console.log('🔍 DEBUG - Renderizando funcionários:', {
+                      formattedSelectedWeekStart,
+                      allEmployeesKeys: Object.keys(employees),
+                      employeesInWeek: employees[formattedSelectedWeekStart] || [],
+                      employeesInSelectedWeek,
+                      employeesCount: employeesInSelectedWeek.length
+                    });
                     
                     const employeeElements = [];
 
@@ -1863,18 +1871,6 @@ export default function App() {
                                       className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors h-8"
                                     >
                                       Receipt
-                                    </button>
-                                    {/* Botão temporário de delete para teste local */}
-                                    <button
-                                      onClick={isBackgroundSyncing ? () => {} : () => {
-                                        console.log('🗑️ Botão delete clicado para funcionário:', employee.id);
-                                        handleDeleteItem(employee.id, 'Employees');
-                                      }}
-                                      disabled={isBackgroundSyncing}
-                                      className="px-3 py-1 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-colors h-8"
-                                      title="Deletar funcionário (temporário para teste)"
-                                    >
-                                      🗑️
                                     </button>
                                   </div>
                                 </div>

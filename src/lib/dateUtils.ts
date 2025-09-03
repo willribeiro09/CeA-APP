@@ -47,9 +47,8 @@ export function normalizeDate(date: Date): Date {
   const month = date.getMonth();
   const day = date.getDate();
   
-  // Adicionar 1 dia para compensar o problema de fuso horário
-  // O ajuste de +2 está causando problemas, voltamos para +1
-  const adjustedDay = day + 1; 
+  // Não adicionar dias - manter o dia original
+  const adjustedDay = day; 
   
   // Criar data com horário meio-dia UTC para evitar problemas de mudança de dia
   const normalized = new Date(Date.UTC(year, month, adjustedDay, 12, 0, 0));

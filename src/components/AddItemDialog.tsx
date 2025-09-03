@@ -120,25 +120,29 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       itemData = {
         name: data.name as string,
         employeeName: data.name as string,
-        weekStartDate: startDate.toISOString(),
+        weekStartDate: weekStartDateISO,
         daysWorked: 0,
         dailyRate: parseFloat(data.dailyRate as string) || 250,
         category: 'Employees',
         workedDates: []  // Inicializar com array vazio
       } as Partial<Employee>;
       console.log("Dados de funcionário formatados:", itemData);
+      console.log("🔍 Chamando validation.employee...");
       validationError = validation.employee(itemData as Partial<Employee>);
+      console.log("🔍 Resultado da validação:", validationError);
     }
 
     if (validationError) {
-      console.error("Erro de validação:", validationError);
+      console.error("❌ Erro de validação:", validationError);
       setErrors([{ field: 'form', message: validationError }]);
       return;
     }
 
-    console.log("Dados válidos, chamando onSubmit com:", itemData);
+    console.log("✅ Dados válidos, chamando onSubmit com:", itemData);
     setErrors([]);
+    console.log("🚀 Chamando onSubmit...");
     onSubmit(itemData);
+    console.log("🚀 onSubmit chamado, fechando dialog...");
     onOpenChange(false);
   };
 
