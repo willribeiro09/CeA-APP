@@ -973,17 +973,37 @@ export default function App() {
   const calculateEmployeesTotal = () => {
     let total = 0;
 
-    // Obter os funcionários específicos da semana selecionada
-    const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-    const weekEmployees = employees[formattedSelectedWeekStart] || [];
+    // Obter TODOS os funcionários de todas as semanas
+    const allEmployees: Employee[] = [];
+    Object.keys(employees).forEach(weekKey => {
+      employees[weekKey].forEach(employee => {
+        if (!allEmployees.some(e => e.id === employee.id)) {
+          allEmployees.push(employee);
+        }
+      });
+    });
 
-    // Somar somente os dados da semana selecionada
-    weekEmployees.forEach((employee) => {
-      const daysWorked = employee?.daysWorked || 0;
-      const dailyRate = typeof employee?.dailyRate === 'number' && !isNaN(employee.dailyRate)
-        ? employee.dailyRate
-        : 250;
-      total += dailyRate * daysWorked;
+    // Calcular total baseado nos dias trabalhados na semana selecionada
+    allEmployees.forEach((employee) => {
+      if (employee.name !== 'Will') { // Excluir Will do cálculo por dias trabalhados
+        // Calcular dias trabalhados especificamente para a semana selecionada
+        let daysWorkedInWeek = 0;
+        
+        if (employee.workedDates && employee.workedDates.length > 0) {
+          const weekStart = selectedWeekStart;
+          const weekEnd = selectedWeekEnd;
+          
+          daysWorkedInWeek = employee.workedDates.filter(dateStr => {
+            const workedDate = new Date(dateStr);
+            return workedDate >= weekStart && workedDate <= weekEnd;
+          }).length;
+        }
+        
+        const dailyRate = typeof employee?.dailyRate === 'number' && !isNaN(employee.dailyRate)
+          ? employee.dailyRate
+          : 250;
+        total += dailyRate * daysWorkedInWeek;
+      }
     });
 
     // Adicionar valor fixo do Will + bônus
@@ -1035,7 +1055,7 @@ export default function App() {
     }, delay);
 
     return () => clearTimeout(timer);
-  }, [activeCategory, selectedWeekStart, selectedWeekEnd]);
+  }, [activeCategory]); // Removido selectedWeekStart e selectedWeekEnd para evitar loop
 
   // Função para ordenar despesas por data de vencimento (mais atrasadas primeiro)
   const sortExpensesByDueDate = (expenseList: Expense[]) => {
@@ -1482,17 +1502,20 @@ export default function App() {
 
   // Garantir que, ao abrir o app, estejamos sempre na current week (Projects)
   useEffect(() => {
-    const now = new Date();
-    const start = getProjectWeekStart(now);
-    const end = getProjectWeekEnd(now);
-    setSelectedWeekStart(start);
-    setSelectedWeekEnd(end);
-  }, []);
+    if (activeCategory === 'Projects') {
+      const now = new Date();
+      const start = getProjectWeekStart(now);
+      const end = getProjectWeekEnd(now);
+      setSelectedWeekStart(start);
+      setSelectedWeekEnd(end);
+    }
+  }, [activeCategory]);
 
   // Rollover automático: quando acabar a terça-feira (fim da semana), vira para a nova current week
   useEffect(() => {
     // agendar apenas quando estivermos em Projects (para evitar atualizações desnecessárias)
-    // mas manter neutro caso mudemos a categoria: o cálculo sempre usa as funções de Projects
+    if (activeCategory !== 'Projects') return;
+    
     const now = new Date();
     const currentWeekEnd = getProjectWeekEnd(now); // termina na terça às 23:59:59.999 UTC
     const delay = currentWeekEnd.getTime() - now.getTime() + 1; // próximo ms vira nova semana
@@ -1514,7 +1537,7 @@ export default function App() {
     }, delay);
 
     return () => clearTimeout(timer);
-  }, [selectedWeekStart, selectedWeekEnd]);
+  }, [activeCategory]); // Removido selectedWeekStart e selectedWeekEnd para evitar loop
 
   return (
     <>
@@ -1734,22 +1757,35 @@ export default function App() {
                   {(() => {
                     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
                     
-                    // Obter todos os funcionários de todas as semanas
+                    // Obter TODOS os funcionários de todas as semanas
                     const allEmployees: Employee[] = [];
                     Object.keys(employees).forEach(weekKey => {
                       employees[weekKey].forEach(employee => {
-                        // Verificar se o funcionário já está na lista (evitar duplicatas)
+                        // Evitar duplicatas baseado no ID
                         if (!allEmployees.some(e => e.id === employee.id)) {
                           allEmployees.push(employee);
                         }
                       });
                     });
                     
-                    // Não filtra mais por semana, mostra todos os funcionários
-                    const filteredEmployees = allEmployees;
-                    
-                    // Obter os funcionários específicos da semana selecionada (para dias trabalhados)
-                    const weekEmployees = employees[formattedSelectedWeekStart] || [];
+                    // Filtrar funcionários que trabalharam na semana selecionada
+                    const employeesInSelectedWeek = allEmployees.filter(employee => {
+                      if (employee.name === 'Will') return true; // Will sempre aparece
+                      
+                      // Verificar se o funcionário tem dias trabalhados na semana selecionada
+                      if (employee.workedDates && employee.workedDates.length > 0) {
+                        const weekStart = selectedWeekStart;
+                        const weekEnd = selectedWeekEnd;
+                        
+                        // Verificar se algum dia trabalhado está dentro do intervalo da semana selecionada
+                        return employee.workedDates.some(dateStr => {
+                          const workedDate = new Date(dateStr);
+                          return workedDate >= weekStart && workedDate <= weekEnd;
+                        });
+                      }
+                      
+                      return false;
+                    });
                     
                     const employeeElements = [];
 
@@ -1769,40 +1805,34 @@ export default function App() {
                       </li>
                     );
 
-                    // Verificar se há funcionários filtrados (excluindo Will)
-                    if (filteredEmployees.length === 0) {
+                    // Verificar se há funcionários que trabalharam na semana selecionada (excluindo Will)
+                    const otherEmployees = employeesInSelectedWeek.filter(emp => emp.name !== 'Will');
+                    
+                    if (otherEmployees.length === 0) {
                       employeeElements.push(
                         <li key="no-employees" className="list-none">
                           <div className="bg-white p-4 rounded-lg shadow-sm text-center">
-                            <p className="text-gray-500">No employees started this week.</p>
+                            <p className="text-gray-500">No employees worked this week.</p>
                           </div>
                         </li>
                       );
                     } else {
-                      // Outros funcionários
-                      filteredEmployees.forEach(employee => {
-                        // Encontrar o registro específico do funcionário para a semana selecionada
-                        const weekEmployee = weekEmployees.find(e => e.id === employee.id);
-                        
-                        // Calcular dias trabalhados para a semana atual
-                        let daysWorked = 0;
+                      // Outros funcionários que trabalharam na semana selecionada
+                      otherEmployees.forEach(employee => {
+                        // Calcular dias trabalhados especificamente para a semana selecionada
+                        let daysWorkedInWeek = 0;
                         let workedDatesInWeek: string[] = [];
                         
-                        if (weekEmployee) {
-                          // Se o funcionário tem registro para esta semana, usar os dados desse registro
-                          daysWorked = weekEmployee.daysWorked || 0;
-                          workedDatesInWeek = weekEmployee.workedDates || [];
-                        } else if (employee.workedDates) {
-                          // Se não tem registro específico, filtrar datas trabalhadas que estão na semana atual
+                        if (employee.workedDates && employee.workedDates.length > 0) {
                           const weekStart = selectedWeekStart;
                           const weekEnd = selectedWeekEnd;
                           
                           workedDatesInWeek = employee.workedDates.filter(dateStr => {
-                            const date = new Date(dateStr);
-                            return date >= weekStart && date <= weekEnd;
+                            const workedDate = new Date(dateStr);
+                            return workedDate >= weekStart && workedDate <= weekEnd;
                           });
                           
-                          daysWorked = workedDatesInWeek.length;
+                          daysWorkedInWeek = workedDatesInWeek.length;
                         }
                         
                         employeeElements.push(
@@ -1830,7 +1860,7 @@ export default function App() {
                                         // Usar a função para abrir o recibo
                                         openReceipt({
                                           ...employee,
-                                          daysWorked,
+                                          daysWorked: daysWorkedInWeek,
                                           workedDates: workedDatesInWeek
                                         });
                                       }}
@@ -1844,12 +1874,12 @@ export default function App() {
                                 <div className="space-y-0.5">
                                   <div className="flex items-center justify-between">
                                     <span className="text-gray-700 text-sm">Days Worked:</span>
-                                    <span className="text-xl font-bold text-gray-900">{daysWorked}</span>
+                                    <span className="text-xl font-bold text-gray-900">{daysWorkedInWeek}</span>
                                   </div>
                                   <div className="flex items-center justify-between">
                                     <span className="text-gray-700 text-sm">Amount to Receive:</span>
                                     <span className="text-xl font-bold text-[#5ABB37]">
-                                      $ {(daysWorked * (employee.dailyRate || 250)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                      $ {(daysWorkedInWeek * (employee.dailyRate || 250)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-between">
