@@ -33,23 +33,8 @@ export function WillItemFixed({
     >
       <div className="p-2.5">
         <div className="flex items-center justify-between mb-1.5">
-          <h3 className="text-xl font-bold text-gray-800">Will</h3>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={disabled ? () => {} : onIncreaseRate}
-              disabled={disabled}
-              className="px-4 py-1 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 transition-colors flex items-center h-8"
-            >
-              Increase
-            </button>
-            <button
-              onClick={disabled ? () => {} : onAddBonus}
-              disabled={disabled}
-              className="px-2.5 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 transition-colors h-8"
-            >
-              BONUS
-            </button>
-          </div>
+          <h3 className="text-xl font-bold text-gray-800">William</h3>
+
         </div>
         <div className="space-y-0.5">
           <div className="flex items-center justify-between">
