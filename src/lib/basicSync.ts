@@ -283,7 +283,7 @@ export const basicSyncService = {
     this.lastSyncTime = now;
     
     try {
-      console.log('🚀 Sincronização OBRIGATÓRIA após volta do segundo plano...');
+      console.log('🚀 SINCRONIZAÇÃO COMPLETA após volta do segundo plano...');
       console.log('🔒 APP BLOQUEADO - Aguardando sincronização...');
       
       // Verificar se está online antes de tentar
@@ -297,16 +297,9 @@ export const basicSyncService = {
         detail: { isBlocked: true, message: 'Sincronizando dados mais recentes...' }
       }));
       
-      // PASSO 1: SEMPRE carregar dados mais recentes do servidor primeiro
-      console.log('🔄 PASSO 1: Verificando dados do servidor...');
-      const serverData = await this.loadInitialData();
-      
-      // PASSO 2: Sincronizar dados locais (que serão mesclados com os do servidor)
-      console.log('🔄 PASSO 2: Sincronizando dados locais...');
-      const localData = storage.load();
-      if (localData) {
-        await this.sync(localData);
-      }
+      // USAR A MESMA SINCRONIZAÇÃO COMPLETA DA INICIALIZAÇÃO
+      console.log('🔄 Usando sincronização completa (igual ao F5/reiniciar)...');
+      await this.forceInitialSync();
       
       // Executar callbacks registrados
       this.syncCallbacks.forEach(callback => {
@@ -317,7 +310,7 @@ export const basicSyncService = {
         }
       });
       
-      console.log('✅ Sincronização OBRIGATÓRIA concluída - APP DESBLOQUEADO!');
+      console.log('✅ SINCRONIZAÇÃO COMPLETA concluída - APP DESBLOQUEADO!');
       
     } catch (error) {
       console.error('❌ Erro ao sincronizar após volta:', error);
