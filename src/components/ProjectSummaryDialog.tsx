@@ -217,6 +217,13 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
                 </div>
               ) : null}
 
+              {project.notes ? (
+                <div>
+                  <div className="text-gray-500 text-sm mb-1">Notes</div>
+                  <div className="text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg border">{project.notes}</div>
+                </div>
+              ) : null}
+
               <div className="flex items-center justify-between mt-4">
                 <div className="text-gray-900 font-medium">Photos</div>
                 <div className="flex gap-2">

@@ -1,10 +1,11 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { Item, ValidationError, Expense, Project, StockItem, Employee } from '../types';
+import { X, Upload, Image } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Item, ValidationError, Expense, Project, StockItem, Employee, ProjectPhoto } from '../types';
 import { validation, normalizeMonetaryValue } from '../lib/validation';
 import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
 import { v4 as uuidv4 } from 'uuid';
+import { PhotoService } from '../lib/photoService';
 
 interface AddItemDialogProps {
   isOpen: boolean;
@@ -16,12 +17,17 @@ interface AddItemDialogProps {
 
 export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, selectedWeekStart }: AddItemDialogProps) {
   const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [uploadedPhotos, setUploadedPhotos] = useState<ProjectPhoto[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       document.body.classList.add('dialog-open');
     } else {
       document.body.classList.remove('dialog-open');
+      // Limpar fotos quando o dialog for fechado
+      setUploadedPhotos([]);
     }
     
     return () => {
@@ -35,6 +41,40 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
 
   const handleInputBlur = () => {
     document.body.classList.remove('input-focused');
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        // Criar um ID temporário para o projeto (será substituído quando o projeto for criado)
+        const tempProjectId = 'temp-' + uuidv4();
+        return await PhotoService.uploadPhoto(tempProjectId, file);
+      });
+
+      const newPhotos = await Promise.all(uploadPromises);
+      setUploadedPhotos(prev => [...prev, ...newPhotos]);
+    } catch (error) {
+      console.error('Erro ao fazer upload das fotos:', error);
+      setErrors([{ field: 'photos', message: 'Erro ao fazer upload das fotos' }]);
+    } finally {
+      setIsUploading(false);
+      // Limpar o input para permitir selecionar os mesmos arquivos novamente
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemovePhoto = (photoId: string) => {
+    setUploadedPhotos(prev => prev.filter(photo => photo.id !== photoId));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -95,6 +135,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         status: data.status as 'completed' | 'in_progress',
         value: projectValue,
         invoiceOk: (data.invoiceOk === 'on'),
+        notes: data.notes as string || '',
+        photos: uploadedPhotos,
         category: 'Projects'
       } as Partial<Project>;
       
@@ -330,6 +372,62 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     name="invoiceOk"
                     className="mt-1"
                   />
+                </div>
+                <div>
+                  <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+                    Notes
+                  </label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows={3}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    placeholder="Add project notes..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Photos
+                  </label>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={handleUploadClick}
+                      disabled={isUploading}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {isUploading ? 'Uploading...' : 'Upload Photo'}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    {uploadedPhotos.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {uploadedPhotos.map((photo) => (
+                          <div key={photo.id} className="relative">
+                            <img
+                              src={photo.url}
+                              alt="Uploaded photo"
+                              className="w-full h-20 object-cover rounded-lg border border-gray-300"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePhoto(photo.id)}
+                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}
