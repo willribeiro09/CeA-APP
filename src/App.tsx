@@ -1736,9 +1736,34 @@ export default function App() {
                         <div className="mt-2 flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             {project.photos && project.photos.length > 0 && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                                {project.photos.length} foto{project.photos.length !== 1 ? 's' : ''}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-600 font-medium">Photos:</span>
+                                {/* Miniaturas das fotos */}
+                                <div className="flex -space-x-1">
+                                  {project.photos.slice(0, 3).map((photo, index) => (
+                                    <div key={photo.id} className="relative">
+                                      <img 
+                                        src={photo.url} 
+                                        alt={`Photo ${index + 1}`}
+                                        className="w-8 h-8 rounded-lg object-cover border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                        }}
+                                      />
+                                      {photo.isEdited && (
+                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                                {/* Contador se houver mais de 3 fotos */}
+                                {project.photos.length > 3 && (
+                                  <span className="text-xs text-gray-500 ml-1 font-medium">
+                                    +{project.photos.length - 3}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
