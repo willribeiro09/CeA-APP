@@ -454,11 +454,25 @@ export default function App() {
         console.log('📅 Semana selecionada:', formattedSelectedWeekStart);
         console.log('👥 Funcionários antes da deleção:', newEmployees[formattedSelectedWeekStart]?.length || 0);
         
+        // Listar todos os funcionários da semana para debug
+        if (newEmployees[formattedSelectedWeekStart]) {
+          console.log('🔍 Funcionários na semana:', newEmployees[formattedSelectedWeekStart].map(e => ({ id: e.id, name: e.name })));
+        }
+        
         // Deletar apenas da semana selecionada, não de todas as semanas
         if (newEmployees[formattedSelectedWeekStart]) {
           const beforeCount = newEmployees[formattedSelectedWeekStart].length;
+          
+          // Verificar se o funcionário existe na semana
+          const employeeExists = newEmployees[formattedSelectedWeekStart].some(emp => emp.id === id);
+          console.log('🔍 Funcionário existe na semana?', employeeExists);
+          
           newEmployees[formattedSelectedWeekStart] = newEmployees[formattedSelectedWeekStart].filter(
-            employee => employee.id !== id
+            employee => {
+              const shouldKeep = employee.id !== id;
+              console.log(`🔍 Funcionário ${employee.name} (${employee.id}) - Manter? ${shouldKeep}`);
+              return shouldKeep;
+            }
           );
           const afterCount = newEmployees[formattedSelectedWeekStart].length;
           
