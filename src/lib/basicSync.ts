@@ -33,6 +33,14 @@ export const basicSyncService = {
   async init() {
     if (!supabase || this.isInitialized) return;
     
+    // PRIMEIRA VERIFICAÇÃO: Proteção de dados obrigatória
+    console.log('🔍 Verificando proteção de dados via Supabase...');
+    const canProceed = await this.checkDataProtection();
+    if (!canProceed) {
+      console.log('🛑 App bloqueado - proteção de dados obrigatória');
+      return; // NÃO inicializar o sync se precisa de proteção
+    }
+    
     console.log('🔄 Inicializando Sync Básico:', DEVICE_ID);
     this.isInitialized = true;
 
@@ -44,6 +52,163 @@ export const basicSyncService = {
     
     // Carregar dados iniciais
     await this.loadInitialData();
+  },
+
+  // NOVO: Verificação de proteção de dados via Supabase
+  async checkDataProtection(): Promise<boolean> {
+    try {
+      console.log('🔍 Consultando Supabase sobre proteção de dados...');
+      
+      const { data, error } = await supabase.rpc('check_app_protection');
+      
+      if (error) {
+        console.error('❌ Erro ao verificar proteção:', error);
+        return true; // Em caso de erro, permitir continuar
+      }
+      
+      console.log('📊 Status da proteção:', data);
+      
+      if (data.needs_protection) {
+        console.log('⚠️ PROTEÇÃO DE DADOS OBRIGATÓRIA DETECTADA VIA SUPABASE');
+        this.showProtectionModal();
+        return false; // Bloquear app
+      }
+      
+      console.log('✅ Proteção de dados verificada - app pode continuar');
+      return true; // Permitir continuar
+      
+    } catch (error) {
+      console.error('❌ Erro na verificação de proteção:', error);
+      return true; // Em caso de erro, permitir continuar
+    }
+  },
+
+  // NOVO: Modal de proteção obrigatória
+  showProtectionModal(): void {
+    // Criar modal que NÃO pode ser fechado
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    `;
+    
+    modal.innerHTML = `
+      <div style="
+        background: white;
+        padding: 40px;
+        border-radius: 15px;
+        text-align: center;
+        max-width: 400px;
+        margin: 20px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      ">
+        <div style="font-size: 60px; margin-bottom: 20px;">🛡️</div>
+        <h2 style="color: #e74c3c; margin-bottom: 20px; font-size: 24px;">
+          Proteção de Dados Obrigatória
+        </h2>
+        <p style="margin-bottom: 25px; color: #333; line-height: 1.6; font-size: 16px;">
+          <strong>Seu app precisa ser atualizado!</strong><br><br>
+          Para <strong>proteger seus dados</strong> e evitar sobrescrita de informações, 
+          é necessário atualizar para a versão mais recente com sistema de proteção.
+        </p>
+        <button id="update-btn" style="
+          background: #27ae60;
+          color: white;
+          border: none;
+          padding: 15px 30px;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          width: 100%;
+          transition: background 0.3s;
+        ">
+          ✅ Atualizar Agora (Obrigatório)
+        </button>
+        <p style="margin-top: 20px; font-size: 13px; color: #666; line-height: 1.4;">
+          🔒 Esta atualização é <strong>obrigatória</strong> para manter seus dados seguros.<br>
+          O app não funcionará sem a atualização.
+        </p>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Botão de atualizar
+    const updateBtn = document.getElementById('update-btn');
+    if (updateBtn) {
+      updateBtn.onclick = () => {
+        updateBtn.textContent = '🔄 Atualizando...';
+        (updateBtn as HTMLButtonElement).style.background = '#f39c12';
+        this.forceUpdate();
+      };
+    }
+    
+    // Bloquear TODAS as interações
+    document.body.style.overflow = 'hidden';
+    
+    // Interceptar teclas para bloquear ESC, F5, etc.
+    const blockKeys = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener('keydown', blockKeys);
+  },
+
+  // NOVO: Forçar atualização do PWA
+  async forceUpdate(): Promise<void> {
+    try {
+      console.log('🔄 FORÇANDO ATUALIZAÇÃO DO PWA...');
+      
+      // 1. Limpar cache do service worker
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          console.log('🗑️ Removendo service worker...');
+          await registration.unregister();
+        }
+      }
+      
+      // 2. Limpar todos os caches
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames.map(cacheName => {
+            console.log('🗑️ Removendo cache:', cacheName);
+            return caches.delete(cacheName);
+          })
+        );
+      }
+      
+      // 3. Limpar dados locais antigos SEM proteção
+      localStorage.removeItem('syncData');
+      localStorage.removeItem('lastSync');
+      localStorage.removeItem('offlineChanges');
+      
+      // 4. Marcar que a atualização foi feita
+      localStorage.setItem('app_protection_enabled', 'true');
+      localStorage.setItem('force_update_checked', Date.now().toString());
+      
+      console.log('✅ Cache limpo - Recarregando...');
+      
+      // 5. Forçar reload completo
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('❌ Erro ao forçar atualização:', error);
+      window.location.reload();
+    }
   },
 
   // NOVO: Sistema de debounce inteligente para sincronização
@@ -894,6 +1059,33 @@ if (typeof window !== 'undefined') {
     }
   };
   
+  // NOVO: Debug para verificação de proteção
+  (window as any).protectionDebug = {
+    check: () => basicSyncService.checkDataProtection(),
+    force: () => basicSyncService.forceUpdate(),
+    modal: () => basicSyncService.showProtectionModal(),
+    reset: () => {
+      localStorage.removeItem('app_protection_enabled');
+      localStorage.removeItem('force_update_checked');
+      console.log('🔄 Proteção resetada - recarregue para testar');
+    },
+    status: async () => {
+      try {
+        const { data } = await supabase.rpc('check_app_protection');
+        return {
+          supabase: data,
+          local: {
+            protectionEnabled: localStorage.getItem('app_protection_enabled'),
+            forceUpdateChecked: localStorage.getItem('force_update_checked')
+          }
+        };
+      } catch (error) {
+        return { error: error.message };
+      }
+    }
+  };
+  
   console.log('🔄 Basic Sync Debug: window.basicSyncDebug');
+  console.log('🛡️ Protection Debug: window.protectionDebug');
   console.log('📱 Device ID:', DEVICE_ID);
 }
