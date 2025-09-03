@@ -447,11 +447,15 @@ export default function App() {
     } else if (category === 'Employees') {
       setEmployees(prevEmployees => {
         const newEmployees = { ...prevEmployees };
-        Object.keys(newEmployees).forEach(weekStartDate => {
-          newEmployees[weekStartDate] = newEmployees[weekStartDate].filter(
+        const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
+        
+        // Deletar apenas da semana selecionada, não de todas as semanas
+        if (newEmployees[formattedSelectedWeekStart]) {
+          newEmployees[formattedSelectedWeekStart] = newEmployees[formattedSelectedWeekStart].filter(
             employee => employee.id !== id
           );
-        });
+        }
+        
         saveChanges(createStorageData({
           expenses,
           projects,
