@@ -71,15 +71,42 @@ export const basicSyncService = {
         return;
       }
       
+      console.log('✅ Dados do servidor carregados com sucesso!');
+      console.log('📊 Resumo dos dados do servidor:', {
+        expenses: Object.keys(serverData.expenses || {}).length,
+        projects: (serverData.projects || []).length,
+        stock: (serverData.stock || []).length,
+        employees: Object.keys(serverData.employees || {}).length,
+        lastSync: new Date(serverData.lastSync || 0).toLocaleString('pt-BR')
+      });
+      
       // PASSO 3: Sincronizar dados locais (se existirem)
       console.log('🔄 PASSO 3: Verificando dados locais para sincronização...');
       const localData = storage.load();
       
-      if (localData && this.hasLocalChanges(localData, serverData)) {
-        console.log('📱 Dados locais encontrados - fazendo merge inteligente...');
-        await this.sync(localData);
+      if (localData) {
+        console.log('📱 Dados locais encontrados:', {
+          expenses: Object.keys(localData.expenses || {}).length,
+          projects: (localData.projects || []).length,
+          stock: (localData.stock || []).length,
+          employees: Object.keys(localData.employees || {}).length,
+          lastSync: new Date(localData.lastSync || 0).toLocaleString('pt-BR')
+        });
+        
+        if (this.hasLocalChanges(localData, serverData)) {
+          console.log('📱 Mudanças locais detectadas - fazendo merge inteligente...');
+          await this.sync(localData);
+        } else {
+          console.log('✅ Dados locais já sincronizados - usando dados do servidor');
+          // IMPORTANTE: Sempre disparar evento para atualizar UI com dados do servidor
+          console.log('🔄 Disparando evento dataUpdated com dados do servidor...');
+          window.dispatchEvent(new CustomEvent('dataUpdated', { detail: serverData }));
+        }
       } else {
-        console.log('✅ Dados já sincronizados - usando dados do servidor');
+        console.log('📱 Nenhum dado local encontrado - usando dados do servidor');
+        // IMPORTANTE: Sempre disparar evento para atualizar UI com dados do servidor
+        console.log('🔄 Disparando evento dataUpdated com dados do servidor...');
+        window.dispatchEvent(new CustomEvent('dataUpdated', { detail: serverData }));
       }
       
       console.log('✅ SINCRONIZAÇÃO INICIAL CONCLUÍDA!');
@@ -421,9 +448,16 @@ export const basicSyncService = {
           lastSync: data.last_sync_timestamp || Date.now()
         };
         
-        // Salvar dados do servidor localmente
+        // SEMPRE salvar dados do servidor localmente (são os mais recentes)
         storage.save(serverData);
-        console.log('✅ Dados do servidor carregados e salvos');
+        console.log('✅ Dados do servidor carregados e salvos (sempre os mais recentes)');
+        console.log('📊 Dados do servidor:', {
+          expenses: Object.keys(serverData.expenses || {}).length,
+          projects: (serverData.projects || []).length,
+          stock: (serverData.stock || []).length,
+          employees: Object.keys(serverData.employees || {}).length,
+          lastSync: new Date(serverData.lastSync || 0).toLocaleString('pt-BR')
+        });
         return serverData;
       }
       
@@ -465,6 +499,11 @@ export const basicSyncService = {
         console.log('✅ Dados enviados ao servidor');
         data.lastSync = result.last_sync_timestamp || Date.now();
         storage.save(data);
+        
+        // IMPORTANTE: Disparar evento para atualizar UI após sincronização
+        console.log('🔄 Disparando evento dataUpdated após sync...');
+        window.dispatchEvent(new CustomEvent('dataUpdated', { detail: data }));
+        
         return true;
       }
       
