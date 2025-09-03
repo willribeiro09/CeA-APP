@@ -419,8 +419,9 @@ function formatWeekLabel(startDate: Date, endDate: Date): string {
 
 
 /**
- * Função para gerar semanas para projetos: apenas a Current week (sem Last por enquanto)
+ * Função para gerar semanas para projetos: Current week e Last week
  * Formato: "MM/DD To MM/DD"
+ * Semanas começam na quarta-feira e terminam na terça-feira
  */
 export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -433,24 +434,34 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   const today = createSafeDate(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   const currentWeekWednesday = findCurrentWeekWednesday(today);
 
-  const weekStart = new Date(currentWeekWednesday);
-  weekStart.setUTCHours(12, 0, 0, 0);
-
-  const weekEnd = new Date(currentWeekWednesday);
-  weekEnd.setUTCDate(currentWeekWednesday.getUTCDate() + 6); // Terça
-  weekEnd.setUTCHours(23, 59, 59, 999);
-
+  // Construir Current (i=0) e Last (i=-1) nesta ordem
+  const indices = [0, -1];
   const now = new Date();
-  const isCurrent = now >= weekStart && now <= weekEnd;
+  const weeks = indices.map(i => {
+    const weekWednesday = new Date(currentWeekWednesday);
+    weekWednesday.setUTCDate(currentWeekWednesday.getUTCDate() + (i * 7));
 
-  return [{
-    startDate: weekStart,
-    endDate: weekEnd,
-    label: formatWeekLabel(weekStart, weekEnd),
-    value: formatDateToISO(weekStart),
-    isCurrent,
-    isPast: false
-  }];
+    const weekStart = new Date(weekWednesday);
+    weekStart.setUTCHours(12, 0, 0, 0);
+
+    const weekEnd = new Date(weekWednesday);
+    weekEnd.setUTCDate(weekWednesday.getUTCDate() + 6); // Terça
+    weekEnd.setUTCHours(23, 59, 59, 999);
+
+    const isCurrent = now >= weekStart && now <= weekEnd;
+    const isPast = now > weekEnd;
+
+    return {
+      startDate: weekStart,
+      endDate: weekEnd,
+      label: formatWeekLabel(weekStart, weekEnd),
+      value: formatDateToISO(weekStart),
+      isCurrent,
+      isPast
+    };
+  });
+
+  return weeks;
 }
 
 /**
