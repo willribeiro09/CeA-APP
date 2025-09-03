@@ -21,6 +21,8 @@ export const basicSyncService = {
   syncInProgress: false, // Para evitar syncs simultâneos
   isSyncingOnReturn: false, // Flag específica para sync de retorno do segundo plano
   syncCallbacks: new Set<() => void>(), // Callbacks para notificar quando sync termina
+  isAppBlocked: false, // NOVO: Bloquear interações durante sync obrigatório
+  pendingInteractions: [] as Array<() => void>, // NOVO: Fila de interações pendentes
   
   // NOVO: Sistema de debounce inteligente para reduzir syncs excessivos
   syncQueue: [] as Array<() => void>,
@@ -185,19 +187,23 @@ export const basicSyncService = {
     
     this.syncInProgress = true;
     this.isSyncingOnReturn = true; // Marcar como sync de retorno
+    this.isAppBlocked = true; // NOVO: Bloquear app durante sync obrigatório
     this.lastSyncTime = now;
     
     try {
-      console.log('🚀 Sincronização SEGURA após volta do segundo plano...');
+      console.log('🚀 Sincronização OBRIGATÓRIA após volta do segundo plano...');
+      console.log('🔒 APP BLOQUEADO - Aguardando sincronização...');
       
       // Verificar se está online antes de tentar
       if (!navigator.onLine) {
-        console.log('📡 Offline - pulando sync');
+        console.log('📡 Offline - desbloqueando app');
         return;
       }
       
-      // Notificar que sync de retorno começou
-      window.dispatchEvent(new CustomEvent('syncReturnStarted'));
+      // Notificar que sync de retorno começou E que app está bloqueado
+      window.dispatchEvent(new CustomEvent('syncReturnStarted', { 
+        detail: { isBlocked: true, message: 'Sincronizando dados mais recentes...' }
+      }));
       
       // PASSO 1: SEMPRE carregar dados mais recentes do servidor primeiro
       console.log('🔄 PASSO 1: Verificando dados do servidor...');
@@ -210,9 +216,6 @@ export const basicSyncService = {
         await this.sync(localData);
       }
       
-      // Notificar que sync de retorno terminou
-      window.dispatchEvent(new CustomEvent('syncReturnCompleted'));
-      
       // Executar callbacks registrados
       this.syncCallbacks.forEach(callback => {
         try {
@@ -222,15 +225,22 @@ export const basicSyncService = {
         }
       });
       
-      console.log('✅ Sincronização SEGURA concluída - dados preservados!');
+      console.log('✅ Sincronização OBRIGATÓRIA concluída - APP DESBLOQUEADO!');
       
     } catch (error) {
       console.error('❌ Erro ao sincronizar após volta:', error);
-      // Mesmo com erro, notificar que terminou
-      window.dispatchEvent(new CustomEvent('syncReturnCompleted'));
     } finally {
       this.syncInProgress = false;
       this.isSyncingOnReturn = false;
+      this.isAppBlocked = false; // NOVO: Desbloquear app
+      
+      // Notificar que sync terminou E que app foi desbloqueado
+      window.dispatchEvent(new CustomEvent('syncReturnCompleted', { 
+        detail: { isBlocked: false, message: 'Sincronização concluída!' }
+      }));
+      
+      // Executar interações pendentes (se houver)
+      this.executePendingInteractions();
     }
   },
 
@@ -397,6 +407,57 @@ export const basicSyncService = {
     return this.isSyncingOnReturn;
   },
 
+  // NOVO: Verificar se o app está bloqueado para interações
+  isAppBlockedForInteractions() {
+    return this.isAppBlocked;
+  },
+
+  // NOVO: Adicionar interação à fila quando app está bloqueado
+  queueInteraction(interaction: () => void) {
+    if (!this.isAppBlocked) {
+      interaction(); // Executar imediatamente se não estiver bloqueado
+      return;
+    }
+    
+    console.log('🔒 Interação bloqueada - adicionando à fila...');
+    this.pendingInteractions.push(interaction);
+  },
+
+  // NOVO: Executar todas as interações pendentes
+  executePendingInteractions() {
+    if (this.pendingInteractions.length === 0) return;
+    
+    console.log(`🚀 Executando ${this.pendingInteractions.length} interações pendentes...`);
+    
+    // Executar todas as interações na ordem correta
+    while (this.pendingInteractions.length > 0) {
+      const interaction = this.pendingInteractions.shift();
+      if (interaction) {
+        try {
+          interaction();
+        } catch (error) {
+          console.error('❌ Erro ao executar interação pendente:', error);
+        }
+      }
+    }
+    
+    console.log('✅ Todas as interações pendentes foram executadas');
+  },
+
+  // NOVO: Forçar desbloqueio (para casos de emergência)
+  forceUnblock() {
+    console.log('⚠️ DESBLOQUEIO FORÇADO - Pode causar inconsistências!');
+    this.isAppBlocked = false;
+    this.syncInProgress = false;
+    this.isSyncingOnReturn = false;
+    
+    window.dispatchEvent(new CustomEvent('syncReturnCompleted', { 
+      detail: { isBlocked: false, message: 'App desbloqueado manualmente' }
+    }));
+    
+    this.executePendingInteractions();
+  },
+
   // NOVO: Método para limpar timers e filas
   cleanup() {
     if (this.debounceTimer) {
@@ -404,6 +465,8 @@ export const basicSyncService = {
       this.debounceTimer = null;
     }
     this.syncQueue = [];
+    this.pendingInteractions = [];
+    this.isAppBlocked = false;
     console.log('🔄 Sync limpo e resetado');
   }
 };

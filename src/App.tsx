@@ -32,6 +32,7 @@ import ProjectSummaryDialog from './components/ProjectSummaryDialog';
 import ImageEditor from './components/ImageEditor';
 import { PhotoService } from './lib/photoService';
 import { v4 as uuidv4 } from 'uuid';
+import { SyncOverlay, useSyncStatus } from './components/SyncOverlay';
 import { 
   formatDateToISO, 
   parseISODate, 
@@ -121,6 +122,9 @@ export default function App() {
   const [isProjectSummaryOpen, setIsProjectSummaryOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
   const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
+
+  // NOVO: Hook para controlar o status de sincronização
+  const { isBlocked: isSyncBlocked, message: syncMessage, executeWhenUnblocked } = useSyncStatus();
 
   useEffect(() => {
     const initializeData = async () => {
@@ -466,10 +470,11 @@ export default function App() {
   };
 
   const handleUpdateItem = (updatedItem: Partial<Item>) => {
-    
-    try {
-      // Item básico para edição
-      const itemWithTimestamp = updatedItem;
+    // PROTEÇÃO: Executar apenas quando app não estiver bloqueado
+    executeWhenUnblocked(() => {
+      try {
+        // Item básico para edição
+        const itemWithTimestamp = updatedItem;
       // Verificar o tipo do item usando propriedades específicas
       if ('description' in itemWithTimestamp) {
         // É uma despesa
@@ -596,15 +601,16 @@ export default function App() {
           return newEmployees;
         });
       }
-    } catch (error) {
-      console.error("Erro ao atualizar item:", error);
-      // Garantir que o diálogo seja fechado mesmo em caso de erro
-      setIsEditDialogOpen(false);
-    } finally {
-      // Fechar o diálogo após atualizar o item
-      setIsEditDialogOpen(false);
-    }
-  };
+      } catch (error) {
+        console.error("Erro ao atualizar item:", error);
+        // Garantir que o diálogo seja fechado mesmo em caso de erro
+        setIsEditDialogOpen(false);
+      } finally {
+        // Fechar o diálogo após atualizar o item
+        setIsEditDialogOpen(false);
+      }
+    });
+  };;
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
@@ -618,7 +624,9 @@ export default function App() {
   };
 
   const handleAddItem = async (item: any) => {
-    try {
+    // PROTEÇÃO: Executar apenas quando app não estiver bloqueado
+    executeWhenUnblocked(async () => {
+      try {
       // Verificar se o item já tem um ID, caso contrário, criar um novo
       if (!item.id) {
         item.id = uuidv4();
@@ -773,10 +781,11 @@ export default function App() {
           return updatedEmployees;
         });
       }
-    } catch (error) {
-      console.error('Error adding item:', error);
-    }
-  };
+      } catch (error) {
+        console.error('Error adding item:', error);
+      }
+    });
+  };;
 
   const handleListSelect = (value: ListName) => {
     setSelectedList(value);
@@ -1903,6 +1912,9 @@ export default function App() {
       />
 
       {isSupabaseConfigured() && <ConnectionStatus />}
+
+      {/* Overlay de sincronização obrigatória */}
+      <SyncOverlay isVisible={isSyncBlocked} message={syncMessage} />
 
       <Dialog.Root 
         open={showLayoffAlert && !isBackgroundSyncing} 
