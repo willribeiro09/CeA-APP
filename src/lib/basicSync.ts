@@ -39,10 +39,8 @@ export const basicSyncService = {
     // Configurar detecção de segundo plano
     this.setupBackgroundDetection();
 
-    // Configurar realtime simples
-    this.setupRealtime();
-    
     // SEMPRE sincronizar na inicialização (independente de como o app foi aberto)
+    // O Realtime será iniciado DENTRO do forceInitialSync()
     await this.forceInitialSync();
   },
 
@@ -52,18 +50,29 @@ export const basicSyncService = {
     
     try {
       console.log('🚀 SINCRONIZAÇÃO OBRIGATÓRIA NA INICIALIZAÇÃO...');
+      console.log('🔒 APP BLOQUEADO - Aguardando sincronização completa...');
       
-      // PASSO 1: Carregar dados do servidor (sempre os mais recentes)
-      console.log('📥 PASSO 1: Carregando dados do servidor...');
+      // BLOQUEAR APP IMEDIATAMENTE
+      this.isAppBlocked = true;
+      this.syncInProgress = true;
+      
+      // PASSO 1: INICIAR REALTIME IMEDIATAMENTE
+      console.log('📡 PASSO 1: Iniciando Realtime IMEDIATAMENTE...');
+      this.setupRealtime();
+      
+      // PASSO 2: Carregar dados do servidor (sempre os mais recentes)
+      console.log('📥 PASSO 2: Carregando dados do servidor...');
       const serverData = await this.loadInitialData();
       
       if (!serverData) {
         console.log('⚠️ Não foi possível carregar dados do servidor - usando dados locais');
+        this.isAppBlocked = false;
+        this.syncInProgress = false;
         return;
       }
       
-      // PASSO 2: Sincronizar dados locais (se existirem)
-      console.log('🔄 PASSO 2: Verificando dados locais para sincronização...');
+      // PASSO 3: Sincronizar dados locais (se existirem)
+      console.log('🔄 PASSO 3: Verificando dados locais para sincronização...');
       const localData = storage.load();
       
       if (localData && this.hasLocalChanges(localData, serverData)) {
@@ -74,9 +83,14 @@ export const basicSyncService = {
       }
       
       console.log('✅ SINCRONIZAÇÃO INICIAL CONCLUÍDA!');
+      console.log('🔓 APP DESBLOQUEADO - Realtime ativo!');
       
     } catch (error) {
       console.error('❌ Erro na sincronização inicial:', error);
+    } finally {
+      // DESBLOQUEAR APP
+      this.isAppBlocked = false;
+      this.syncInProgress = false;
     }
   },
 
