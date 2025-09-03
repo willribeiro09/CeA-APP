@@ -42,8 +42,73 @@ export const basicSyncService = {
     // Configurar realtime simples
     this.setupRealtime();
     
-    // Carregar dados iniciais
-    await this.loadInitialData();
+    // SEMPRE sincronizar na inicialização (independente de como o app foi aberto)
+    await this.forceInitialSync();
+  },
+
+  // NOVO: Sincronização forçada na inicialização (sempre executa)
+  async forceInitialSync(): Promise<void> {
+    if (!supabase) return;
+    
+    try {
+      console.log('🚀 SINCRONIZAÇÃO OBRIGATÓRIA NA INICIALIZAÇÃO...');
+      
+      // PASSO 1: Carregar dados do servidor (sempre os mais recentes)
+      console.log('📥 PASSO 1: Carregando dados do servidor...');
+      const serverData = await this.loadInitialData();
+      
+      if (!serverData) {
+        console.log('⚠️ Não foi possível carregar dados do servidor - usando dados locais');
+        return;
+      }
+      
+      // PASSO 2: Sincronizar dados locais (se existirem)
+      console.log('🔄 PASSO 2: Verificando dados locais para sincronização...');
+      const localData = storage.load();
+      
+      if (localData && this.hasLocalChanges(localData, serverData)) {
+        console.log('📱 Dados locais encontrados - fazendo merge inteligente...');
+        await this.sync(localData);
+      } else {
+        console.log('✅ Dados já sincronizados - usando dados do servidor');
+      }
+      
+      console.log('✅ SINCRONIZAÇÃO INICIAL CONCLUÍDA!');
+      
+    } catch (error) {
+      console.error('❌ Erro na sincronização inicial:', error);
+    }
+  },
+
+  // NOVO: Verificar se há mudanças locais significativas
+  hasLocalChanges(localData: StorageItems, serverData: StorageItems): boolean {
+    // Verificar se há diferenças significativas entre local e servidor
+    const localProjects = localData.projects?.length || 0;
+    const serverProjects = serverData.projects?.length || 0;
+    const localStock = localData.stock?.length || 0;
+    const serverStock = serverData.stock?.length || 0;
+    const localExpenses = Object.keys(localData.expenses || {}).length;
+    const serverExpenses = Object.keys(serverData.expenses || {}).length;
+    
+    const hasChanges = (
+      localProjects !== serverProjects ||
+      localStock !== serverStock ||
+      localExpenses !== serverExpenses ||
+      localData.willBaseRate !== serverData.willBaseRate ||
+      localData.willBonus !== serverData.willBonus
+    );
+    
+    if (hasChanges) {
+      console.log('📊 Mudanças detectadas:', {
+        projetos: `${localProjects} → ${serverProjects}`,
+        estoque: `${localStock} → ${serverStock}`,
+        despesas: `${localExpenses} → ${serverExpenses}`,
+        willBaseRate: `${localData.willBaseRate} → ${serverData.willBaseRate}`,
+        willBonus: `${localData.willBonus} → ${serverData.willBonus}`
+      });
+    }
+    
+    return hasChanges;
   },
 
   // NOVO: Sistema de debounce inteligente para sincronização
@@ -561,6 +626,7 @@ if (typeof window !== 'undefined') {
       }
       return false;
     },
+    forceInitialSync: () => basicSyncService.forceInitialSync(),
     getLocalData: () => storage.load(),
     clearLocal: () => {
       storage.clear();
