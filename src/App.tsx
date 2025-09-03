@@ -33,6 +33,7 @@ import ImageEditor from './components/ImageEditor';
 import { PhotoService } from './lib/photoService';
 import { v4 as uuidv4 } from 'uuid';
 import { SyncOverlay, useSyncStatus } from './components/SyncOverlay';
+
 import { 
   formatDateToISO, 
   parseISODate, 
@@ -98,8 +99,23 @@ export default function App() {
   const [selectedList, setSelectedList] = useState<ListName>('C&A');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(getProjectWeekStart(new Date()));
-  const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(getProjectWeekEnd(new Date()));
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => {
+    const weekStart = getProjectWeekStart(new Date());
+    console.log('🔍 DEBUG - selectedWeekStart inicializado:', {
+      today: new Date().toISOString(),
+      weekStart: weekStart.toISOString(),
+      weekStartDate: weekStart.toISOString().split('T')[0]
+    });
+    return weekStart;
+  });
+  const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(() => {
+    const weekEnd = getProjectWeekEnd(new Date());
+    console.log('🔍 DEBUG - selectedWeekEnd inicializado:', {
+      weekEnd: weekEnd.toISOString(),
+      weekEndDate: weekEnd.toISOString().split('T')[0]
+    });
+    return weekEnd;
+  });
   const [weekTotalValue, setWeekTotalValue] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
@@ -122,6 +138,7 @@ export default function App() {
   const [isProjectSummaryOpen, setIsProjectSummaryOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
   const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
+
 
   // NOVO: Hook para controlar o status de sincronização
   const { isBlocked: isSyncBlocked, message: syncMessage, executeWhenUnblocked } = useSyncStatus();
@@ -501,9 +518,9 @@ export default function App() {
   const handleUpdateItem = (updatedItem: Partial<Item>) => {
     // PROTEÇÃO: Executar apenas quando app não estiver bloqueado
     executeWhenUnblocked(() => {
-      try {
-        // Item básico para edição
-        const itemWithTimestamp = updatedItem;
+    try {
+      // Item básico para edição
+      const itemWithTimestamp = updatedItem;
       // Verificar o tipo do item usando propriedades específicas
       if ('description' in itemWithTimestamp) {
         // É uma despesa
@@ -530,58 +547,58 @@ export default function App() {
         });
       } else if ('client' in itemWithTimestamp) {
         // É um projeto
-                 setProjects(prevProjects => {
-           try {
-             // Verificar se o ID existe
-             if (!itemWithTimestamp.id) {
-               console.error("ID do projeto não encontrado nos dados de atualização");
-               return prevProjects;
-             }
-             
-             const index = prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
-             
-             if (index === -1) {
-               console.error("Projeto não encontrado com ID:", itemWithTimestamp.id);
-               return prevProjects;
-             }
-             
-             // Garantir que todos os campos obrigatórios estejam presentes
-             const existingProject = prevProjects[index];
-             
-             // Criar uma cópia do projeto com todos os campos necessários
-             const updatedProject: Project = {
-               id: itemWithTimestamp.id || existingProject.id,
-               name: itemWithTimestamp.name || existingProject.name,
-               description: itemWithTimestamp.description || existingProject.description,
-               client: itemWithTimestamp.client || existingProject.client,
-               startDate: itemWithTimestamp.startDate || existingProject.startDate,
-               status: itemWithTimestamp.status || existingProject.status,
-               location: itemWithTimestamp.location || existingProject.location || '',
-               value: itemWithTimestamp.value !== undefined ? itemWithTimestamp.value : existingProject.value || 0,
-               invoiceOk: itemWithTimestamp.invoiceOk !== undefined ? itemWithTimestamp.invoiceOk : existingProject.invoiceOk,
-               lastModified: itemWithTimestamp.lastModified,
-               deviceId: itemWithTimestamp.deviceId
-             };
-             
-             // Criar um novo array para evitar mutação direta
-             const newProjects = [...prevProjects];
-             newProjects[index] = updatedProject;
-             
-             // Salvar as alterações
-             saveChanges(createStorageData({
-               expenses,
-               projects: newProjects,
-               stock: stockItems,
-               employees
-             }));
-             
-             return newProjects;
-           } catch (error) {
-             console.error("Erro ao atualizar projeto:", error);
-             // Garantir que retornamos o estado anterior em caso de erro
-             return prevProjects;
-           }
-         });
+        setProjects(prevProjects => {
+          try {
+            // Verificar se o ID existe
+            if (!itemWithTimestamp.id) {
+              console.error("ID do projeto não encontrado nos dados de atualização");
+              return prevProjects;
+            }
+            
+            const index = prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
+            
+            if (index === -1) {
+              console.error("Projeto não encontrado com ID:", itemWithTimestamp.id);
+              return prevProjects;
+            }
+            
+            // Garantir que todos os campos obrigatórios estejam presentes
+            const existingProject = prevProjects[index];
+            
+            // Criar uma cópia do projeto com todos os campos necessários
+            const updatedProject: Project = {
+              id: itemWithTimestamp.id || existingProject.id,
+              name: itemWithTimestamp.name || existingProject.name,
+              description: itemWithTimestamp.description || existingProject.description,
+              client: itemWithTimestamp.client || existingProject.client,
+              startDate: itemWithTimestamp.startDate || existingProject.startDate,
+              status: itemWithTimestamp.status || existingProject.status,
+              location: itemWithTimestamp.location || existingProject.location || '',
+              value: itemWithTimestamp.value !== undefined ? itemWithTimestamp.value : existingProject.value || 0,
+              invoiceOk: itemWithTimestamp.invoiceOk !== undefined ? itemWithTimestamp.invoiceOk : existingProject.invoiceOk,
+              lastModified: itemWithTimestamp.lastModified,
+              deviceId: itemWithTimestamp.deviceId
+            };
+            
+            // Criar um novo array para evitar mutação direta
+            const newProjects = [...prevProjects];
+            newProjects[index] = updatedProject;
+            
+            // Salvar as alterações
+            saveChanges(createStorageData({
+              expenses,
+              projects: newProjects,
+              stock: stockItems,
+              employees
+            }));
+            
+            return newProjects;
+          } catch (error) {
+            console.error("Erro ao atualizar projeto:", error);
+            // Garantir que retornamos o estado anterior em caso de erro
+            return prevProjects;
+          }
+        });
       } else if ('quantity' in itemWithTimestamp) {
         // É um item de estoque
         setStockItems(prevStockItems => {
@@ -603,10 +620,10 @@ export default function App() {
         });
       } else if ('employeeName' in itemWithTimestamp) {
         // É um funcionário
-                 setEmployees(prevEmployees => {
-           if (itemWithTimestamp.name === 'Will' || itemWithTimestamp.employeeName === 'Will') {
-             return prevEmployees;
-           }
+        setEmployees(prevEmployees => {
+          if (itemWithTimestamp.name === 'Will' || itemWithTimestamp.employeeName === 'Will') {
+            return prevEmployees;
+          }
           
           const newEmployees = { ...prevEmployees };
           
@@ -630,14 +647,14 @@ export default function App() {
           return newEmployees;
         });
       }
-      } catch (error) {
-        console.error("Erro ao atualizar item:", error);
-        // Garantir que o diálogo seja fechado mesmo em caso de erro
-        setIsEditDialogOpen(false);
-      } finally {
-        // Fechar o diálogo após atualizar o item
-        setIsEditDialogOpen(false);
-      }
+    } catch (error) {
+      console.error("Erro ao atualizar item:", error);
+      // Garantir que o diálogo seja fechado mesmo em caso de erro
+      setIsEditDialogOpen(false);
+    } finally {
+      // Fechar o diálogo após atualizar o item
+      setIsEditDialogOpen(false);
+    }
     });
   };;
 
@@ -656,7 +673,7 @@ export default function App() {
     console.log('🚀 handleAddItem chamada com:', item);
     // PROTEÇÃO: Executar apenas quando app não estiver bloqueado
     executeWhenUnblocked(async () => {
-      try {
+    try {
       console.log('🔍 Dentro de executeWhenUnblocked, item:', item);
       // Verificar se o item já tem um ID, caso contrário, criar um novo
       if (!item.id) {
@@ -670,18 +687,18 @@ export default function App() {
         const expense = newItem as Expense;
         expense.paid = expense.paid || false;
 
-                 // Atualizar o estado
-         setExpenses(prevExpenses => {
-           // Criar uma cópia do objeto com tipagem correta
-           const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
-           
-           // Verificar se a lista existe
-           if (!newExpenses[selectedList]) {
-             newExpenses[selectedList] = [];
-           }
-           
-           // Adicionar a nova despesa à lista selecionada
-           newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
+        // Atualizar o estado
+        setExpenses(prevExpenses => {
+          // Criar uma cópia do objeto com tipagem correta
+          const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
+          
+          // Verificar se a lista existe
+          if (!newExpenses[selectedList]) {
+            newExpenses[selectedList] = [];
+          }
+          
+          // Adicionar a nova despesa à lista selecionada
+          newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
 
           // Salvar as alterações
           saveChanges(createStorageData({
@@ -693,40 +710,48 @@ export default function App() {
 
           return newExpenses;
         });
-             } else if (activeCategory === 'Projects') {
-         // Garantir que o projeto esteja formatado corretamente
-         const project = newItem as Project;
-         
-         // Garantir ID único
-         if (!project.id) {
-           project.id = uuidv4();
-         }
-         
-         // Garantir que campos obrigatórios existam
-         if (!project.client) project.client = "Cliente";
-         if (!project.name) project.name = project.client;
-         if (!project.startDate) project.startDate = new Date().toISOString();
-         if (!project.status) project.status = "in_progress";
-         if (!project.location) project.location = "";
-         if (project.value === undefined) project.value = 0;
+      } else if (activeCategory === 'Projects') {
+        // Garantir que o projeto esteja formatado corretamente
+        const project = newItem as Project;
+        
+        // Garantir ID único
+        if (!project.id) {
+          project.id = uuidv4();
+        }
+        
+        // Garantir que campos obrigatórios existam
+        if (!project.client) project.client = "Cliente";
+        if (!project.name) project.name = project.client;
+        if (!project.startDate) {
+          project.startDate = selectedWeekStart.toISOString();
+          console.log('🔍 DEBUG - Projeto criado com data:', {
+            projectClient: project.client,
+            selectedWeekStart: selectedWeekStart.toISOString(),
+            projectStartDate: project.startDate,
+            selectedWeekStartDate: selectedWeekStart.toISOString().split('T')[0]
+          });
+        }
+        if (!project.status) project.status = "in_progress";
+        if (!project.location) project.location = "";
+        if (project.value === undefined) project.value = 0;
 
-                 // Atualizar o estado
-         setProjects(prevProjects => {
-           // Clone profundo para evitar problemas de referência
-           const existingProjects = JSON.parse(JSON.stringify(prevProjects));
-           
-           // Verificar se o projeto já existe
-           const existingIndex = existingProjects.findIndex((p: Project) => p.id === project.id);
-           
-           let newProjects;
-           if (existingIndex >= 0) {
-             // Atualizar projeto existente
-             newProjects = [...existingProjects];
-             newProjects[existingIndex] = project;
-           } else {
-             // Adicionar novo projeto
-             newProjects = [...existingProjects, project];
-           }
+        // Atualizar o estado
+        setProjects(prevProjects => {
+          // Clone profundo para evitar problemas de referência
+          const existingProjects = JSON.parse(JSON.stringify(prevProjects));
+          
+          // Verificar se o projeto já existe
+          const existingIndex = existingProjects.findIndex((p: Project) => p.id === project.id);
+          
+          let newProjects;
+          if (existingIndex >= 0) {
+            // Atualizar projeto existente
+            newProjects = [...existingProjects];
+            newProjects[existingIndex] = project;
+          } else {
+            // Adicionar novo projeto
+            newProjects = [...existingProjects, project];
+          }
           
           // Salvar as alterações
           saveChanges(createStorageData({
@@ -738,13 +763,13 @@ export default function App() {
           
           return newProjects;
         });
-             } else if (activeCategory === 'Stock') {
-         const stockItem = newItem as StockItem;
-         stockItem.id = uuidv4();
+      } else if (activeCategory === 'Stock') {
+        const stockItem = newItem as StockItem;
+        stockItem.id = uuidv4();
 
-         // Atualizar o estado
-         setStockItems(prevStockItems => {
-           const newStockItems = [...prevStockItems, stockItem];
+        // Atualizar o estado
+        setStockItems(prevStockItems => {
+          const newStockItems = [...prevStockItems, stockItem];
 
           // Salvar as alterações
           saveChanges(createStorageData({
@@ -821,9 +846,9 @@ export default function App() {
           return updatedEmployees;
         });
       }
-      } catch (error) {
-        console.error('Error adding item:', error);
-      }
+    } catch (error) {
+      console.error('Error adding item:', error);
+    }
     });
   };;
 
@@ -919,12 +944,12 @@ export default function App() {
   const handleAddBonus = () => {
     setWillBonus(prev => {
       const newBonus = prev + 100;
-             // Salvar dados após atualizar o bônus
-       setTimeout(() => {
-         const storageData = getData();
-         storageData.willBaseRate = willBaseRate;
-         storageData.willBonus = newBonus;
-         saveChanges(createStorageData({
+      // Salvar dados após atualizar o bônus
+      setTimeout(() => {
+        const storageData = getData();
+        storageData.willBaseRate = willBaseRate;
+        storageData.willBonus = newBonus;
+        saveChanges(createStorageData({
           expenses: storageData.expenses,
           projects: storageData.projects,
           stock: storageData.stock,
@@ -947,12 +972,12 @@ export default function App() {
     setWillBaseRate(newBaseRate);
     setIsRateDialogOpen(false);
     
-         // Salvar dados após atualizar o salário base
-     setTimeout(() => {
-       const storageData = getData();
-       storageData.willBaseRate = newBaseRate;
-       storageData.willBonus = willBonus;
-       saveChanges(createStorageData({
+    // Salvar dados após atualizar o salário base
+    setTimeout(() => {
+      const storageData = getData();
+      storageData.willBaseRate = newBaseRate;
+      storageData.willBonus = willBonus;
+      saveChanges(createStorageData({
         expenses: storageData.expenses,
         projects: storageData.projects,
         stock: storageData.stock,
@@ -1021,7 +1046,7 @@ export default function App() {
 
   const calculateEmployeesTotal = () => {
     let total = 0;
-
+    
     // Obter TODOS os funcionários de todas as semanas
     const allEmployees: Employee[] = [];
     Object.keys(employees).forEach(weekKey => {
@@ -1031,7 +1056,7 @@ export default function App() {
         }
       });
     });
-
+    
     // Calcular total baseado nos dias trabalhados na semana selecionada
     allEmployees.forEach((employee) => {
       if (employee.name !== 'Will') { // Excluir Will do cálculo por dias trabalhados
@@ -1057,7 +1082,7 @@ export default function App() {
 
     // Adicionar valor fixo do Will + bônus
     total += willBaseRate + willBonus;
-
+    
     return total;
   };
 
@@ -1070,10 +1095,10 @@ export default function App() {
       setSelectedWeekStart(weekStart);
       setSelectedWeekEnd(weekEnd);
     } else {
-      const weekStart = getProjectWeekStart(today);
-      const weekEnd = getProjectWeekEnd(today);
-      setSelectedWeekStart(weekStart);
-      setSelectedWeekEnd(weekEnd);
+    const weekStart = getProjectWeekStart(today);
+    const weekEnd = getProjectWeekEnd(today);
+    setSelectedWeekStart(weekStart);
+    setSelectedWeekEnd(weekEnd);
     }
   };
 
@@ -1208,21 +1233,21 @@ export default function App() {
       // Encontrar o funcionário na semana
       let employeeIndex = newEmployees[formattedSelectedWeekStart].findIndex(e => e.id === employeeId);
       
-             // Se não encontrar o funcionário na semana atual, precisamos criá-lo
-       if (employeeIndex === -1) {
-         // Procurar o funcionário em todas as semanas
-         let employeeFromOtherWeek: Employee | undefined;
-         
-         Object.keys(newEmployees).forEach(weekKey => {
-           const found = newEmployees[weekKey].find(e => e.id === employeeId);
-           if (found && !employeeFromOtherWeek) {
-             employeeFromOtherWeek = found;
-           }
-         });
-         
-         if (employeeFromOtherWeek) {
-           // Criar uma cópia do funcionário para a semana atual
-           const newEmployee: Employee = {
+      // Se não encontrar o funcionário na semana atual, precisamos criá-lo
+      if (employeeIndex === -1) {
+        // Procurar o funcionário em todas as semanas
+        let employeeFromOtherWeek: Employee | undefined;
+        
+        Object.keys(newEmployees).forEach(weekKey => {
+          const found = newEmployees[weekKey].find(e => e.id === employeeId);
+          if (found && !employeeFromOtherWeek) {
+            employeeFromOtherWeek = found;
+          }
+        });
+        
+        if (employeeFromOtherWeek) {
+          // Criar uma cópia do funcionário para a semana atual
+          const newEmployee: Employee = {
             ...employeeFromOtherWeek,
             weekStartDate: formattedSelectedWeekStart,
             workedDates: [], // Inicializar com array vazio
@@ -1331,8 +1356,8 @@ export default function App() {
     const weekEmployee = weekEmployees.find(e => e.id === employee.id);
     
     // SEMPRE filtrar pelos dias da semana selecionada, independente de ter registro específico
-    let workedDatesInWeek: string[] = [];
-    
+      let workedDatesInWeek: string[] = [];
+      
     if (weekEmployee && weekEmployee.workedDates && weekEmployee.workedDates.length > 0) {
       // Se tem registro específico para esta semana, filtrar pelos dias da semana selecionada
       const weekStart = selectedWeekStart;
@@ -1344,25 +1369,25 @@ export default function App() {
       });
     } else if (employee.workedDates) {
       // Se não tem registro específico, filtrar datas trabalhadas que estão na semana selecionada
-      const weekStart = selectedWeekStart;
-      const weekEnd = selectedWeekEnd;
+        const weekStart = selectedWeekStart;
+        const weekEnd = selectedWeekEnd;
+        
+        workedDatesInWeek = employee.workedDates.filter(dateStr => {
+          const date = new Date(dateStr);
+          return date >= weekStart && date <= weekEnd;
+        });
+      }
       
-      workedDatesInWeek = employee.workedDates.filter(dateStr => {
-        const date = new Date(dateStr);
-        return date >= weekStart && date <= weekEnd;
-      });
-    }
-    
-    // Criar uma cópia do funcionário com apenas as datas desta semana
-    const employeeWithWeekDates = {
-      ...employee,
-      workedDates: workedDatesInWeek,
-      daysWorked: workedDatesInWeek.length,
-      // Garantir que temos a data de início da semana correta
-      weekStartDate: formattedSelectedWeekStart
-    };
-    
-    setReceiptEmployee(employeeWithWeekDates);
+      // Criar uma cópia do funcionário com apenas as datas desta semana
+      const employeeWithWeekDates = {
+        ...employee,
+        workedDates: workedDatesInWeek,
+        daysWorked: workedDatesInWeek.length,
+        // Garantir que temos a data de início da semana correta
+        weekStartDate: formattedSelectedWeekStart
+      };
+      
+      setReceiptEmployee(employeeWithWeekDates);
     setIsReceiptDialogOpen(true);
   };
 
@@ -1568,7 +1593,9 @@ export default function App() {
   return (
     <>
       <div className="min-h-screen bg-gray-50">
-        <Header activeCategory={activeCategory} />
+        <Header 
+          activeCategory={activeCategory} 
+        />
         <Navigation
           activeCategory={activeCategory}
           onCategoryChange={isBackgroundSyncing ? () => {} : setActiveCategory}
@@ -1705,8 +1732,49 @@ export default function App() {
               
               {activeCategory === 'Projects' && projects
                 .filter(project => {
-                  const projectDate = new Date(project.startDate);
-                  return projectDate >= selectedWeekStart && projectDate <= selectedWeekEnd;
+                  const projectStartDate = project.startDate;
+                  const projectEndDate = project.endDate;
+                  
+                  const weekStartStr = selectedWeekStart.toISOString().split('T')[0];
+                  const weekEndStr = selectedWeekEnd.toISOString().split('T')[0];
+                  
+                  // Debug logs
+                  console.log('🔍 DEBUG - Filtragem de projeto:', {
+                    projectClient: project.client,
+                    projectStartDate,
+                    projectEndDate,
+                    weekStartStr,
+                    weekEndStr,
+                    selectedWeekStart: selectedWeekStart.toISOString(),
+                    selectedWeekEnd: selectedWeekEnd.toISOString()
+                  });
+                  
+                  // Verificar se a data de início do projeto está dentro do intervalo da semana selecionada
+                  const startInRange = projectStartDate >= weekStartStr && 
+                                     projectStartDate <= weekEndStr;
+                  
+                  // Verificar se a data de fim do projeto está dentro do intervalo (se existir)
+                  const endInRange = projectEndDate && 
+                                   projectEndDate >= weekStartStr && 
+                                   projectEndDate <= weekEndStr;
+                  
+                  // Verificar se o projeto abrange todo o intervalo (começa antes e termina depois)
+                  const spansRange = projectStartDate <= weekStartStr && 
+                                   projectEndDate && 
+                                   projectEndDate >= weekEndStr;
+                  
+                  const shouldShow = startInRange || endInRange || spansRange;
+                  
+                  console.log('🔍 DEBUG - Resultado da filtragem:', {
+                    projectClient: project.client,
+                    startInRange,
+                    endInRange,
+                    spansRange,
+                    shouldShow
+                  });
+                  
+                  // Mostrar apenas projetos que estão diretamente relacionados à semana selecionada
+                  return shouldShow;
                 })
                 .map(project => (
                   <li key={project.id} className="list-none">
@@ -2186,6 +2254,8 @@ export default function App() {
         }}
         onSave={handleSaveEditedPhoto}
       />
+
+
     </>
   );
 }

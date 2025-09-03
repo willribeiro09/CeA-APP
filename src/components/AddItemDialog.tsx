@@ -111,8 +111,21 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
-      const startDate = data.startDate ? normalizeDate(new Date(data.startDate as string)) : new Date();
+      console.log('🔍 DEBUG - AddItemDialog - Dados do formulário:', {
+        dataStartDate: data.startDate,
+        selectedWeekStart: selectedWeekStart.toISOString(),
+        selectedWeekStartDate: selectedWeekStart.toISOString().split('T')[0]
+      });
+      
+      // SEMPRE usar selectedWeekStart para novos projetos, independente do que vem no formulário
+      const startDate = selectedWeekStart;
       const endDate = data.endDate ? normalizeDate(new Date(data.endDate as string)) : undefined;
+      
+      console.log('🔍 DEBUG - AddItemDialog - Datas processadas:', {
+        startDate: startDate.toISOString(),
+        startDateDate: startDate.toISOString().split('T')[0],
+        endDate: endDate?.toISOString()
+      });
       
       // Adicione logs detalhados sobre os dados do projeto
       console.log('Dados brutos do formulário de projeto:', data);

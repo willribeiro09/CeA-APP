@@ -2,7 +2,11 @@ import { format } from 'date-fns';
 import { useMemo } from 'react';
 import { Logo } from './Logo';
 
-export function Header({ activeCategory }: { activeCategory: string }) {
+interface HeaderProps {
+  activeCategory: string;
+}
+
+export function Header({ activeCategory }: HeaderProps) {
   // Usar useMemo para evitar recálculo da data a cada renderização
   const currentMonthYear = useMemo(() => format(new Date(), 'MMMM yyyy'), []);
   
@@ -18,8 +22,10 @@ export function Header({ activeCategory }: { activeCategory: string }) {
             </p>
           </div>
         </div>
-        <div className="ml-auto text-white text-lg font-medium">
-          {activeCategory}
+        <div className="ml-auto">
+          <div className="text-white text-lg font-medium">
+            {activeCategory}
+          </div>
         </div>
       </div>
     </header>
