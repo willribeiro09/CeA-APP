@@ -21,11 +21,18 @@ export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorPr
   // Atualizar as semanas quando o componente montar ou quando selectedWeekStart mudar
   useEffect(() => {
     // Encontrar a semana que corresponde à data selecionada
-    const matchingWeek = weeks.find(
-      week => week.value === selectedWeekStart.toISOString().split('T')[0]
-    ) || weeks.find(w => w.isCurrent) || weeks[weeks.length - 1];
+    const selectedWeekValue = selectedWeekStart.toISOString().split('T')[0];
+    const matchingWeek = weeks.find(week => week.value === selectedWeekValue);
     
-    setSelectedWeek(matchingWeek);
+    if (matchingWeek) {
+      setSelectedWeek(matchingWeek);
+    } else {
+      // Se não encontrar uma semana correspondente, usar a current week
+      const currentWeek = weeks.find(w => w.isCurrent);
+      if (currentWeek) {
+        setSelectedWeek(currentWeek);
+      }
+    }
   }, [selectedWeekStart, weeks]);
 
   // Usar useCallback para evitar recriação da função a cada renderização

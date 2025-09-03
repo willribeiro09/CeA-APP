@@ -1768,24 +1768,8 @@ export default function App() {
                       });
                     });
                     
-                    // Filtrar funcionários que trabalharam na semana selecionada
-                    const employeesInSelectedWeek = allEmployees.filter(employee => {
-                      if (employee.name === 'Will') return true; // Will sempre aparece
-                      
-                      // Verificar se o funcionário tem dias trabalhados na semana selecionada
-                      if (employee.workedDates && employee.workedDates.length > 0) {
-                        const weekStart = selectedWeekStart;
-                        const weekEnd = selectedWeekEnd;
-                        
-                        // Verificar se algum dia trabalhado está dentro do intervalo da semana selecionada
-                        return employee.workedDates.some(dateStr => {
-                          const workedDate = new Date(dateStr);
-                          return workedDate >= weekStart && workedDate <= weekEnd;
-                        });
-                      }
-                      
-                      return false;
-                    });
+                    // Mostrar TODOS os funcionários (exceto Will que é fixo)
+                    const employeesInSelectedWeek = allEmployees.filter(employee => employee.name !== 'Will');
                     
                     const employeeElements = [];
 
@@ -1805,19 +1789,19 @@ export default function App() {
                       </li>
                     );
 
-                    // Verificar se há funcionários que trabalharam na semana selecionada (excluindo Will)
-                    const otherEmployees = employeesInSelectedWeek.filter(emp => emp.name !== 'Will');
+                    // Verificar se há funcionários (excluindo Will)
+                    const otherEmployees = employeesInSelectedWeek;
                     
                     if (otherEmployees.length === 0) {
                       employeeElements.push(
                         <li key="no-employees" className="list-none">
                           <div className="bg-white p-4 rounded-lg shadow-sm text-center">
-                            <p className="text-gray-500">No employees worked this week.</p>
+                            <p className="text-gray-500">No employees added yet.</p>
                           </div>
                         </li>
                       );
                     } else {
-                      // Outros funcionários que trabalharam na semana selecionada
+                      // Todos os funcionários (mostrar sempre, independente de terem dias marcados)
                       otherEmployees.forEach(employee => {
                         // Calcular dias trabalhados especificamente para a semana selecionada
                         let daysWorkedInWeek = 0;
