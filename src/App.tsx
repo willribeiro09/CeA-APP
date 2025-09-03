@@ -1328,71 +1328,49 @@ export default function App() {
 
   // Função para alternar uma data trabalhada do funcionário
   const handleToggleEmployeeWorkedDate = (employeeId: string, date: string) => {
-    // Encontrar o funcionário na semana atual
-    const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-    const weekEmployees = employees[formattedSelectedWeekStart] || [];
-    const employeeIndex = weekEmployees.findIndex(e => e.id === employeeId);
+    // Encontrar o funcionário em qualquer semana
+    let employeeData: Employee | undefined;
+    let foundWeekKey: string | undefined;
     
-    if (employeeIndex === -1) {
-      console.error(`Funcionário com ID ${employeeId} não encontrado na semana ${formattedSelectedWeekStart}`);
+    Object.keys(employees).forEach(weekKey => {
+      const found = employees[weekKey].find(e => e.id === employeeId);
+      if (found && !employeeData) {
+        employeeData = found;
+        foundWeekKey = weekKey;
+      }
+    });
+    
+    if (!employeeData) {
+      console.error(`Funcionário com ID ${employeeId} não encontrado em nenhuma semana`);
       return;
     }
     
     // Obter os dados do funcionário
-    const employee = weekEmployees[employeeIndex];
-    const workedDates = employee.workedDates || [];
+    const workedDates = employeeData.workedDates || [];
     
     // Verificar se a data já está marcada como trabalhada
     const isDateWorked = workedDates.includes(date);
     
-    // Criar a nova lista de datas trabalhadas com segurança (clone para evitar referências)
+    // Criar a nova lista de datas trabalhadas
     const newWorkedDates = isDateWorked
       ? workedDates.filter(d => d !== date)
       : [...workedDates, date];
     
-    // Criar uma cópia do estado para trabalhar
+    // Atualizar o funcionário em todas as semanas onde ele existe
     setEmployees(prevEmployees => {
       const updatedEmployees = { ...prevEmployees };
       
-      // Garantir que a semana existe
-      if (!updatedEmployees[formattedSelectedWeekStart]) {
-        updatedEmployees[formattedSelectedWeekStart] = [];
-      }
-      
-      // Verificar novamente se o funcionário existe (pode ter mudado desde a verificação anterior)
-      const currentEmployeeIndex = updatedEmployees[formattedSelectedWeekStart].findIndex(e => e.id === employeeId);
-      
-      if (currentEmployeeIndex === -1) {
-        console.error(`Funcionário não encontrado na atualização. Tentando recuperar.`);
-        // Tentar encontrar o funcionário em outras semanas
-        let employeeData: Employee | undefined;
-        Object.values(updatedEmployees).forEach(weekEmps => {
-          const found = weekEmps.find(e => e.id === employeeId);
-          if (found) employeeData = found;
-        });
-        
-        if (!employeeData) {
-          console.error(`Não foi possível encontrar dados do funcionário.`);
-          return prevEmployees;
+      // Atualizar o funcionário em todas as semanas onde ele existe
+      Object.keys(updatedEmployees).forEach(weekKey => {
+        const employeeIndex = updatedEmployees[weekKey].findIndex(e => e.id === employeeId);
+        if (employeeIndex !== -1) {
+          updatedEmployees[weekKey][employeeIndex] = {
+            ...updatedEmployees[weekKey][employeeIndex],
+            workedDates: newWorkedDates,
+            daysWorked: newWorkedDates.length
+          };
         }
-        
-        // Criar novo registro para este funcionário nesta semana
-        const newEmployee: Employee = {
-          ...employeeData,
-          weekStartDate: formattedSelectedWeekStart,
-          daysWorked: newWorkedDates.length,
-          workedDates: newWorkedDates
-        };
-        
-        updatedEmployees[formattedSelectedWeekStart].push(newEmployee);
-      } else {
-        // Atualizar funcionário existente
-        updatedEmployees[formattedSelectedWeekStart][currentEmployeeIndex] = {
-          ...updatedEmployees[formattedSelectedWeekStart][currentEmployeeIndex],
-          daysWorked: newWorkedDates.length,
-          workedDates: newWorkedDates
-        };
-      }
+      });
       
       // Salvar no armazenamento local imediatamente
       const storageData = getData();
@@ -1402,8 +1380,8 @@ export default function App() {
             ...storageData,
             employees: updatedEmployees
           };
-                     saveChanges(createStorageData(updatedStorageData));
-         } catch (error) {
+          saveChanges(createStorageData(updatedStorageData));
+        } catch (error) {
           console.error('Erro ao salvar alterações:', error);
         }
       }
