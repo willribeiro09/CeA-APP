@@ -120,7 +120,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       console.log('Valor bruto:', data.value);
       
       // Garantir que temos todos os campos obrigatórios
-      const projectValue = normalizeMonetaryValue(data.value as string);
+      const projectValue = data.value ? normalizeMonetaryValue(data.value as string) : 0;
       console.log('Valor normalizado:', projectValue);
       
       // Criar o objeto do projeto com todos os campos obrigatórios
@@ -132,7 +132,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         location: data.location as string || '',
         startDate: startDate.toISOString(),
         endDate: endDate?.toISOString(),
-        status: data.status as 'completed' | 'in_progress',
+        status: (data.status as 'completed' | 'in_progress') || 'in_progress',
         value: projectValue,
         invoiceOk: (data.invoiceOk === 'on'),
         notes: data.notes as string || '',
@@ -318,7 +318,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     type="text"
                     id="location"
                     name="location"
-                    required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   />
                 </div>
@@ -342,7 +341,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     type="date"
                     id="startDate"
                     name="startDate"
-                    required
                     onFocus={handleInputFocus}
                     onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
@@ -355,7 +353,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                   <select
                     id="status"
                     name="status"
-                    required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   >
                     <option value="in_progress">In Progress</option>
