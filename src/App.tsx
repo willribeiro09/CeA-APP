@@ -445,15 +445,26 @@ export default function App() {
         return newStockItems;
       });
     } else if (category === 'Employees') {
+      console.log('🗑️ Tentando deletar funcionário:', id, 'da semana:', format(selectedWeekStart, 'yyyy-MM-dd'));
+      
       setEmployees(prevEmployees => {
         const newEmployees = { ...prevEmployees };
         const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
         
+        console.log('📅 Semana selecionada:', formattedSelectedWeekStart);
+        console.log('👥 Funcionários antes da deleção:', newEmployees[formattedSelectedWeekStart]?.length || 0);
+        
         // Deletar apenas da semana selecionada, não de todas as semanas
         if (newEmployees[formattedSelectedWeekStart]) {
+          const beforeCount = newEmployees[formattedSelectedWeekStart].length;
           newEmployees[formattedSelectedWeekStart] = newEmployees[formattedSelectedWeekStart].filter(
             employee => employee.id !== id
           );
+          const afterCount = newEmployees[formattedSelectedWeekStart].length;
+          
+          console.log('✅ Funcionário deletado! Antes:', beforeCount, 'Depois:', afterCount);
+        } else {
+          console.log('❌ Semana não encontrada:', formattedSelectedWeekStart);
         }
         
         saveChanges(createStorageData({
