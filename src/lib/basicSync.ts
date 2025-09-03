@@ -106,28 +106,45 @@ export const basicSyncService = {
   setupBackgroundDetection() {
     let lastCheckTime = Date.now();
     let lastFocusTime = Date.now();
+    let wasInBackground = false; // NOVO: Rastrear se realmente estava em segundo plano
+    let hasUserInteracted = false; // NOVO: Detectar se usuário já interagiu
     
-    // DETECÇÃO INTELIGENTE - Com debounce para reduzir spam
-    const queueSync = () => {
-      this.queueSync(() => this.handleAppReturn());
+    // DETECÇÃO INTELIGENTE - Apenas quando realmente volta do segundo plano
+    const handleReturnFromBackground = () => {
+      // Só fazer sync obrigatório se realmente estava em segundo plano
+      if (wasInBackground) {
+        console.log('🚀 VOLTA REAL do segundo plano - sincronização obrigatória...');
+        this.queueSync(() => this.handleAppReturn());
+        wasInBackground = false; // Reset
+      } else {
+        console.log('🔄 App já estava ativo - sync normal via realtime');
+      }
     };
 
-    // 1. Visibilitychange - Detecta mudança de aba/janela (mais confiável)
+    // 1. Detectar quando app VAI para segundo plano
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
+      if (document.hidden) {
+        console.log('📱 App foi para segundo plano');
+        wasInBackground = true; // Marcar que estava em segundo plano
+      } else {
         const now = Date.now();
-        console.log('🚀 App voltou (visibilitychange) - sincronização em fila...');
-        queueSync();
+        console.log('👁️ App voltou (visibilitychange)');
+        handleReturnFromBackground(); // Verificar se precisa sync obrigatório
         lastCheckTime = now;
         lastFocusTime = now;
       }
     });
 
-    // 2. Focus - Detectar foco da janela
+    // 2. Focus/Blur - Detectar foco da janela  
+    window.addEventListener('blur', () => {
+      console.log('🌫️ Janela perdeu foco');
+      wasInBackground = true; // Marcar que estava em segundo plano
+    });
+
     window.addEventListener('focus', () => {
       const now = Date.now();
-      console.log('🎯 App recebeu foco (focus) - sincronização em fila...');
-      queueSync();
+      console.log('🎯 Janela ganhou foco');
+      handleReturnFromBackground(); // Verificar se precisa sync obrigatório
       lastCheckTime = now;
       lastFocusTime = now;
     });
@@ -135,39 +152,40 @@ export const basicSyncService = {
     // 3. PWA: Pageshow - Específico para volta do cache/background
     window.addEventListener('pageshow', (event) => {
       const now = Date.now();
-      console.log('📱 PWA: App voltou (pageshow) - sincronização em fila...');
-      queueSync();
+      console.log('📱 PWA: Pageshow');
+      // Pageshow sempre indica volta do segundo plano
+      wasInBackground = true;
+      handleReturnFromBackground();
       lastCheckTime = now;
     });
 
     // 4. PWA: Resume - Evento específico de PWA
     document.addEventListener('resume', () => {
       const now = Date.now();
-      console.log('📱 PWA: App resumed (resume) - sincronização em fila...');
-      queueSync();
+      console.log('📱 PWA: Resume');
+      wasInBackground = true; // Resume sempre é volta do segundo plano
+      handleReturnFromBackground();
       lastCheckTime = now;
     });
 
-    // 5. DETECÇÃO TEMPORAL INTELIGENTE - Reduzida para evitar spam
-    setInterval(() => {
-      if (!document.hidden && navigator.onLine) {
-        const now = Date.now();
-        // Verificação a cada 45 segundos se passou mais de 90s sem sync
-        if (now - lastCheckTime > 90000) {
-          console.log('⏰ Verificação inteligente (90s+) - sincronização...');
-          this.handleAppReturn();
-          lastCheckTime = now;
-        }
-      }
-    }, 45000); // Verifica a cada 45 segundos (aumentado de 15s)
+    // 5. REMOVIDO: Verificação temporal que causava syncs desnecessários
+    // NOTA: Realtime cuida da sincronização automática quando app está ativo
 
-    // 6. PWA: Detectar mudanças no estado online/offline
+    // 6. Conectividade restaurada (apenas quando volta online)
     window.addEventListener('online', () => {
-      console.log('🌐 ONLINE: Conectividade restaurada - sincronização em fila...');
-      setTimeout(() => queueSync(), 100); // Pequeno delay para estabilizar
+      console.log('🌐 ONLINE: Conectividade restaurada');
+      // Só fazer sync se estava realmente offline por um tempo
+      const now = Date.now();
+      if (now - lastCheckTime > 30000) { // 30 segundos offline
+        console.log('🌐 Estava offline por tempo significativo - sincronizando...');
+        setTimeout(() => handleReturnFromBackground(), 100);
+      }
     });
 
-    console.log('🔧 Detecção configurada com DEBOUNCE INTELIGENTE para reduzir spam');
+    console.log('🔧 Detecção OTIMIZADA configurada:');
+    console.log('   - Sync obrigatório: APENAS quando volta do segundo plano');
+    console.log('   - Realtime: Funciona normalmente quando app está ativo');
+    console.log('   - Verificação temporal: REMOVIDA para evitar spam');
   },
 
   async handleAppReturn() {
@@ -182,6 +200,15 @@ export const basicSyncService = {
     // Evitar syncs simultâneos
     if (this.syncInProgress) {
       console.log('🔄 Sync já em progresso, ignorando...');
+      return;
+    }
+    
+    // NOVO: Verificar se realmente precisa de sync obrigatório
+    const timeSinceLastSync = now - this.lastSyncTime;
+    const needsForcedSync = timeSinceLastSync > 30000; // 30 segundos
+    
+    if (!needsForcedSync) {
+      console.log('🔄 Sync recente - usando realtime normal');
       return;
     }
     
@@ -827,6 +854,43 @@ if (typeof window !== 'undefined') {
       console.log('⚡ TESTE: Sincronização instantânea...');
       basicSyncService.lastSyncTime = 0;
       basicSyncService.handleAppReturn();
+    },
+    // NOVO: Funções para testar o comportamento otimizado
+    testBackgroundReturn: () => {
+      console.log('🧪 TESTE: Simulando volta do segundo plano...');
+      
+      // Simular que estava em segundo plano
+      const event = new Event('visibilitychange');
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+      document.dispatchEvent(event);
+      
+      setTimeout(() => {
+        // Simular volta para primeiro plano
+        Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+        document.dispatchEvent(event);
+        console.log('✅ Teste concluído - verificar se sync obrigatório foi ativado');
+      }, 1000);
+    },
+    getOptimizedStatus: () => {
+      const now = Date.now();
+      const timeSinceLastSync = now - basicSyncService.lastSyncTime;
+      
+      return {
+        isAppBlocked: basicSyncService.isAppBlocked,
+        syncInProgress: basicSyncService.syncInProgress,
+        lastSyncTime: new Date(basicSyncService.lastSyncTime).toLocaleString('pt-BR'),
+        timeSinceLastSync: Math.round(timeSinceLastSync / 1000),
+        wouldTriggerSync: timeSinceLastSync > 30000,
+        queueLength: basicSyncService.syncQueue.length,
+        pendingInteractions: basicSyncService.pendingInteractions.length
+      };
+    },
+    disableSync: () => {
+      console.log('⛔ DESABILITANDO sincronização obrigatória para teste...');
+      basicSyncService.isAppBlocked = false;
+      basicSyncService.syncInProgress = false;
+      basicSyncService.isSyncingOnReturn = false;
+      basicSyncService.cleanup();
     }
   };
   
