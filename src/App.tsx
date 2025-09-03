@@ -1248,7 +1248,7 @@ export default function App() {
           dailyRate: foundEmployee.dailyRate || 250,
           weekStartDate: formattedSelectedWeekStart,
           daysWorked: 0,
-          workedDates: [],
+          workedDates: [], // ← SEMPRE iniciar com array vazio para nova semana
           category: 'Employees'
         };
         
@@ -1275,7 +1275,7 @@ export default function App() {
       employeeName: employee.name || "",
       weekStartDate: formattedSelectedWeekStart,
       daysWorked: 0,
-      workedDates: [],
+      workedDates: [], // ← SEMPRE iniciar com array vazio para nova semana
       category: 'Employees' as const
     };
     
@@ -1290,40 +1290,39 @@ export default function App() {
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
     const weekEmployee = weekEmployees.find(e => e.id === employee.id);
     
-    // Se o funcionário já tem dias trabalhados específicos para esta semana
+    // SEMPRE filtrar pelos dias da semana selecionada, independente de ter registro específico
+    let workedDatesInWeek: string[] = [];
+    
     if (weekEmployee && weekEmployee.workedDates && weekEmployee.workedDates.length > 0) {
-      setReceiptEmployee({
-        ...weekEmployee,
-        // Garantir que temos a data de início da semana correta
-        weekStartDate: formattedSelectedWeekStart
+      // Se tem registro específico para esta semana, filtrar pelos dias da semana selecionada
+      const weekStart = selectedWeekStart;
+      const weekEnd = selectedWeekEnd;
+      
+      workedDatesInWeek = weekEmployee.workedDates.filter(dateStr => {
+        const date = new Date(dateStr);
+        return date >= weekStart && date <= weekEnd;
       });
-    } else {
-      // Se não tem registro específico, filtrar datas trabalhadas que estão na semana atual
-      let workedDatesInWeek: string[] = [];
+    } else if (employee.workedDates) {
+      // Se não tem registro específico, filtrar datas trabalhadas que estão na semana selecionada
+      const weekStart = selectedWeekStart;
+      const weekEnd = selectedWeekEnd;
       
-      if (employee.workedDates) {
-        const weekStart = selectedWeekStart;
-        const weekEnd = selectedWeekEnd;
-        
-        workedDatesInWeek = employee.workedDates.filter(dateStr => {
-          const date = new Date(dateStr);
-          return date >= weekStart && date <= weekEnd;
-        });
-      }
-      
-      // Criar uma cópia do funcionário com apenas as datas desta semana
-      const employeeWithWeekDates = {
-        ...employee,
-        workedDates: workedDatesInWeek,
-        daysWorked: workedDatesInWeek.length,
-        // Garantir que temos a data de início da semana correta
-        weekStartDate: formattedSelectedWeekStart
-      };
-      
-      setReceiptEmployee(employeeWithWeekDates);
+      workedDatesInWeek = employee.workedDates.filter(dateStr => {
+        const date = new Date(dateStr);
+        return date >= weekStart && date <= weekEnd;
+      });
     }
     
-    // Certifique-se de usar a semana atualmente selecionada
+    // Criar uma cópia do funcionário com apenas as datas desta semana
+    const employeeWithWeekDates = {
+      ...employee,
+      workedDates: workedDatesInWeek,
+      daysWorked: workedDatesInWeek.length,
+      // Garantir que temos a data de início da semana correta
+      weekStartDate: formattedSelectedWeekStart
+    };
+    
+    setReceiptEmployee(employeeWithWeekDates);
     setIsReceiptDialogOpen(true);
   };
 
@@ -1828,12 +1827,8 @@ export default function App() {
                                     </button>
                                     <button
                                       onClick={isBackgroundSyncing ? () => {} : () => {
-                                        // Usar a função para abrir o recibo
-                                        openReceipt({
-                                          ...employee,
-                                          daysWorked: daysWorkedInWeek,
-                                          workedDates: workedDatesInWeek
-                                        });
+                                        // Usar a função para abrir o recibo - passar o funcionário original
+                                        openReceipt(employee);
                                       }}
                                       disabled={isBackgroundSyncing}
                                       className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors h-8"
