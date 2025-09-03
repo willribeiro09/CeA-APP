@@ -1850,6 +1850,18 @@ export default function App() {
                                     >
                                       Receipt
                                     </button>
+                                    {/* Botão temporário de delete para teste local */}
+                                    <button
+                                      onClick={isBackgroundSyncing ? () => {} : () => {
+                                        console.log('🗑️ Botão delete clicado para funcionário:', employee.id);
+                                        handleDeleteItem(employee.id, 'Employees');
+                                      }}
+                                      disabled={isBackgroundSyncing}
+                                      className="px-3 py-1 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition-colors h-8"
+                                      title="Deletar funcionário (temporário para teste)"
+                                    >
+                                      🗑️
+                                    </button>
                                   </div>
                                 </div>
                                 <div className="space-y-0.5">
