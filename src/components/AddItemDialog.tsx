@@ -106,7 +106,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         amount: parseFloat(data.amount as string),
         date: dueDate.toISOString(),
         category: 'Expenses',
-        paid: false
+        paid: false,
+        is_paid: false
       } as Partial<Expense>;
       console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);

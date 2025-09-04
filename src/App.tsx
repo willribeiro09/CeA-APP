@@ -384,9 +384,11 @@ export default function App() {
     
     if (index !== -1) {
       const updatedExpenses = [...selectedExpenses];
+      const newPaidStatus = !(updatedExpenses[index].is_paid || updatedExpenses[index].paid);
       updatedExpenses[index] = {
         ...updatedExpenses[index],
-        is_paid: !updatedExpenses[index].is_paid
+        is_paid: newPaidStatus,
+        paid: newPaidStatus
       };
       
       const newExpenses = {
@@ -686,6 +688,7 @@ export default function App() {
       if (activeCategory === 'Expenses') {
         const expense = newItem as Expense;
         expense.paid = expense.paid || false;
+        expense.is_paid = expense.is_paid || false;
 
         // Atualizar o estado
         setExpenses(prevExpenses => {
@@ -1131,7 +1134,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [activeCategory]); // Removido selectedWeekStart e selectedWeekEnd para evitar loop
 
-  // Função para ordenar despesas por data de vencimento (mais atrasadas primeiro)
+  // Função para ordenar despesas por data de vencimento (mais próximos ou vencidos primeiro)
   const sortExpensesByDueDate = (expenseList: Expense[]) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1141,36 +1144,27 @@ export default function App() {
     upcomingLimit.setDate(today.getDate() + 7);
     
     return [...expenseList].sort((a, b) => {
-      // Primeiro critério: status de pagamento (pagas primeiro)
-      if (a.paid !== b.paid) {
-        return a.paid ? -1 : 1;
-      }
-      
-      // Se ambas estão pagas ou ambas não estão pagas, continuar com os outros critérios
       const dueDateA = new Date(a.date);
       const dueDateB = new Date(b.date);
       
-      // Para itens não pagos, verificar status de vencimento
-      if (!a.paid) {
-        // Verificar se as datas estão atrasadas (antes de hoje)
-        const isOverdueA = dueDateA < today;
-        const isOverdueB = dueDateB < today;
-        
-        // Verificar se as datas estão próximas do vencimento (entre hoje e o limite)
-        const isUpcomingA = !isOverdueA && dueDateA <= upcomingLimit;
-        const isUpcomingB = !isOverdueB && dueDateB <= upcomingLimit;
-        
-        // Categorizar por status de vencimento
-        const categoryA = isOverdueA ? 1 : (isUpcomingA ? 2 : 3); // 1=atrasada, 2=próxima, 3=futura
-        const categoryB = isOverdueB ? 1 : (isUpcomingB ? 2 : 3);
-        
-        // Se estão em categorias diferentes, ordenar por categoria
-        if (categoryA !== categoryB) {
-          return categoryA - categoryB;
-        }
+      // Verificar se as datas estão atrasadas (antes de hoje)
+      const isOverdueA = dueDateA < today;
+      const isOverdueB = dueDateB < today;
+      
+      // Verificar se as datas estão próximas do vencimento (entre hoje e o limite)
+      const isUpcomingA = !isOverdueA && dueDateA <= upcomingLimit;
+      const isUpcomingB = !isOverdueB && dueDateB <= upcomingLimit;
+      
+      // Categorizar por status de vencimento (independente do pagamento)
+      const categoryA = isOverdueA ? 1 : (isUpcomingA ? 2 : 3); // 1=atrasada, 2=próxima, 3=futura
+      const categoryB = isOverdueB ? 1 : (isUpcomingB ? 2 : 3);
+      
+      // Se estão em categorias diferentes, ordenar por categoria
+      if (categoryA !== categoryB) {
+        return categoryA - categoryB;
       }
       
-      // Se estão na mesma categoria ou ambas pagas, ordenar por data
+      // Se estão na mesma categoria, ordenar por data (mais próximos primeiro)
       return dueDateA.getTime() - dueDateB.getTime();
     });
   };

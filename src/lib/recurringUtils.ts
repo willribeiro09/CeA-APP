@@ -35,6 +35,7 @@ export function getExpenseStatus(expense: Expense) {
   const dueDate = new Date(expense.date);
   const isPaid = expense.is_paid || expense.paid;
   
+  
   // Se é recorrente, verificar se foi paga este mês
   if (isRecurringExpense(expense)) {
     const currentMonth = today.getMonth();
@@ -42,48 +43,69 @@ export function getExpenseStatus(expense: Expense) {
     const dueMonth = dueDate.getMonth();
     const dueYear = dueDate.getFullYear();
     
-    // Se é do mês atual e foi paga, fica verde
-    if (currentMonth === dueMonth && currentYear === dueYear && isPaid) {
-      return {
-        status: 'paid-this-month',
-        class: 'bg-green-50 border-l-4 border-green-500',
-        text: 'Paid this month'
-      };
-    }
-    
-    // Se não foi paga ou é de mês anterior, fica vermelha
-    const diffTime = dueDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) {
-      // Overdue - show when it was due and next due date
+    // Se foi paga, fica verde (independente do mês)
+    if (isPaid) {
+      // Formatar data como MM/DD
+      const formattedDate = `${String(dueDate.getMonth() + 1).padStart(2, '0')}/${String(dueDate.getDate()).padStart(2, '0')}`;
+      
+      // Calcular próxima data de vencimento para itens pagos
       const recurrenceType = getRecurrenceType(expense);
       let nextDueDate = new Date(dueDate);
       
       // Calculate next due date based on recurrence type
       if (recurrenceType === 'monthly') {
-        nextDueDate = new Date(today.getFullYear(), today.getMonth(), dueDate.getDate());
-        if (nextDueDate <= today) {
-          nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+        // Para mensal, sempre calcular a próxima data baseada na data original de vencimento
+        // Calcular o próximo mês mantendo o dia original
+        const nextMonth = dueDate.getMonth() + 1;
+        const nextYear = dueDate.getFullYear();
+        const originalDay = dueDate.getDate();
+        
+        // Criar a data do próximo mês
+        nextDueDate = new Date(nextYear, nextMonth, originalDay);
+        
+        // Se o dia não existe no próximo mês (ex: 31 de janeiro → 31 de fevereiro)
+        // ajustar para o último dia do mês
+        if (nextDueDate.getDate() !== originalDay) {
+          nextDueDate = new Date(nextYear, nextMonth + 1, 0); // Último dia do mês
         }
+        
       } else if (recurrenceType === 'biweekly') {
+        // Para quinzenal, sempre calcular a próxima data baseada na data original
         nextDueDate = new Date(dueDate);
-        while (nextDueDate <= today) {
-          nextDueDate.setDate(nextDueDate.getDate() + 14);
-        }
+        nextDueDate.setDate(nextDueDate.getDate() + 14);
       } else if (recurrenceType === 'weekly') {
+        // Para semanal, sempre calcular a próxima data baseada na data original
         nextDueDate = new Date(dueDate);
-        while (nextDueDate <= today) {
-          nextDueDate.setDate(nextDueDate.getDate() + 7);
-        }
+        nextDueDate.setDate(nextDueDate.getDate() + 7);
       }
+      
+      // Formatar nome do mês
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                         'July', 'August', 'September', 'October', 'November', 'December'];
+      const nextMonthName = monthNames[nextDueDate.getMonth()];
+      
+      return {
+        status: 'paid-this-month',
+        class: 'bg-green-50 border-l-4 border-green-500',
+        text: `${formattedDate} Paid`,
+        nextDueDate,
+        nextDueText: `Next due in ${nextMonthName} ${nextDueDate.getDate()}`
+      };
+    }
+    
+    // Se não foi paga, verificar se está vencida
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      // Overdue - mostrar "Due since [data]"
+      const formattedDate = `${String(dueDate.getMonth() + 1).padStart(2, '0')}/${String(dueDate.getDate()).padStart(2, '0')}`;
       
       return {
         status: 'overdue-recurring',
         class: 'bg-red-50 border-l-4 border-red-500',
-        text: `Overdue since ${dueDate.getDate()}/${dueDate.getMonth() + 1}`,
-        overdueDate: dueDate,
-        nextDueDate
+        text: `Due since ${formattedDate}`,
+        overdueDate: dueDate
       };
     }
     

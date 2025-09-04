@@ -79,7 +79,10 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         description,
         amount: parseFloat(data.amount as string),
         date: new Date(data.dueDate as string).toISOString(),
-        category: 'Expenses'
+        category: 'Expenses',
+        // Preservar o status de pagamento existente
+        is_paid: (item as Expense).is_paid,
+        paid: (item as Expense).paid
       };
       console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);

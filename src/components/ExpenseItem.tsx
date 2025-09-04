@@ -55,17 +55,24 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit }: Expense
               <Repeat className="w-4 h-4 text-gray-400" title="Recurring expense" />
             )}
           </div>
-          <p className="text-gray-600 text-sm">
-            Due on {formattedDueDate}
-          </p>
-          {status.overdueDate && status.nextDueDate && (
+          {!isPaid && (
+            <p className="text-gray-600 text-sm">
+              Due on {formattedDueDate}
+            </p>
+          )}
+          {status.overdueDate && status.nextDueDate && !isPaid && (
             <p className="text-xs text-blue-600">
               Next due: {nextDueFormatted}
             </p>
           )}
-          {status.nextDueDate && !status.overdueDate && (
+          {status.nextDueDate && !status.overdueDate && !isPaid && (
             <p className="text-xs text-blue-600">
               Next: {nextDueFormatted}
+            </p>
+          )}
+          {status.nextDueText && (
+            <p className="text-gray-600 text-sm">
+              {status.nextDueText}
             </p>
           )}
         </div>
