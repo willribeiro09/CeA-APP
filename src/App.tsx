@@ -1873,13 +1873,6 @@ export default function App() {
                     // Mostrar apenas os funcionários da semana selecionada
                     const employeesInSelectedWeek = (employees[formattedSelectedWeekStart] || []).filter(employee => employee.name !== 'Will');
                     
-                    console.log('🔍 DEBUG - Renderizando funcionários:', {
-                      formattedSelectedWeekStart,
-                      allEmployeesKeys: Object.keys(employees),
-                      employeesInWeek: employees[formattedSelectedWeekStart] || [],
-                      employeesInSelectedWeek,
-                      employeesCount: employeesInSelectedWeek.length
-                    });
                     
                     const employeeElements = [];
 
@@ -2164,6 +2157,9 @@ export default function App() {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
+                <p id="calendar-dialog-description" className="text-sm text-gray-600 mb-4">
+                  Select the days when {selectedEmployee.name} worked this week.
+                </p>
                 <WorkDaysCalendar
                   employeeId={selectedEmployee.id}
                   initialWorkedDates={selectedEmployee.workedDates || []}
