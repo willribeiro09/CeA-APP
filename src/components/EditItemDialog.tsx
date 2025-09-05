@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Item, ValidationError, Expense, Project, StockItem, Employee, BaseItem } from '../types';
 import { validation, normalizeMonetaryValue } from '../lib/validation';
-import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
+import { normalizeDate, formatDateToISO, parseISODate } from '../lib/dateUtils';
 
 interface EditItemDialogProps {
   isOpen: boolean;
@@ -49,10 +49,8 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Formulário de edição enviado");
     const formData = new FormData(e.target as HTMLFormElement);
     const data = Object.fromEntries(formData);
-    console.log("Dados do formulário:", data);
     
     let itemData: Partial<Item>;
     let validationError: string | null = null;
@@ -89,14 +87,11 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     } else if (item && 'client' in item) {
       // É um projeto
       try {
-        console.log("Processando projeto para edição:", JSON.stringify(item));
-        
         // Necessário extrair cada campo individualmente para evitar problemas
         const projectItem = item as Project;
         
         // IMPORTANTE: Preservar o ID original!
         const projectId = projectItem.id;
-        console.log("ID original do projeto:", projectId);
         
         const projectClient = data.client as string;
         const projectLocation = data.location as string;
@@ -104,7 +99,8 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         const projectNotes = data.notes as string;
         
         // Normalizar datas (importante para funcionar corretamente)
-        const projectStartDate = data.startDate ? formatDateToISO(normalizeDate(new Date(data.startDate as string))) : projectItem.startDate;
+        // Para formulários de data HTML, usar parseISODate e depois formatDateToISO para evitar problemas de fuso
+        const projectStartDate = data.startDate ? formatDateToISO(parseISODate(data.startDate as string) || new Date(projectItem.startDate)) : projectItem.startDate;
         const projectStatus = data.status as 'completed' | 'in_progress';
         const projectValue = normalizeMonetaryValue(data.value as string);
         const invoiceOk = data.invoiceOk === 'on';
@@ -128,7 +124,6 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           photos: projectItem.photos || []
         };
         
-        console.log("Dados do projeto formatados para edição:", JSON.stringify(itemData));
         validationError = validation.project(itemData as Partial<Project>);
       } catch (error) {
         console.error("Erro no processamento dos dados do projeto:", error);
@@ -165,12 +160,10 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
     }
 
     if (validationError) {
-      console.error("Erro de validação:", validationError);
       setErrors([{ field: 'form', message: validationError }]);
       return;
     }
 
-    console.log("Dados válidos, chamando onSubmit com:", itemData);
     setErrors([]);
     onSubmit(itemData);
     onOpenChange(false);

@@ -3,7 +3,7 @@ import { X, Upload, Image } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { Item, ValidationError, Expense, Project, StockItem, Employee, ProjectPhoto } from '../types';
 import { validation, normalizeMonetaryValue } from '../lib/validation';
-import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
+import { normalizeDate, formatDateToISO, parseISODate } from '../lib/dateUtils';
 import { v4 as uuidv4 } from 'uuid';
 import { PhotoService } from '../lib/photoService';
 import { getEnvironmentInfo } from '../lib/deviceUtils';
@@ -120,9 +120,10 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         selectedWeekStartDate: selectedWeekStart.toISOString().split('T')[0]
       });
       
-      // SEMPRE usar selectedWeekStart para novos projetos, independente do que vem no formulário
-      const startDate = selectedWeekStart;
-      const endDate = data.endDate ? normalizeDate(new Date(data.endDate as string)) : undefined;
+      // Usar a data do formulário se fornecida, caso contrário usar selectedWeekStart
+      // Para formulários de data HTML, usar parseISODate em vez de normalizeDate para evitar problemas de fuso
+      const startDate = data.startDate ? parseISODate(data.startDate as string) || selectedWeekStart : selectedWeekStart;
+      const endDate = data.endDate ? parseISODate(data.endDate as string) : undefined;
       
       console.log('🔍 DEBUG - AddItemDialog - Datas processadas:', {
         startDate: startDate.toISOString(),
@@ -146,7 +147,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         client: data.client as string,
         projectNumber: data.projectNumber as string || '',
         location: data.location as string || '',
-        startDate: startDate.toISOString(),
+        startDate: startDate ? startDate.toISOString() : selectedWeekStart.toISOString(),
         endDate: endDate?.toISOString(),
         status: (data.status as 'completed' | 'in_progress') || 'in_progress',
         value: projectValue,
@@ -198,10 +199,16 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
 
     console.log("✅ Dados válidos, chamando onSubmit com:", itemData);
     setErrors([]);
-    console.log("🚀 Chamando onSubmit...");
-    onSubmit(itemData);
-    console.log("🚀 onSubmit chamado, fechando dialog...");
-    onOpenChange(false);
+    
+    try {
+      console.log("🚀 Chamando onSubmit...");
+      onSubmit(itemData);
+      console.log("🚀 onSubmit chamado com sucesso, fechando dialog...");
+      onOpenChange(false);
+    } catch (error) {
+      console.error("❌ Erro ao chamar onSubmit:", error);
+      setErrors([{ field: 'form', message: 'Erro ao salvar item. Tente novamente.' }]);
+    }
   };
 
   const getFieldError = (fieldName: string) => {
@@ -357,6 +364,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     type="date"
                     id="startDate"
                     name="startDate"
+                    defaultValue={selectedWeekStart?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0]}
                     onFocus={handleInputFocus}
                     onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
