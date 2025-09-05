@@ -573,11 +573,15 @@ export default function App() {
               name: itemWithTimestamp.name || existingProject.name,
               description: itemWithTimestamp.description || existingProject.description,
               client: itemWithTimestamp.client || existingProject.client,
+              projectNumber: itemWithTimestamp.projectNumber || existingProject.projectNumber || '',
               startDate: itemWithTimestamp.startDate || existingProject.startDate,
+              endDate: itemWithTimestamp.endDate || existingProject.endDate,
               status: itemWithTimestamp.status || existingProject.status,
               location: itemWithTimestamp.location || existingProject.location || '',
               value: itemWithTimestamp.value !== undefined ? itemWithTimestamp.value : existingProject.value || 0,
               invoiceOk: itemWithTimestamp.invoiceOk !== undefined ? itemWithTimestamp.invoiceOk : existingProject.invoiceOk,
+              notes: itemWithTimestamp.notes || existingProject.notes || '',
+              photos: itemWithTimestamp.photos || existingProject.photos || [],
               lastModified: itemWithTimestamp.lastModified,
               deviceId: itemWithTimestamp.deviceId
             };

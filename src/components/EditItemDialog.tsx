@@ -101,6 +101,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         const projectClient = data.client as string;
         const projectLocation = data.location as string;
         const projectNumber = data.projectNumber as string;
+        const projectNotes = data.notes as string;
         
         // Normalizar datas (importante para funcionar corretamente)
         const projectStartDate = data.startDate ? formatDateToISO(normalizeDate(new Date(data.startDate as string))) : projectItem.startDate;
@@ -121,7 +122,10 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           status: projectStatus,
           invoiceOk: invoiceOk,
           // Preservar outros campos que podem existir
-          description: projectItem.description
+          description: projectItem.description,
+          endDate: projectItem.endDate,
+          notes: projectNotes || projectItem.notes || '',
+          photos: projectItem.photos || []
         };
         
         console.log("Dados do projeto formatados para edição:", JSON.stringify(itemData));
@@ -383,6 +387,19 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                   <label htmlFor="invoiceOk" className="ml-2 block text-sm text-gray-700">
                     Invoice OK
                   </label>
+                </div>
+                <div>
+                  <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+                    Notes
+                  </label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows={3}
+                    defaultValue={(item as Project).notes || ''}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
+                    placeholder="Add project notes..."
+                  />
                 </div>
               </>
             )}

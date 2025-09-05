@@ -6,6 +6,7 @@ import { validation, normalizeMonetaryValue } from '../lib/validation';
 import { normalizeDate, formatDateToISO } from '../lib/dateUtils';
 import { v4 as uuidv4 } from 'uuid';
 import { PhotoService } from '../lib/photoService';
+import { getEnvironmentInfo } from '../lib/deviceUtils';
 
 interface AddItemDialogProps {
   isOpen: boolean;
@@ -56,7 +57,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       const uploadPromises = Array.from(files).map(async (file) => {
         // Criar um ID temporário para o projeto (será substituído quando o projeto for criado)
         const tempProjectId = 'temp-' + uuidv4();
-        return await PhotoService.uploadPhoto(tempProjectId, file);
+        const deviceId = getEnvironmentInfo().deviceId;
+        return await PhotoService.uploadPhoto(file, tempProjectId, deviceId);
       });
 
       const newPhotos = await Promise.all(uploadPromises);
