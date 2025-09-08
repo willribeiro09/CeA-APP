@@ -55,6 +55,11 @@ export const basicSyncService = {
       // BLOQUEAR APP IMEDIATAMENTE
       this.isAppBlocked = true;
       this.syncInProgress = true;
+
+      // Disparar evento para exibir overlay de sincronização também na abertura
+      try {
+        window.dispatchEvent(new CustomEvent('syncReturnStarted', { detail: { message: 'Sincronizando dados iniciais...' } }));
+      } catch {}
       
       // PASSO 1: INICIAR REALTIME IMEDIATAMENTE
       console.log('📡 PASSO 1: Iniciando Realtime IMEDIATAMENTE...');
@@ -118,6 +123,11 @@ export const basicSyncService = {
       // DESBLOQUEAR APP
       this.isAppBlocked = false;
       this.syncInProgress = false;
+
+      // Disparar evento para esconder overlay após a sincronização inicial
+      try {
+        window.dispatchEvent(new CustomEvent('syncReturnCompleted'));
+      } catch {}
     }
   },
 
