@@ -215,10 +215,22 @@ export default function App() {
 
       // Configurar sincronização em tempo real com debounce
       const cleanup = basicSyncService.setupRealtimeUpdates((data) => {
+        console.log('📡 DEBUG - CALLBACK REALTIME RECEBIDO:', {
+          dataReceived: !!data,
+          isUpdatingProject,
+          projectsCount: data?.projects?.length || 0,
+          timestamp: new Date().toISOString()
+        });
+        
         if (data && !isUpdatingProject) {
           const now = Date.now();
           // Debounce: só atualizar se passou pelo menos 200ms desde a última atualização
           if (now - lastSyncUpdate > 200) {
+            console.log('🔄 DEBUG - ATUALIZANDO ESTADO DA UI:', {
+              lastUpdate: lastSyncUpdate,
+              timeDiff: now - lastSyncUpdate,
+              projectsCount: data.projects?.length || 0
+            });
             setLastSyncUpdate(now);
             setExpenses(data.expenses || {});
             setProjects(data.projects || []);
@@ -232,7 +244,17 @@ export default function App() {
             if (data.willBonus !== undefined) {
               setWillBonus(data.willBonus);
             }
+          } else {
+            console.log('⏭️ DEBUG - PULANDO ATUALIZAÇÃO POR DEBOUNCE:', {
+              timeDiff: now - lastSyncUpdate,
+              required: 200
+            });
           }
+        } else {
+          console.log('🚫 DEBUG - CALLBACK BLOQUEADO:', {
+            hasData: !!data,
+            isUpdatingProject
+          });
         }
       });
 
@@ -558,11 +580,83 @@ export default function App() {
   };
 
   const handleUpdateItem = (updatedItem: Partial<Item>) => {
-    // PROTEÇÃO: Executar apenas quando app não estiver bloqueado
+    // PROTEÇÃO: Para Projects, pular executeWhenUnblocked que estava bloqueando
+    if ('client' in updatedItem) {
+      try {
+        const itemWithTimestamp = updatedItem;
+        
+        // É um projeto - usar abordagem direta
+        setIsUpdatingProject(true);
+        (window as any).__isUpdatingProject = true;
+        
+        setProjects(prevProjects => {
+          try {
+            // Verificar se o ID existe
+            if (!itemWithTimestamp.id) {
+              console.error("ID do projeto não encontrado nos dados de atualização");
+              return prevProjects;
+            }
+            
+            const index = prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
+            
+            if (index === -1) {
+              console.error("Projeto não encontrado com ID:", itemWithTimestamp.id);
+              return prevProjects;
+            }
+            
+            // Garantir que todos os campos obrigatórios estejam presentes
+            const existingProject = prevProjects[index];
+            
+            // Criar uma cópia do projeto com todos os campos necessários
+            const updatedProject: Project = {
+              ...existingProject,
+              ...itemWithTimestamp,
+              id: itemWithTimestamp.id || existingProject.id,
+              photos: itemWithTimestamp.photos || existingProject.photos || [],
+            };
+            
+            // Criar um novo array para evitar mutação direta
+            const newProjects = [...prevProjects];
+            newProjects[index] = updatedProject;
+            
+            // Salvar as alterações
+            saveChanges(createStorageData({
+              expenses,
+              projects: newProjects,
+              stock: stockItems,
+              employees
+            }));
+            
+            return newProjects;
+          } catch (error) {
+            console.error("Erro ao atualizar projeto:", error);
+            return prevProjects;
+          }
+        });
+        
+        // Limpar flag após delay mínimo
+        setTimeout(() => {
+          setIsUpdatingProject(false);
+          (window as any).__isUpdatingProject = false;
+        }, 100);
+        
+      } catch (error) {
+        console.error("Erro ao atualizar projeto:", error);
+        // Limpar flag em caso de erro
+        setTimeout(() => {
+          setIsUpdatingProject(false);
+          (window as any).__isUpdatingProject = false;
+        }, 100);
+      }
+      return; // Sair da função para Projects
+    }
+    
+    // Para outros itens, usar executeWhenUnblocked normal
     executeWhenUnblocked(() => {
     try {
       // Item básico para edição
       const itemWithTimestamp = updatedItem;
+      
       // Verificar o tipo do item usando propriedades específicas
       if ('description' in itemWithTimestamp) {
         // É uma despesa
@@ -587,69 +681,9 @@ export default function App() {
           
           return newExpenses;
         });
+      // Projects já foram processados acima - este código não deve executar
       } else if ('client' in itemWithTimestamp) {
-        // É um projeto
-        setIsUpdatingProject(true);
-        setProjects(prevProjects => {
-          try {
-            // Verificar se o ID existe
-            if (!itemWithTimestamp.id) {
-              console.error("ID do projeto não encontrado nos dados de atualização");
-              return prevProjects;
-            }
-            
-            const index = prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
-            
-            if (index === -1) {
-              console.error("Projeto não encontrado com ID:", itemWithTimestamp.id);
-              // Tentar encontrar por cliente/nome como fallback
-              const fallbackIndex = prevProjects.findIndex(project => 
-                project.client === itemWithTimestamp.client || project.name === itemWithTimestamp.name
-              );
-              if (fallbackIndex === -1) {
-                return prevProjects;
-              }
-              // Usar o fallback index se encontrou
-              const fallbackProject = prevProjects[fallbackIndex];
-              itemWithTimestamp.id = fallbackProject.id; // Preservar o ID correto
-            }
-            
-            // Garantir que todos os campos obrigatórios estejam presentes
-            const actualIndex = index !== -1 ? index : prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
-            const existingProject = prevProjects[actualIndex];
-            
-            // Criar uma cópia do projeto com todos os campos necessários, usando spread para mesclar corretamente
-            const updatedProject: Project = {
-              ...existingProject, // Começar com o projeto existente
-              ...itemWithTimestamp, // Sobrescrever com os novos valores
-              id: itemWithTimestamp.id || existingProject.id, // Garantir que o ID seja preservado
-              photos: itemWithTimestamp.photos || existingProject.photos || [], // Preservar fotos se não fornecidas
-            };
-            
-            // Criar um novo array para evitar mutação direta
-            const newProjects = [...prevProjects];
-            newProjects[actualIndex] = updatedProject;
-            
-            // Atualizar o estado local imediatamente
-            const newState = newProjects;
-            
-            // Salvar as alterações
-            saveChanges(createStorageData({
-              expenses,
-              projects: newState,
-              stock: stockItems,
-              employees
-            }));
-            
-            return newState;
-          } catch (error) {
-            console.error("Erro ao atualizar projeto:", error);
-            // Garantir que retornamos o estado anterior em caso de erro
-            return prevProjects;
-          } finally {
-            setTimeout(() => setIsUpdatingProject(false), 1000); // Manter proteção por 1 segundo
-          }
-        });
+        // Projects já processados acima
       } else if ('quantity' in itemWithTimestamp) {
         // É um item de estoque
         setStockItems(prevStockItems => {
@@ -1903,6 +1937,19 @@ export default function App() {
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
+                            {/* Botão temporário de edição para teste */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isBackgroundSyncing) {
+                                  handleEditItem(project);
+                                }
+                              }}
+                              disabled={isBackgroundSyncing}
+                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
                             {/* Botão de edição visível */}
                             {project.invoiceOk && (
                               <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">

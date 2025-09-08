@@ -421,11 +421,16 @@ export const basicSyncService = {
         lastSync: newData.last_sync_timestamp || Date.now()
       };
       
-      // Salvar e atualizar UI
+      // Salvar e atualizar UI apenas se não estivermos editando projeto
       storage.save(serverData);
-      window.dispatchEvent(new CustomEvent('dataUpdated', { 
-        detail: serverData 
-      }));
+      
+      const isProjectBeingUpdated = (window as any).__isUpdatingProject || false;
+      
+      if (!isProjectBeingUpdated) {
+        window.dispatchEvent(new CustomEvent('dataUpdated', { 
+          detail: { ...serverData, __source: 'realtime' }
+        }));
+      }
       
       console.log('✅ Dados atualizados de outro dispositivo');
     } catch (error) {
@@ -486,7 +491,6 @@ export const basicSyncService = {
     }
 
     try {
-      console.log('🔄 Enviando dados para servidor...');
       
       const { data: result, error } = await supabase.rpc('sync_data_simple', {
         p_expenses: data.expenses || {},
@@ -506,15 +510,20 @@ export const basicSyncService = {
       }
       
       if (result && result.success) {
-        console.log('✅ Dados enviados ao servidor');
         data.lastSync = result.last_sync_timestamp || Date.now();
         storage.save(data);
         
-        // IMPORTANTE: Disparar evento para atualizar UI após sincronização (apenas se necessário)
-        console.log('🔄 Disparando evento dataUpdated após sync...');
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('dataUpdated', { detail: data }));
-        }, 50); // Pequeno delay para evitar loops
+        // IMPORTANTE: Disparar evento para atualizar UI apenas se não estivermos editando projeto
+        // Verificar se há uma edição de projeto em andamento para evitar loop
+        const isProjectBeingUpdated = (window as any).__isUpdatingProject || false;
+        
+        if (!isProjectBeingUpdated) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('dataUpdated', { 
+              detail: { ...data, __source: 'sync' }
+            }));
+          }, 50); // Pequeno delay para evitar loops
+        }
         
         return true;
       }
@@ -531,7 +540,13 @@ export const basicSyncService = {
     if (!supabase) return () => {};
 
     const handleDataUpdate = (event: CustomEvent<StorageItems>) => {
-      console.log('🔄 Dados atualizados:', event.detail);
+      // Verificar se há uma edição de projeto em andamento para evitar sobrescrever
+      const isProjectBeingUpdated = (window as any).__isUpdatingProject || false;
+      
+      if (isProjectBeingUpdated) {
+        return;
+      }
+      
       callback(event.detail);
     };
 

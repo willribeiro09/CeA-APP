@@ -91,7 +91,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
     let validationError: string | null = null;
     
     if (category === 'Expenses') {
-      const dueDate = data.dueDate ? normalizeDate(new Date(data.dueDate as string)) : new Date();
+      // Usar parseISODate em vez de normalizeDate para evitar problema de data do dia anterior
+      const dueDate = data.dueDate ? parseISODate(data.dueDate as string) || new Date() : new Date();
       const recurrence = data.recurrence as string;
       
       // Add recurrence suffix to description

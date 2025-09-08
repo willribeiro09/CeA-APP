@@ -76,7 +76,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         ...item,
         description,
         amount: parseFloat(data.amount as string),
-        date: new Date(data.dueDate as string).toISOString(),
+        date: (parseISODate(data.dueDate as string) || new Date()).toISOString(),
         category: 'Expenses',
         // Preservar o status de pagamento existente
         is_paid: (item as Expense).is_paid,
