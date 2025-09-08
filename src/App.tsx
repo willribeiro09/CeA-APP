@@ -224,8 +224,8 @@ export default function App() {
         
         if (data && !isUpdatingProject) {
           const now = Date.now();
-          // Debounce: só atualizar se passou pelo menos 200ms desde a última atualização
-          if (now - lastSyncUpdate > 200) {
+          // Debounce: só atualizar se passou pelo menos 1000ms desde a última atualização
+          if (now - lastSyncUpdate > 1000) {
             console.log('🔄 DEBUG - ATUALIZANDO ESTADO DA UI:', {
               lastUpdate: lastSyncUpdate,
               timeDiff: now - lastSyncUpdate,
@@ -290,6 +290,7 @@ export default function App() {
     }
     
     let total = 0;
+    const debugProjects: any[] = [];
     
     projects.forEach(project => {
       // Somar apenas projetos concluídos
@@ -301,10 +302,32 @@ export default function App() {
           (selectedClient === 'Private' && project.clientType === 'Private')) {
         const projectDate = new Date(project.startDate).getTime();
         if (projectDate >= startTime && projectDate <= endTime) {
-          total += project.value || 0;
+          const projectValue = project.value || 0;
+          total += projectValue;
+          debugProjects.push({
+            name: project.name,
+            client: project.client,
+            clientType: project.clientType,
+            startDate: project.startDate,
+            value: projectValue,
+            status: project.status
+          });
         }
       }
     });
+    
+    // DEBUG: Log detalhado do cálculo
+    
+    console.log('  Cliente selecionado:', selectedClient);
+    console.log('  Período:', new Date(startTime).toISOString().split('T')[0], 'até', new Date(endTime).toISOString().split('T')[0]);
+    console.log('  Total de projetos:', projects.length);
+    console.log('  Projetos concluídos:', projects.filter(p => p.status === 'completed').length);
+    
+    console.log('  Projetos incluídos no cálculo:');
+    debugProjects.forEach((p, i) => {
+      console.log(`    ${i+1}. ${p.name} - ${p.client} (${p.clientType}) - $${p.value} - ${p.startDate}`);
+    });
+    console.log('  TOTAL CALCULADO: $' + total.toLocaleString());
     
     setWeekTotalValue(total);
   }, [projects, selectedWeekStart, selectedWeekEnd, selectedMonthStart, selectedMonthEnd, selectedClient]);
