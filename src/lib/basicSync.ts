@@ -500,9 +500,11 @@ export const basicSyncService = {
         data.lastSync = result.last_sync_timestamp || Date.now();
         storage.save(data);
         
-        // IMPORTANTE: Disparar evento para atualizar UI após sincronização
+        // IMPORTANTE: Disparar evento para atualizar UI após sincronização (apenas se necessário)
         console.log('🔄 Disparando evento dataUpdated após sync...');
-        window.dispatchEvent(new CustomEvent('dataUpdated', { detail: data }));
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('dataUpdated', { detail: data }));
+        }, 50); // Pequeno delay para evitar loops
         
         return true;
       }

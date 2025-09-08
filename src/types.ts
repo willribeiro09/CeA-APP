@@ -40,6 +40,7 @@ export interface Project {
   name: string;
   description?: string;
   client: string;
+  clientType?: 'Power' | 'Private'; // Novo campo para categorizar projetos
   projectNumber?: string;
   startDate: string;
   endDate?: string;

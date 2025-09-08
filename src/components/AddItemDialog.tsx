@@ -14,9 +14,10 @@ interface AddItemDialogProps {
   category: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
   onSubmit: (data: Partial<Item>) => void;
   selectedWeekStart?: Date;
+  selectedClient?: 'Power' | 'Private';
 }
 
-export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, selectedWeekStart }: AddItemDialogProps) {
+export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, selectedWeekStart, selectedClient }: AddItemDialogProps) {
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [uploadedPhotos, setUploadedPhotos] = useState<ProjectPhoto[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -145,6 +146,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         id: uuidv4(),
         name: data.client as string,
         client: data.client as string,
+        clientType: selectedClient || 'Power', // Definir o tipo de cliente
         projectNumber: data.projectNumber as string || '',
         location: data.location as string || '',
         startDate: startDate ? startDate.toISOString() : selectedWeekStart.toISOString(),

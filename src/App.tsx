@@ -25,6 +25,9 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import 'react-day-picker/dist/style.css';
 import { ProjectWeekSelector } from './components/ProjectWeekSelector';
 import { WeekSelector } from './components/WeekSelector';
+import { ClientSelector, ClientType } from './components/ClientSelector';
+import { MonthSelector } from './components/MonthSelector';
+import { TotalValuePopup } from './components/TotalValuePopup';
 import EmployeeReceipt from './components/EmployeeReceipt';
 import WorkDaysCalendar from './components/WorkDaysCalendar';
 import { ConflictNotification } from './components/ConflictNotification';
@@ -117,6 +120,15 @@ export default function App() {
     return weekEnd;
   });
   const [weekTotalValue, setWeekTotalValue] = useState<number>(0);
+  const [selectedClient, setSelectedClient] = useState<ClientType>('Power');
+  const [selectedMonthStart, setSelectedMonthStart] = useState<Date>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedMonthEnd, setSelectedMonthEnd] = useState<Date>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
   const [willBaseRate, setWillBaseRate] = useState(200);
@@ -138,6 +150,8 @@ export default function App() {
   const [isProjectSummaryOpen, setIsProjectSummaryOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
   const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
+  const [isUpdatingProject, setIsUpdatingProject] = useState(false);
+  const [lastSyncUpdate, setLastSyncUpdate] = useState(0);
 
 
   // NOVO: Hook para controlar o status de sincronização
@@ -162,7 +176,11 @@ export default function App() {
         setExpenses(localData.expenses || {});
         
         // Carregar projetos e sincronizar fotos
-        const projects = localData.projects || [];
+        const projects = (localData.projects || []).map(project => ({
+          ...project,
+          // Configurar projetos existentes como Power se não tiverem clientType
+          clientType: project.clientType || 'Power'
+        }));
         setProjects(projects);
         
         // Sincronizar fotos para cada projeto em background
@@ -195,20 +213,25 @@ export default function App() {
       window.addEventListener('syncReturnStarted', handleSyncReturnStarted);
       window.addEventListener('syncReturnCompleted', handleSyncReturnCompleted);
 
-      // Configurar sincronização em tempo real
+      // Configurar sincronização em tempo real com debounce
       const cleanup = basicSyncService.setupRealtimeUpdates((data) => {
-        if (data) {
-          setExpenses(data.expenses || {});
-          setProjects(data.projects || []);
-          setStockItems(data.stock || []);
-          setEmployees(data.employees || {});
-          
-          // Atualizar dados do Will se existirem
-          if (data.willBaseRate !== undefined) {
-            setWillBaseRate(data.willBaseRate);
-          }
-          if (data.willBonus !== undefined) {
-            setWillBonus(data.willBonus);
+        if (data && !isUpdatingProject) {
+          const now = Date.now();
+          // Debounce: só atualizar se passou pelo menos 200ms desde a última atualização
+          if (now - lastSyncUpdate > 200) {
+            setLastSyncUpdate(now);
+            setExpenses(data.expenses || {});
+            setProjects(data.projects || []);
+            setStockItems(data.stock || []);
+            setEmployees(data.employees || {});
+            
+            // Atualizar dados do Will se existirem
+            if (data.willBaseRate !== undefined) {
+              setWillBaseRate(data.willBaseRate);
+            }
+            if (data.willBonus !== undefined) {
+              setWillBonus(data.willBonus);
+            }
           }
         }
       });
@@ -227,25 +250,38 @@ export default function App() {
     initializeData();
   }, []);
 
-  // Adicione este useEffect para calcular o total dos projetos na semana selecionada
+  // Calcular o total dos projetos baseado no cliente e período selecionado
   useEffect(() => {
     if (projects.length === 0) return;
     
-    const startTime = selectedWeekStart.getTime();
-    const endTime = selectedWeekEnd.getTime();
+    let startTime: number;
+    let endTime: number;
+    
+    if (selectedClient === 'Power') {
+      // Para Power, usar semana
+      startTime = selectedWeekStart.getTime();
+      endTime = selectedWeekEnd.getTime();
+    } else {
+      // Para Private, usar mês
+      startTime = selectedMonthStart.getTime();
+      endTime = selectedMonthEnd.getTime();
+    }
     
     let total = 0;
     
     projects.forEach(project => {
-      const projectDate = new Date(project.startDate).getTime();
-      // Incluir projetos que começam na terça-feira (startTime) até a segunda-feira (endTime)
-      if (projectDate >= startTime && projectDate <= endTime) {
-        total += project.value || 0;
+      // Filtrar projetos baseado no cliente
+      if ((selectedClient === 'Power' && project.clientType !== 'Private') || 
+          (selectedClient === 'Private' && project.clientType === 'Private')) {
+        const projectDate = new Date(project.startDate).getTime();
+        if (projectDate >= startTime && projectDate <= endTime) {
+          total += project.value || 0;
+        }
       }
     });
     
     setWeekTotalValue(total);
-  }, [projects, selectedWeekStart, selectedWeekEnd]);
+  }, [projects, selectedWeekStart, selectedWeekEnd, selectedMonthStart, selectedMonthEnd, selectedClient]);
 
   // Função para salvar alterações
   const saveChanges = async (newData: StorageItems) => {
@@ -549,6 +585,7 @@ export default function App() {
         });
       } else if ('client' in itemWithTimestamp) {
         // É um projeto
+        setIsUpdatingProject(true);
         setProjects(prevProjects => {
           try {
             // Verificar se o ID existe
@@ -561,48 +598,52 @@ export default function App() {
             
             if (index === -1) {
               console.error("Projeto não encontrado com ID:", itemWithTimestamp.id);
-              return prevProjects;
+              // Tentar encontrar por cliente/nome como fallback
+              const fallbackIndex = prevProjects.findIndex(project => 
+                project.client === itemWithTimestamp.client || project.name === itemWithTimestamp.name
+              );
+              if (fallbackIndex === -1) {
+                return prevProjects;
+              }
+              // Usar o fallback index se encontrou
+              const fallbackProject = prevProjects[fallbackIndex];
+              itemWithTimestamp.id = fallbackProject.id; // Preservar o ID correto
             }
             
             // Garantir que todos os campos obrigatórios estejam presentes
-            const existingProject = prevProjects[index];
+            const actualIndex = index !== -1 ? index : prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
+            const existingProject = prevProjects[actualIndex];
             
-            // Criar uma cópia do projeto com todos os campos necessários
+            // Criar uma cópia do projeto com todos os campos necessários, usando spread para mesclar corretamente
             const updatedProject: Project = {
-              id: itemWithTimestamp.id || existingProject.id,
-              name: itemWithTimestamp.name || existingProject.name,
-              description: itemWithTimestamp.description || existingProject.description,
-              client: itemWithTimestamp.client || existingProject.client,
-              projectNumber: itemWithTimestamp.projectNumber || existingProject.projectNumber || '',
-              startDate: itemWithTimestamp.startDate || existingProject.startDate,
-              endDate: itemWithTimestamp.endDate || existingProject.endDate,
-              status: itemWithTimestamp.status || existingProject.status,
-              location: itemWithTimestamp.location || existingProject.location || '',
-              value: itemWithTimestamp.value !== undefined ? itemWithTimestamp.value : existingProject.value || 0,
-              invoiceOk: itemWithTimestamp.invoiceOk !== undefined ? itemWithTimestamp.invoiceOk : existingProject.invoiceOk,
-              notes: itemWithTimestamp.notes || existingProject.notes || '',
-              photos: itemWithTimestamp.photos || existingProject.photos || [],
-              lastModified: itemWithTimestamp.lastModified,
-              deviceId: itemWithTimestamp.deviceId
+              ...existingProject, // Começar com o projeto existente
+              ...itemWithTimestamp, // Sobrescrever com os novos valores
+              id: itemWithTimestamp.id || existingProject.id, // Garantir que o ID seja preservado
+              photos: itemWithTimestamp.photos || existingProject.photos || [], // Preservar fotos se não fornecidas
             };
             
             // Criar um novo array para evitar mutação direta
             const newProjects = [...prevProjects];
-            newProjects[index] = updatedProject;
+            newProjects[actualIndex] = updatedProject;
+            
+            // Atualizar o estado local imediatamente
+            const newState = newProjects;
             
             // Salvar as alterações
             saveChanges(createStorageData({
               expenses,
-              projects: newProjects,
+              projects: newState,
               stock: stockItems,
               employees
             }));
             
-            return newProjects;
+            return newState;
           } catch (error) {
             console.error("Erro ao atualizar projeto:", error);
             // Garantir que retornamos o estado anterior em caso de erro
             return prevProjects;
+          } finally {
+            setTimeout(() => setIsUpdatingProject(false), 1000); // Manter proteção por 1 segundo
           }
         });
       } else if ('quantity' in itemWithTimestamp) {
@@ -658,8 +699,11 @@ export default function App() {
       // Garantir que o diálogo seja fechado mesmo em caso de erro
       setIsEditDialogOpen(false);
     } finally {
-      // Fechar o diálogo após atualizar o item
-      setIsEditDialogOpen(false);
+      // Pequeno delay para garantir que a atualização de estado seja processada
+      setTimeout(() => {
+        setIsEditDialogOpen(false);
+        setItemToEdit(null); // Limpar o item sendo editado
+      }, 1500); // Tempo maior para garantir que a proteção funcione
     }
     });
   };;
@@ -729,6 +773,7 @@ export default function App() {
         // Garantir que campos obrigatórios existam
         if (!project.client) project.client = "Cliente";
         if (!project.name) project.name = project.client;
+        if (!project.clientType) project.clientType = selectedClient; // Definir o tipo de cliente
         if (!project.startDate) {
           project.startDate = selectedWeekStart.toISOString();
           console.log('🔍 DEBUG - Projeto criado com data:', {
@@ -1046,6 +1091,21 @@ export default function App() {
   const handleProjectWeekChange = (startDate: Date, endDate: Date) => {
     setSelectedWeekStart(startDate);
     setSelectedWeekEnd(endDate);
+  };
+
+  /**
+   * Manipulador para mudança de cliente
+   */
+  const handleClientChange = (client: ClientType) => {
+    setSelectedClient(client);
+  };
+
+  /**
+   * Manipulador para mudança de mês (Private client)
+   */
+  const handleMonthChange = (startDate: Date, endDate: Date) => {
+    setSelectedMonthStart(startDate);
+    setSelectedMonthEnd(endDate);
   };
 
   // Função para verificar se um funcionário deve ser exibido na semana selecionada
@@ -1659,16 +1719,26 @@ export default function App() {
           {(activeCategory === 'Projects') && (
             <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
               <div className="relative max-w-[800px] mx-auto pb-2">
-                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
-                  <ProjectWeekSelector 
-                    selectedWeekStart={selectedWeekStart}
-                    onWeekChange={isBackgroundSyncing ? () => {} : handleProjectWeekChange}
-                  />
-                  <div className="flex items-center">
-                    <span className="text-gray-700 font-medium text-xs">Total:</span>
-                    <span className="text-[#5ABB37] text-base font-bold ml-1">
-                      ${weekTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
+                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <ClientSelector 
+                      selectedClient={selectedClient}
+                      onClientChange={isBackgroundSyncing ? () => {} : handleClientChange}
+                    />
+                    <div className="flex items-center">
+                      {selectedClient === 'Power' && (
+                        <ProjectWeekSelector 
+                          selectedWeekStart={selectedWeekStart}
+                          onWeekChange={isBackgroundSyncing ? () => {} : handleProjectWeekChange}
+                        />
+                      )}
+                      {selectedClient === 'Private' && (
+                        <MonthSelector 
+                          selectedMonthStart={selectedMonthStart}
+                          onMonthChange={isBackgroundSyncing ? () => {} : handleMonthChange}
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1730,48 +1800,44 @@ export default function App() {
               
               {activeCategory === 'Projects' && projects
                 .filter(project => {
+                  // Primeiro, filtrar por tipo de cliente
+                  const clientMatches = (selectedClient === 'Power' && project.clientType !== 'Private') || 
+                                       (selectedClient === 'Private' && project.clientType === 'Private');
+                  
+                  if (!clientMatches) return false;
+                  
                   const projectStartDate = project.startDate;
                   const projectEndDate = project.endDate;
                   
-                  const weekStartStr = selectedWeekStart.toISOString().split('T')[0];
-                  const weekEndStr = selectedWeekEnd.toISOString().split('T')[0];
+                  let periodStartStr: string;
+                  let periodEndStr: string;
                   
-                  // Debug logs
-                  console.log('🔍 DEBUG - Filtragem de projeto:', {
-                    projectClient: project.client,
-                    projectStartDate,
-                    projectEndDate,
-                    weekStartStr,
-                    weekEndStr,
-                    selectedWeekStart: selectedWeekStart.toISOString(),
-                    selectedWeekEnd: selectedWeekEnd.toISOString()
-                  });
+                  if (selectedClient === 'Power') {
+                    // Para Power, usar semana
+                    periodStartStr = selectedWeekStart.toISOString().split('T')[0];
+                    periodEndStr = selectedWeekEnd.toISOString().split('T')[0];
+                  } else {
+                    // Para Private, usar mês
+                    periodStartStr = selectedMonthStart.toISOString().split('T')[0];
+                    periodEndStr = selectedMonthEnd.toISOString().split('T')[0];
+                  }
                   
-                  // Verificar se a data de início do projeto está dentro do intervalo da semana selecionada
-                  const startInRange = projectStartDate >= weekStartStr && 
-                                     projectStartDate <= weekEndStr;
+                  // Verificar se a data de início do projeto está dentro do intervalo do período selecionado
+                  const startInRange = projectStartDate >= periodStartStr && 
+                                     projectStartDate <= periodEndStr;
                   
                   // Verificar se a data de fim do projeto está dentro do intervalo (se existir)
                   const endInRange = projectEndDate && 
-                                   projectEndDate >= weekStartStr && 
-                                   projectEndDate <= weekEndStr;
+                                   projectEndDate >= periodStartStr && 
+                                   projectEndDate <= periodEndStr;
                   
                   // Verificar se o projeto abrange todo o intervalo (começa antes e termina depois)
-                  const spansRange = projectStartDate <= weekStartStr && 
+                  const spansRange = projectStartDate <= periodStartStr && 
                                    projectEndDate && 
-                                   projectEndDate >= weekEndStr;
+                                   projectEndDate >= periodEndStr;
                   
                   const shouldShow = startInRange || endInRange || spansRange;
                   
-                  console.log('🔍 DEBUG - Resultado da filtragem:', {
-                    projectClient: project.client,
-                    startInRange,
-                    endInRange,
-                    spansRange,
-                    shouldShow
-                  });
-                  
-                  // Mostrar apenas projetos que estão diretamente relacionados à semana selecionada
                   return shouldShow;
                 })
                 .map(project => (
@@ -1833,6 +1899,7 @@ export default function App() {
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
+                            {/* Botão de edição visível */}
                             {project.invoiceOk && (
                               <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
                                 Invoice OK
@@ -1995,12 +2062,17 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mostrar o CalendarButton apenas nos menus relevantes */}
-      {activeCategory !== 'Stock' && !isBackgroundSyncing && (
-        <CalendarButton onClick={handleOpenCalendar} />
-      )}
+      {/* CalendarButton removido conforme solicitado */}
       {!isBackgroundSyncing && (
         <AddButton onClick={() => setIsAddDialogOpen(true)} />
+      )}
+
+      {/* Popup flutuante do total para Projects */}
+      {activeCategory === 'Projects' && (
+        <TotalValuePopup 
+          total={weekTotalValue}
+          clientType={selectedClient}
+        />
       )}
 
       <AddItemDialog
@@ -2013,6 +2085,7 @@ export default function App() {
         category={activeCategory}
         onSubmit={handleAddItem}
         selectedWeekStart={selectedWeekStart}
+        selectedClient={activeCategory === 'Projects' ? selectedClient : undefined}
       />
   
       <EditItemDialog
