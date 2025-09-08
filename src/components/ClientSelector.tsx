@@ -26,13 +26,13 @@ export function ClientSelector({ selectedClient, onClientChange }: ClientSelecto
         onClick={toggleDropdown}
         className="flex items-center space-x-1"
       >
-        <span className="text-gray-700 font-medium text-base">Client:</span>
-        <div className="flex items-center px-3 py-2 bg-gradient-to-r from-white to-[#f9fcf7] border border-[#e0f0d8] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <span className="text-[#5ABB37] font-medium text-base">
+        <span className="text-gray-700 font-medium text-sm">Client:</span>
+        <div className="flex items-center px-2 py-1 bg-gradient-to-r from-white to-[#f9fcf7] border border-[#e0f0d8] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
+          <span className="text-[#5ABB37] font-medium text-sm">
             {selectedClient}
           </span>
           <ChevronDown
-            className={`w-4 h-4 text-[#5ABB37] ml-2 transition-transform ${
+            className={`w-3.5 h-3.5 text-[#5ABB37] ml-1 transition-transform ${
               isDropdownOpen ? 'transform rotate-180' : ''
             }`}
           />
@@ -47,7 +47,7 @@ export function ClientSelector({ selectedClient, onClientChange }: ClientSelecto
               selectedClient === 'Power' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
             }`}
           >
-            <span className="font-medium text-base">Power</span>
+            <span className="font-medium text-sm">Power</span>
           </button>
           <button
             onClick={() => handleClientSelect('Private')}
@@ -55,7 +55,7 @@ export function ClientSelector({ selectedClient, onClientChange }: ClientSelecto
               selectedClient === 'Private' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
             }`}
           >
-            <span className="font-medium text-base">Private</span>
+            <span className="font-medium text-sm">Private</span>
           </button>
         </div>
       )}
