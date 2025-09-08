@@ -104,19 +104,10 @@ export default function App() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => {
     const weekStart = getProjectWeekStart(new Date());
-    console.log('🔍 DEBUG - selectedWeekStart inicializado:', {
-      today: new Date().toISOString(),
-      weekStart: weekStart.toISOString(),
-      weekStartDate: weekStart.toISOString().split('T')[0]
-    });
     return weekStart;
   });
   const [selectedWeekEnd, setSelectedWeekEnd] = useState<Date>(() => {
     const weekEnd = getProjectWeekEnd(new Date());
-    console.log('🔍 DEBUG - selectedWeekEnd inicializado:', {
-      weekEnd: weekEnd.toISOString(),
-      weekEndDate: weekEnd.toISOString().split('T')[0]
-    });
     return weekEnd;
   });
   const [weekTotalValue, setWeekTotalValue] = useState<number>(0);
@@ -215,22 +206,11 @@ export default function App() {
 
       // Configurar sincronização em tempo real com debounce
       const cleanup = basicSyncService.setupRealtimeUpdates((data) => {
-        console.log('📡 DEBUG - CALLBACK REALTIME RECEBIDO:', {
-          dataReceived: !!data,
-          isUpdatingProject,
-          projectsCount: data?.projects?.length || 0,
-          timestamp: new Date().toISOString()
-        });
         
         if (data && !isUpdatingProject) {
           const now = Date.now();
-          // Debounce: só atualizar se passou pelo menos 1000ms desde a última atualização
-          if (now - lastSyncUpdate > 1000) {
-            console.log('🔄 DEBUG - ATUALIZANDO ESTADO DA UI:', {
-              lastUpdate: lastSyncUpdate,
-              timeDiff: now - lastSyncUpdate,
-              projectsCount: data.projects?.length || 0
-            });
+          // Debounce: só atualizar se passou pelo menos 5000ms desde a última atualização
+          if (now - lastSyncUpdate > 5000) {
             setLastSyncUpdate(now);
             setExpenses(data.expenses || {});
             setProjects(data.projects || []);
@@ -245,16 +225,8 @@ export default function App() {
               setWillBonus(data.willBonus);
             }
           } else {
-            console.log('⏭️ DEBUG - PULANDO ATUALIZAÇÃO POR DEBOUNCE:', {
-              timeDiff: now - lastSyncUpdate,
-              required: 200
-            });
           }
         } else {
-          console.log('🚫 DEBUG - CALLBACK BLOQUEADO:', {
-            hasData: !!data,
-            isUpdatingProject
-          });
         }
       });
 
@@ -290,7 +262,7 @@ export default function App() {
     }
     
     let total = 0;
-    const debugProjects: any[] = [];
+    
     
     projects.forEach(project => {
       // Somar apenas projetos concluídos
@@ -302,32 +274,20 @@ export default function App() {
           (selectedClient === 'Private' && project.clientType === 'Private')) {
         const projectDate = new Date(project.startDate).getTime();
         if (projectDate >= startTime && projectDate <= endTime) {
-          const projectValue = project.value || 0;
-          total += projectValue;
-          debugProjects.push({
-            name: project.name,
-            client: project.client,
-            clientType: project.clientType,
-            startDate: project.startDate,
-            value: projectValue,
-            status: project.status
-          });
+          total += project.value || 0;
         }
       }
     });
     
     // DEBUG: Log detalhado do cálculo
     
-    console.log('  Cliente selecionado:', selectedClient);
-    console.log('  Período:', new Date(startTime).toISOString().split('T')[0], 'até', new Date(endTime).toISOString().split('T')[0]);
-    console.log('  Total de projetos:', projects.length);
-    console.log('  Projetos concluídos:', projects.filter(p => p.status === 'completed').length);
     
-    console.log('  Projetos incluídos no cálculo:');
-    debugProjects.forEach((p, i) => {
-      console.log(`    ${i+1}. ${p.name} - ${p.client} (${p.clientType}) - $${p.value} - ${p.startDate}`);
-    });
-    console.log('  TOTAL CALCULADO: $' + total.toLocaleString());
+    
+    
+    
+    
+    
+    
     
     setWeekTotalValue(total);
   }, [projects, selectedWeekStart, selectedWeekEnd, selectedMonthStart, selectedMonthEnd, selectedClient]);
@@ -549,18 +509,18 @@ export default function App() {
         return newStockItems;
       });
     } else if (category === 'Employees') {
-      console.log('🗑️ Tentando deletar funcionário:', id, 'da semana:', format(selectedWeekStart, 'yyyy-MM-dd'));
+      
       
       setEmployees(prevEmployees => {
         const newEmployees = { ...prevEmployees };
         const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
         
-        console.log('📅 Semana selecionada:', formattedSelectedWeekStart);
-        console.log('👥 Funcionários antes da deleção:', newEmployees[formattedSelectedWeekStart]?.length || 0);
+        
+        
         
         // Listar todos os funcionários da semana para debug
         if (newEmployees[formattedSelectedWeekStart]) {
-          console.log('🔍 Funcionários na semana:', newEmployees[formattedSelectedWeekStart].map(e => ({ id: e.id, name: e.name })));
+          
         }
         
         // Deletar apenas da semana selecionada, não de todas as semanas
@@ -569,20 +529,20 @@ export default function App() {
           
           // Verificar se o funcionário existe na semana
           const employeeExists = newEmployees[formattedSelectedWeekStart].some(emp => emp.id === id);
-          console.log('🔍 Funcionário existe na semana?', employeeExists);
+          
           
           newEmployees[formattedSelectedWeekStart] = newEmployees[formattedSelectedWeekStart].filter(
             employee => {
               const shouldKeep = employee.id !== id;
-              console.log(`🔍 Funcionário ${employee.name} (${employee.id}) - Manter? ${shouldKeep}`);
+              
               return shouldKeep;
             }
           );
           const afterCount = newEmployees[formattedSelectedWeekStart].length;
           
-          console.log('✅ Funcionário deletado! Antes:', beforeCount, 'Depois:', afterCount);
+          
         } else {
-          console.log('❌ Semana não encontrada:', formattedSelectedWeekStart);
+          
         }
         
         saveChanges(createStorageData({
@@ -781,11 +741,11 @@ export default function App() {
   };
 
   const handleAddItem = async (item: any) => {
-    console.log('🚀 handleAddItem chamada com:', item);
+    
     // PROTEÇÃO: Executar apenas quando app não estiver bloqueado
     executeWhenUnblocked(async () => {
     try {
-      console.log('🔍 Dentro de executeWhenUnblocked, item:', item);
+      
       // Verificar se o item já tem um ID, caso contrário, criar um novo
       if (!item.id) {
         item.id = uuidv4();
@@ -837,12 +797,6 @@ export default function App() {
         if (!project.clientType) project.clientType = selectedClient; // Definir o tipo de cliente
         if (!project.startDate) {
           project.startDate = selectedWeekStart.toISOString();
-          console.log('🔍 DEBUG - Projeto criado com data:', {
-            projectClient: project.client,
-            selectedWeekStart: selectedWeekStart.toISOString(),
-            projectStartDate: project.startDate,
-            selectedWeekStartDate: selectedWeekStart.toISOString().split('T')[0]
-          });
         }
         if (!project.status) project.status = "in_progress";
         if (!project.location) project.location = "";
@@ -895,14 +849,14 @@ export default function App() {
           return newStockItems;
         });
       } else if (activeCategory === 'Employees') {
-        console.log('👥 Processando funcionário, activeCategory:', activeCategory);
+        
         const employee = newItem as Employee;
-        console.log('👥 Employee data:', employee);
+        
         
         // Normalizar a data de início da semana para evitar problemas de fuso horário
         const normalizedWeekStart = normalizeDate(selectedWeekStart);
         const weekStartDate = formatDateToISO(normalizedWeekStart);
-        console.log('👥 Datas processadas:', { normalizedWeekStart, weekStartDate, selectedWeekStart });
+        
         
         // Inicializar os campos importantes do funcionário
         employee.workedDates = [];
@@ -930,23 +884,12 @@ export default function App() {
         // Adicionar o funcionário à semana selecionada
         setEmployees(prevEmployees => {
           const weekEmployees = prevEmployees[weekStartDate] || [];
-          console.log('🔍 DEBUG - Adicionando funcionário:', {
-            employeeName: employee.name,
-            weekStartDate,
-            weekEmployeesBefore: weekEmployees.length,
-            employeeData: employee
-          });
           
           const updatedEmployees = {
             ...prevEmployees,
             [weekStartDate]: [...weekEmployees, employee]
           };
           
-          console.log('🔍 DEBUG - Após adicionar:', {
-            weekStartDate,
-            employeesInWeek: updatedEmployees[weekStartDate].length,
-            allEmployees: Object.keys(updatedEmployees)
-          });
           
           // Salvar as alterações
           saveChanges(createStorageData({
@@ -1667,7 +1610,7 @@ export default function App() {
 
   // Log de sincronização que executa apenas uma vez ao montar o componente
   useEffect(() => {
-    console.log('✅ UI: Sincronização de retorno concluída');
+    
   }, []); // [] garante execução única
 
   // Garantir que, ao abrir o app, estejamos sempre na current week (Projects)
@@ -1960,19 +1903,6 @@ export default function App() {
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
-                            {/* Botão temporário de edição para teste */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!isBackgroundSyncing) {
-                                  handleEditItem(project);
-                                }
-                              }}
-                              disabled={isBackgroundSyncing}
-                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors disabled:opacity-50"
-                            >
-                              Edit
-                            </button>
                             {/* Botão de edição visível */}
                             {project.invoiceOk && (
                               <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">

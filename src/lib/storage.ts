@@ -9,7 +9,7 @@ const setupStorageSync = () => {
     if (event.key === STORAGE_KEY && event.newValue) {
       try {
         const data = JSON.parse(event.newValue);
-        console.log('Dados atualizados em outra aba/janela:', data);
+        
         
         // Disparar evento para atualizar a UI
         window.dispatchEvent(new CustomEvent('localStorageUpdated', { 
@@ -28,7 +28,7 @@ setupStorageSync();
 export const storage = {
   save: (data: StorageItems): void => {
     try {
-      console.log('Salvando dados no armazenamento local:', data);
+      
       const serialized = JSON.stringify({
         expenses: data.expenses || {},
         projects: data.projects || [],
@@ -47,15 +47,15 @@ export const storage = {
   
   load: (): StorageItems | null => {
     try {
-      console.log('Carregando dados do armazenamento local...');
+      
       const serialized = localStorage.getItem(STORAGE_KEY);
       if (!serialized) {
-        console.log('Nenhum dado encontrado no armazenamento local');
+        
         return null;
       }
       
       const data = JSON.parse(serialized) as StorageItems;
-      console.log('Dados carregados do armazenamento local:', data);
+      
       return data;
     } catch (error) {
       console.error('Erro ao carregar do armazenamento local:', error);
@@ -66,7 +66,7 @@ export const storage = {
   clear: (): void => {
     try {
       localStorage.removeItem(STORAGE_KEY);
-      console.log('Armazenamento local limpo');
+      
     } catch (error) {
       console.error('Erro ao limpar armazenamento local:', error);
     }
@@ -74,7 +74,7 @@ export const storage = {
   
   setupSyncListener: (callback: (data: StorageItems) => void): (() => void) => {
     const handleStorageUpdate = (event: CustomEvent<StorageItems>) => {
-      console.log('Evento de atualização do armazenamento local recebido:', event.detail);
+      
       callback(event.detail);
     };
     

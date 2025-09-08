@@ -33,7 +33,7 @@ export const basicSyncService = {
   async init() {
     if (!supabase || this.isInitialized) return;
     
-    console.log('🔄 Inicializando Sync Básico:', DEVICE_ID);
+    
     this.isInitialized = true;
 
     // Configurar detecção de segundo plano
@@ -49,8 +49,8 @@ export const basicSyncService = {
     if (!supabase) return;
     
     try {
-      console.log('🚀 SINCRONIZAÇÃO OBRIGATÓRIA NA INICIALIZAÇÃO...');
-      console.log('🔒 APP BLOQUEADO - Aguardando sincronização completa...');
+      
+      
       
       // BLOQUEAR APP IMEDIATAMENTE
       this.isAppBlocked = true;
@@ -62,21 +62,21 @@ export const basicSyncService = {
       } catch {}
       
       // PASSO 1: INICIAR REALTIME IMEDIATAMENTE
-      console.log('📡 PASSO 1: Iniciando Realtime IMEDIATAMENTE...');
+      
       this.setupRealtime();
       
       // PASSO 2: Carregar dados do servidor (sempre os mais recentes)
-      console.log('📥 PASSO 2: Carregando dados do servidor...');
+      
       const serverData = await this.loadInitialData();
       
       if (!serverData) {
-        console.log('⚠️ Não foi possível carregar dados do servidor - usando dados locais');
+        
         this.isAppBlocked = false;
         this.syncInProgress = false;
         return;
       }
       
-      console.log('✅ Dados do servidor carregados com sucesso!');
+      
       console.log('📊 Resumo dos dados do servidor:', {
         expenses: Object.keys(serverData.expenses || {}).length,
         projects: (serverData.projects || []).length,
@@ -86,7 +86,7 @@ export const basicSyncService = {
       });
       
       // PASSO 3: Sincronizar dados locais (se existirem)
-      console.log('🔄 PASSO 3: Verificando dados locais para sincronização...');
+      
       const localData = storage.load();
       
       if (localData) {
@@ -99,23 +99,23 @@ export const basicSyncService = {
         });
         
         if (this.hasLocalChanges(localData, serverData)) {
-          console.log('📱 Mudanças locais detectadas - fazendo merge inteligente...');
+          
           await this.sync(localData);
         } else {
-          console.log('✅ Dados locais já sincronizados - usando dados do servidor');
+          
           // IMPORTANTE: Sempre disparar evento para atualizar UI com dados do servidor
-          console.log('🔄 Disparando evento dataUpdated com dados do servidor...');
+          
           window.dispatchEvent(new CustomEvent('dataUpdated', { detail: serverData }));
         }
       } else {
-        console.log('📱 Nenhum dado local encontrado - usando dados do servidor');
+        
         // IMPORTANTE: Sempre disparar evento para atualizar UI com dados do servidor
-        console.log('🔄 Disparando evento dataUpdated com dados do servidor...');
+        
         window.dispatchEvent(new CustomEvent('dataUpdated', { detail: serverData }));
       }
       
-      console.log('✅ SINCRONIZAÇÃO INICIAL CONCLUÍDA!');
-      console.log('🔓 APP DESBLOQUEADO - Realtime ativo!');
+      
+      
       
     } catch (error) {
       console.error('❌ Erro na sincronização inicial:', error);
@@ -206,7 +206,7 @@ export const basicSyncService = {
       return;
     }
     
-    console.log(`🔄 Executando ${this.syncQueue.length} syncs em lote (debounce inteligente)...`);
+    
     
     // Executar apenas o último sync da fila (mais recente)
     const latestSync = this.syncQueue[this.syncQueue.length - 1];
@@ -229,22 +229,22 @@ export const basicSyncService = {
     const handleReturnFromBackground = () => {
       // Só fazer sync obrigatório se realmente estava em segundo plano
       if (wasInBackground) {
-        console.log('🚀 VOLTA REAL do segundo plano - sincronização obrigatória...');
+        
         this.queueSync(() => this.handleAppReturn());
         wasInBackground = false; // Reset
       } else {
-        console.log('🔄 App já estava ativo - sync normal via realtime');
+        
       }
     };
 
     // 1. Detectar quando app VAI para segundo plano
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        console.log('📱 App foi para segundo plano');
+        
         wasInBackground = true; // Marcar que estava em segundo plano
       } else {
         const now = Date.now();
-        console.log('👁️ App voltou (visibilitychange)');
+        
         handleReturnFromBackground(); // Verificar se precisa sync obrigatório
         lastCheckTime = now;
         lastFocusTime = now;
@@ -253,13 +253,13 @@ export const basicSyncService = {
 
     // 2. Focus/Blur - Detectar foco da janela  
     window.addEventListener('blur', () => {
-      console.log('🌫️ Janela perdeu foco');
+      
       wasInBackground = true; // Marcar que estava em segundo plano
     });
 
     window.addEventListener('focus', () => {
       const now = Date.now();
-      console.log('🎯 Janela ganhou foco');
+      
       handleReturnFromBackground(); // Verificar se precisa sync obrigatório
       lastCheckTime = now;
       lastFocusTime = now;
@@ -268,7 +268,7 @@ export const basicSyncService = {
     // 3. PWA: Pageshow - Específico para volta do cache/background
     window.addEventListener('pageshow', (event) => {
       const now = Date.now();
-      console.log('📱 PWA: Pageshow');
+      
       // Pageshow sempre indica volta do segundo plano
       wasInBackground = true;
       handleReturnFromBackground();
@@ -278,7 +278,7 @@ export const basicSyncService = {
     // 4. PWA: Resume - Evento específico de PWA
     document.addEventListener('resume', () => {
       const now = Date.now();
-      console.log('📱 PWA: Resume');
+      
       wasInBackground = true; // Resume sempre é volta do segundo plano
       handleReturnFromBackground();
       lastCheckTime = now;
@@ -289,19 +289,19 @@ export const basicSyncService = {
 
     // 6. Conectividade restaurada (apenas quando volta online)
     window.addEventListener('online', () => {
-      console.log('🌐 ONLINE: Conectividade restaurada');
+      
       // Só fazer sync se estava realmente offline por um tempo
       const now = Date.now();
       if (now - lastCheckTime > 30000) { // 30 segundos offline
-        console.log('🌐 Estava offline por tempo significativo - sincronizando...');
+        
         setTimeout(() => handleReturnFromBackground(), 100);
       }
     });
 
-    console.log('🔧 Detecção OTIMIZADA configurada:');
-    console.log('   - Sync obrigatório: APENAS quando volta do segundo plano');
-    console.log('   - Realtime: Funciona normalmente quando app está ativo');
-    console.log('   - Verificação temporal: REMOVIDA para evitar spam');
+    
+    
+    
+    
   },
 
   async handleAppReturn() {
@@ -309,13 +309,13 @@ export const basicSyncService = {
     
     // Debounce aumentado para 8 segundos (mais estável)
     if (now - this.lastSyncTime < this.minSyncInterval) {
-      console.log('⏭️ Sync muito recente, ignorando...');
+      
       return;
     }
     
     // Evitar syncs simultâneos
     if (this.syncInProgress) {
-      console.log('🔄 Sync já em progresso, ignorando...');
+      
       return;
     }
     
@@ -324,7 +324,7 @@ export const basicSyncService = {
     const needsForcedSync = timeSinceLastSync > 30000; // 30 segundos
     
     if (!needsForcedSync) {
-      console.log('🔄 Sync recente - usando realtime normal');
+      
       return;
     }
     
@@ -334,12 +334,12 @@ export const basicSyncService = {
     this.lastSyncTime = now;
     
     try {
-      console.log('🚀 SINCRONIZAÇÃO COMPLETA após volta do segundo plano...');
-      console.log('🔒 APP BLOQUEADO - Aguardando sincronização...');
+      
+      
       
       // Verificar se está online antes de tentar
       if (!navigator.onLine) {
-        console.log('📡 Offline - desbloqueando app');
+        
         return;
       }
       
@@ -349,7 +349,7 @@ export const basicSyncService = {
       }));
       
       // USAR A MESMA SINCRONIZAÇÃO COMPLETA DA INICIALIZAÇÃO
-      console.log('🔄 Usando sincronização completa (igual ao F5/reiniciar)...');
+      
       await this.forceInitialSync();
       
       // Executar callbacks registrados
@@ -361,7 +361,7 @@ export const basicSyncService = {
         }
       });
       
-      console.log('✅ SINCRONIZAÇÃO COMPLETA concluída - APP DESBLOQUEADO!');
+      
       
     } catch (error) {
       console.error('❌ Erro ao sincronizar após volta:', error);
@@ -394,7 +394,7 @@ export const basicSyncService = {
           table: 'sync_data' 
         }, 
         (payload: any) => {
-          console.log('📡 Atualização recebida:', payload);
+          
           if (payload.new && payload.new.device_last_seen !== DEVICE_ID) {
             // Só atualizar se não foi este dispositivo que fez a mudança
             this.handleRealtimeUpdate(payload.new);
@@ -402,13 +402,13 @@ export const basicSyncService = {
         }
       )
       .subscribe((status: string) => {
-        console.log('🔗 Realtime:', status);
+        
       });
   },
 
   async handleRealtimeUpdate(newData: any) {
     try {
-      console.log('📥 Processando atualização de outro dispositivo');
+      
       
       const serverData: StorageItems = {
         expenses: newData.expenses || {},
@@ -432,7 +432,7 @@ export const basicSyncService = {
         }));
       }
       
-      console.log('✅ Dados atualizados de outro dispositivo');
+      
     } catch (error) {
       console.error('❌ Erro ao processar realtime:', error);
     }
@@ -442,7 +442,7 @@ export const basicSyncService = {
     if (!supabase) return null;
     
     try {
-      console.log('📥 Carregando dados do servidor...');
+      
       
       const { data, error } = await supabase.rpc('get_sync_data');
       
@@ -465,7 +465,7 @@ export const basicSyncService = {
         
         // SEMPRE salvar dados do servidor localmente (são os mais recentes)
         storage.save(serverData);
-        console.log('✅ Dados do servidor carregados e salvos (sempre os mais recentes)');
+        
         console.log('📊 Dados do servidor:', {
           expenses: Object.keys(serverData.expenses || {}).length,
           projects: (serverData.projects || []).length,
@@ -485,7 +485,7 @@ export const basicSyncService = {
 
   async sync(data: StorageItems): Promise<boolean> {
     if (!supabase) {
-      console.log('Supabase não configurado, salvando apenas localmente');
+      
       storage.save(data);
       return true;
     }
@@ -584,7 +584,7 @@ export const basicSyncService = {
       return;
     }
     
-    console.log('🔒 Interação bloqueada - adicionando à fila...');
+    
     this.pendingInteractions.push(interaction);
   },
 
@@ -592,7 +592,7 @@ export const basicSyncService = {
   executePendingInteractions() {
     if (this.pendingInteractions.length === 0) return;
     
-    console.log(`🚀 Executando ${this.pendingInteractions.length} interações pendentes...`);
+    
     
     // Executar todas as interações na ordem correta
     while (this.pendingInteractions.length > 0) {
@@ -606,12 +606,12 @@ export const basicSyncService = {
       }
     }
     
-    console.log('✅ Todas as interações pendentes foram executadas');
+    
   },
 
   // NOVO: Forçar desbloqueio (para casos de emergência)
   forceUnblock() {
-    console.log('⚠️ DESBLOQUEIO FORÇADO - Pode causar inconsistências!');
+    
     this.isAppBlocked = false;
     this.syncInProgress = false;
     this.isSyncingOnReturn = false;
@@ -632,20 +632,20 @@ export const basicSyncService = {
     this.syncQueue = [];
     this.pendingInteractions = [];
     this.isAppBlocked = false;
-    console.log('🔄 Sync limpo e resetado');
+    
   }
 };
 
 // Funções de conveniência
 export const loadData = async (): Promise<StorageItems> => {
-  console.log('📥 LoadData: Verificando fonte de dados...');
+  
   
   // SEMPRE carregar do servidor primeiro se disponível
   if (supabase) {
     try {
       const serverData = await basicSyncService.loadInitialData();
       if (serverData) {
-        console.log('✅ LoadData: Usando dados do servidor (mais recentes)');
+        
         return serverData;
       }
     } catch (error) {
@@ -656,12 +656,12 @@ export const loadData = async (): Promise<StorageItems> => {
   // Fallback para dados locais APENAS se servidor falhar
   const localData = storage.load();
   if (localData) {
-    console.log('📱 LoadData: Usando dados locais (fallback)');
+    
     return localData;
   }
   
   // Dados vazios apenas se nada existir
-  console.log('🆕 LoadData: Criando estrutura vazia');
+  
   return {
     expenses: {},
     projects: [],
@@ -703,19 +703,19 @@ if (typeof window !== 'undefined') {
     getLocalData: () => storage.load(),
     clearLocal: () => {
       storage.clear();
-      console.log('🗑️ Dados locais limpos');
+      
     },
     simulateAppReturn: async () => {
-      console.log('🧪 Simulando volta do segundo plano...');
+      
       await basicSyncService.handleAppReturn();
     },
     compareData: async () => {
       const localData = storage.load();
       const serverData = await basicSyncService.loadInitialData();
       
-      console.log('📊 COMPARAÇÃO DE DADOS:');
-      console.log('📱 Local:', localData);
-      console.log('🌐 Servidor:', serverData);
+      
+      
+      
       
       if (localData && serverData) {
         const localProjects = localData.projects?.length || 0;
@@ -723,13 +723,13 @@ if (typeof window !== 'undefined') {
         const localStock = localData.stock?.length || 0;
         const serverStock = serverData.stock?.length || 0;
         
-        console.log(`📊 Projetos - Local: ${localProjects}, Servidor: ${serverProjects}`);
-        console.log(`📦 Estoque - Local: ${localStock}, Servidor: ${serverStock}`);
+        
+        
         
         if (localProjects !== serverProjects || localStock !== serverStock) {
-          console.log('⚠️ DIVERGÊNCIA DETECTADA! Dados diferentes entre local e servidor');
+          
         } else {
-          console.log('✅ Dados em sincronia');
+          
         }
       }
     },
@@ -753,37 +753,37 @@ if (typeof window !== 'undefined') {
     setSyncInterval: (minMs: number, maxMs: number) => {
       basicSyncService.minSyncInterval = minMs;
       basicSyncService.maxSyncInterval = maxMs;
-      console.log(`⚙️ Intervalos de sync configurados: Min: ${minMs}ms, Max: ${maxMs}ms`);
+      
     },
     clearSyncQueue: () => {
       basicSyncService.cleanup();
     },
     testDebounce: () => {
-      console.log('🧪 Testando sistema de debounce...');
+      
       for (let i = 0; i < 5; i++) {
         setTimeout(() => {
           basicSyncService.queueSync(() => {
-            console.log(`🔄 Sync ${i + 1} executado`);
+            
           });
         }, i * 100);
       }
     },
     // NOVO: Resgatar dados de uma hora atrás
     restoreDataFromOneHourAgo: async () => {
-      console.log('🕐 RESGATANDO DADOS DE 1 HORA ATRÁS DO SUPABASE...');
-      console.log('🔍 Iniciando processo de restauração...');
+      
+      
       
       try {
         // 1. Verificar se o storage está funcionando
-        console.log('🔍 Verificando storage...');
+        
         if (typeof storage === 'undefined') {
           throw new Error('Storage não está disponível');
         }
         
         // 2. Fazer backup dos dados atuais
-        console.log('💾 Criando backup dos dados atuais...');
+        
         const currentData = storage.load();
-        console.log('✅ Backup criado:', currentData ? 'Sim' : 'Não');
+        
         
         if (currentData) {
           console.log('📊 Dados atuais:', {
@@ -797,23 +797,23 @@ if (typeof window !== 'undefined') {
         }
         
         // 3. Buscar dados de uma hora atrás no Supabase
-        console.log('🌐 Buscando dados históricos do Supabase...');
+        
         
         // Calcular timestamp de uma hora atrás
         const now = Date.now();
         const oneHourAgo = now - (60 * 60 * 1000);
         const oneHourAgoDate = new Date(oneHourAgo);
         
-        console.log('🕐 Timestamp atual:', new Date(now).toLocaleString('pt-BR'));
-        console.log('🕐 Uma hora atrás:', oneHourAgoDate.toLocaleString('pt-BR'));
-        console.log('🕐 Timestamp numérico:', oneHourAgo);
+        
+        
+        
         
         // 4. Tentar carregar dados do servidor
-        console.log('🌐 Carregando dados do servidor...');
+        
         const serverData = await basicSyncService.loadInitialData();
         
         if (serverData) {
-          console.log('✅ Dados do servidor carregados com sucesso!');
+          
           console.log('📊 Dados do servidor:', {
             expenses: Object.keys(serverData.expenses || {}).length,
             projects: (serverData.projects || []).length,
@@ -824,7 +824,7 @@ if (typeof window !== 'undefined') {
           });
           
           // 5. Criar versão "de uma hora atrás"
-          console.log('🔧 Criando versão histórica dos dados...');
+          
           const historicalData = {
             ...serverData,
             // Manter estrutura mas com dados mais antigos
@@ -852,10 +852,10 @@ if (typeof window !== 'undefined') {
           });
           
           // 6. Salvar dados históricos localmente
-          console.log('💾 Salvando dados históricos no storage...');
+          
           try {
             storage.save(historicalData);
-            console.log('✅ Dados históricos salvos com sucesso!');
+            
           } catch (saveError) {
             console.error('❌ Erro ao salvar dados históricos:', saveError);
             if (saveError instanceof Error) {
@@ -866,19 +866,19 @@ if (typeof window !== 'undefined') {
           }
           
           // 7. Atualizar UI
-          console.log('🔄 Disparando evento de atualização da UI...');
+          
           try {
             window.dispatchEvent(new CustomEvent('dataUpdated', { 
               detail: historicalData 
             }));
-            console.log('✅ Evento de UI disparado com sucesso!');
+            
           } catch (eventError) {
             console.error('⚠️ Erro ao disparar evento de UI:', eventError);
             // Não é crítico, continuar
           }
           
-          console.log('🎉 DADOS DE 1 HORA ATRÁS RESTAURADOS COM SUCESSO!');
-          console.log('📱 A aplicação foi atualizada com os dados históricos');
+          
+          
           
           return {
             success: true,
@@ -897,20 +897,20 @@ if (typeof window !== 'undefined') {
             }
           };
         } else {
-          console.log('⚠️ Não foi possível carregar dados do servidor');
+          
           
           // 8. Tentar restaurar do backup local se disponível
           if (currentData) {
-            console.log('🔄 Restaurando dados do backup local...');
+            
             try {
               storage.save(currentData);
-              console.log('✅ Backup local restaurado com sucesso!');
+              
               
               window.dispatchEvent(new CustomEvent('dataUpdated', { 
                 detail: currentData 
               }));
               
-              console.log('📱 Dados locais restaurados');
+              
               return {
                 success: true,
                 message: 'Dados locais restaurados (servidor indisponível)',
@@ -944,7 +944,7 @@ if (typeof window !== 'undefined') {
         try {
           const localData = storage.load();
           if (localData) {
-            console.log('🔄 Fallback: Restaurando dados locais...');
+            
             storage.save(localData);
             
             window.dispatchEvent(new CustomEvent('dataUpdated', { 
@@ -977,10 +977,10 @@ if (typeof window !== 'undefined') {
       const now = Date.now();
       const oneHourAgo = now - (60 * 60 * 1000); // 1 hora atrás
       
-      console.log('📅 HISTÓRICO DE SINCRONIZAÇÃO:');
-      console.log('🕐 Última sincronização:', new Date(lastSync).toLocaleString('pt-BR'));
-      console.log('🕐 Uma hora atrás:', new Date(oneHourAgo).toLocaleString('pt-BR'));
-      console.log('⏱️ Tempo desde último sync:', Math.round((now - lastSync) / 1000), 'segundos');
+      
+      
+      
+      
       
       return {
         lastSync: new Date(lastSync).toLocaleString('pt-BR'),
@@ -990,13 +990,13 @@ if (typeof window !== 'undefined') {
       };
     },
     testInstantSync: () => {
-      console.log('⚡ TESTE: Sincronização instantânea...');
+      
       basicSyncService.lastSyncTime = 0;
       basicSyncService.handleAppReturn();
     },
     // NOVO: Funções para testar o comportamento otimizado
     testBackgroundReturn: () => {
-      console.log('🧪 TESTE: Simulando volta do segundo plano...');
+      
       
       // Simular que estava em segundo plano
       const event = new Event('visibilitychange');
@@ -1007,7 +1007,7 @@ if (typeof window !== 'undefined') {
         // Simular volta para primeiro plano
         Object.defineProperty(document, 'hidden', { value: false, configurable: true });
         document.dispatchEvent(event);
-        console.log('✅ Teste concluído - verificar se sync obrigatório foi ativado');
+        
       }, 1000);
     },
     getOptimizedStatus: () => {
@@ -1025,7 +1025,7 @@ if (typeof window !== 'undefined') {
       };
     },
     disableSync: () => {
-      console.log('⛔ DESABILITANDO sincronização obrigatória para teste...');
+      
       basicSyncService.isAppBlocked = false;
       basicSyncService.syncInProgress = false;
       basicSyncService.isSyncingOnReturn = false;
@@ -1033,6 +1033,6 @@ if (typeof window !== 'undefined') {
     }
   };
   
-  console.log('🔄 Basic Sync Debug: window.basicSyncDebug');
-  console.log('📱 Device ID:', DEVICE_ID);
+  
+  
 }
