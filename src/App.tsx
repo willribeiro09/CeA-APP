@@ -1463,6 +1463,8 @@ export default function App() {
 
   // Função para alternar uma data trabalhada do funcionário
   const handleToggleEmployeeWorkedDate = (employeeId: string, date: string) => {
+    console.log("🔄 handleToggleEmployeeWorkedDate chamado:", { employeeId, date });
+    
     // Encontrar o funcionário em qualquer semana
     let employeeData: Employee | undefined;
     let foundWeekKey: string | undefined;
@@ -1490,6 +1492,14 @@ export default function App() {
     const newWorkedDates = isDateWorked
       ? workedDates.filter(d => d !== date)
       : [...workedDates, date];
+    
+    console.log("🔄 Estado atual do funcionário:", {
+      employeeId,
+      date,
+      workedDates,
+      isDateWorked,
+      newWorkedDates
+    });
     
     // Atualizar o funcionário em todas as semanas onde ele existe
     setEmployees(prevEmployees => {
@@ -1520,6 +1530,22 @@ export default function App() {
           console.error('Erro ao salvar alterações:', error);
         }
       }
+      
+      console.log("🔄 Estado atualizado:", {
+        employeeId,
+        date,
+        newWorkedDates,
+        updatedEmployees: Object.keys(updatedEmployees).reduce((acc, weekKey) => {
+          const employee = updatedEmployees[weekKey].find(e => e.id === employeeId);
+          if (employee) {
+            acc[weekKey] = {
+              workedDates: employee.workedDates,
+              daysWorked: employee.daysWorked
+            };
+          }
+          return acc;
+        }, {} as any)
+      });
       
       return updatedEmployees;
     });
@@ -1989,12 +2015,50 @@ export default function App() {
                           const weekStart = selectedWeekStart;
                           const weekEnd = selectedWeekEnd;
                           
+                          // Debug para o funcionário específico
+                          if (employee.id === '5d9cabc7-4be0-4df8-85b2-745494ed5069') {
+                            console.log("🔍 DEBUG FUNCIONÁRIO NA LISTA:", {
+                              employeeId: employee.id,
+                              employeeName: employee.name,
+                              workedDates: employee.workedDates,
+                              weekStart: weekStart.toISOString(),
+                              weekEnd: weekEnd.toISOString(),
+                              selectedWeekStart: selectedWeekStart.toISOString(),
+                              selectedWeekEnd: selectedWeekEnd.toISOString()
+                            });
+                          }
+                          
                           workedDatesInWeek = employee.workedDates.filter(dateStr => {
-                            const workedDate = new Date(dateStr);
-                            return workedDate >= weekStart && workedDate <= weekEnd;
+                            // Comparar apenas as strings de data (YYYY-MM-DD)
+                            const workedDateStr = dateStr.split('T')[0]; // Pega apenas a parte da data
+                            const weekStartStr = weekStart.toISOString().split('T')[0];
+                            const weekEndStr = weekEnd.toISOString().split('T')[0];
+                            
+                            const isInWeek = workedDateStr >= weekStartStr && workedDateStr <= weekEndStr;
+                            
+                            // Debug para o funcionário específico
+                            if (employee.id === '5d9cabc7-4be0-4df8-85b2-745494ed5069') {
+                              console.log("🔍 FILTRO DE DATA:", {
+                                dateStr,
+                                workedDateStr,
+                                weekStartStr,
+                                weekEndStr,
+                                isInWeek
+                              });
+                            }
+                            
+                            return isInWeek;
                           });
                           
                           daysWorkedInWeek = workedDatesInWeek.length;
+                          
+                          // Debug final para o funcionário específico
+                          if (employee.id === '5d9cabc7-4be0-4df8-85b2-745494ed5069') {
+                            console.log("🔍 RESULTADO FINAL:", {
+                              daysWorkedInWeek,
+                              workedDatesInWeek
+                            });
+                          }
                         }
                         
                         employeeElements.push(
@@ -2229,6 +2293,9 @@ export default function App() {
               aria-labelledby="calendar-dialog-title"
               aria-describedby="calendar-dialog-description"
             >
+              <Dialog.Title className="sr-only">
+                Work Days Calendar for {selectedEmployee.name}
+              </Dialog.Title>
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 id="calendar-dialog-title" className="text-lg font-semibold">

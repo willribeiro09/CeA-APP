@@ -58,8 +58,13 @@ export function WorkDaysCalendar({
   }, [currentMonth]);
 
   // Atualizar as datas trabalhadas quando as props mudarem
+  // Com debounce para evitar loops de atualização
   useEffect(() => {
-    setWorkedDates(initialWorkedDates || []);
+    const timeoutId = setTimeout(() => {
+      setWorkedDates(initialWorkedDates || []);
+    }, 100); // Debounce de 100ms
+    
+    return () => clearTimeout(timeoutId);
   }, [initialWorkedDates]);
 
   // Função para verificar se uma data está dentro da seleção atual
@@ -123,7 +128,7 @@ export function WorkDaysCalendar({
         if ((isAdding && !isCurrentlyWorked) || (!isAdding && isCurrentlyWorked)) {
           onDateToggle(formattedDate);
           
-          // Atualizar o estado local para refletir a mudança
+          // Atualizar o estado local para feedback visual
           if (isAdding) {
             setWorkedDates(prev => [...prev, formattedDate]);
           } else {
@@ -131,17 +136,14 @@ export function WorkDaysCalendar({
           }
         }
       });
-      
-      // Limpar o estado de seleção
-      setIsSelecting(false);
-      setMobileSelectionStart(null);
-      setCurrentTouchDate(null);
     }
     
     // Limpar o estado de seleção
     setIsSelecting(false);
     setSelectionStart(null);
     setMouseOverDate(null);
+    setMobileSelectionStart(null);
+    setCurrentTouchDate(null);
   }, [isSelecting, selectionStart, mouseOverDate, isAdding, workedDates, onDateToggle]);
 
   // Para dispositivos móveis, melhorar a área de toque
@@ -180,16 +182,28 @@ export function WorkDaysCalendar({
   // Função para lidar com clique único (para dispositivos móveis)
   const handleClick = (date: Date) => {
     try {
+      console.log("🖱️ CLIQUE DETECTADO:", {
+        date: date.toString(),
+        isToday: isToday(date),
+        day: date.getDate()
+      });
+      
       // Usar normalizeEmployeeDate para ajustar a data antes de formatá-la
       const normalizedDate = normalizeEmployeeDate(date);
       const formattedDate = formatDateToISO(normalizedDate);
       
       const isDateWorked = workedDates.includes(formattedDate);
       
+      console.log("🖱️ PROCESSANDO CLIQUE:", {
+        formattedDate,
+        isDateWorked,
+        workedDates
+      });
+      
       // Alternar o estado de trabalho da data
       onDateToggle(formattedDate);
       
-      // Atualizar o estado local
+      // Atualizar o estado local imediatamente para feedback visual
       if (isDateWorked) {
         setWorkedDates(prev => prev.filter(d => d !== formattedDate));
       } else {
@@ -270,6 +284,7 @@ export function WorkDaysCalendar({
         if ((isAdding && !isCurrentlyWorked) || (!isAdding && isCurrentlyWorked)) {
           onDateToggle(formattedDate);
           
+          // Atualizar o estado local para feedback visual
           if (isAdding) {
             setWorkedDates(prev => [...prev, formattedDate]);
           } else {
@@ -344,16 +359,28 @@ export function WorkDaysCalendar({
             // Verificar se está na seleção atual ou já marcado como trabalhado
             const isWorked = workedDates.includes(formattedDate);
             const isSelected = isSelecting && isDateInSelection(day);
-            const shouldHighlight = (isSelected && isAdding) || (isWorked && !isSelected) || (isSelected && !isAdding && !isWorked);
             
-            // Classes para estilização combinando as abordagens anteriores
+            // Debug específico para o dia atual
+            if (isToday(day)) {
+              console.log("📅 DIA ATUAL DEBUG:", {
+                day: day.getDate(),
+                formattedDate,
+                isWorked,
+                workedDates,
+                isToday: isToday(day),
+                dayString: day.toString(),
+                normalizedDate: normalizeEmployeeDate(day).toString()
+              });
+            }
+            
+            // Classes para estilização - simplificada e mais clara
             const dayClasses = [
               "flex items-center justify-center",
               "cursor-pointer select-none",
               "transition-colors duration-200",
-              isToday(day) ? "border-2 border-blue-500" : "",
-              shouldHighlight 
-                ? "bg-green-500 text-white hover:bg-green-600" 
+              isToday(day) ? "border-2 border-blue-500 font-bold" : "",
+              isWorked 
+                ? "bg-green-500 text-white hover:bg-green-600 font-bold" 
                 : "hover:bg-gray-100 text-gray-700",
               isMobile ? "h-10 w-10" : "h-8 w-8",
               "rounded-md"
@@ -364,7 +391,14 @@ export function WorkDaysCalendar({
                 key={day.toString()}
                 className={dayClasses}
                 style={mobileStyles}
-                onMouseDown={(e) => handleMouseDown(day, e)}
+                onMouseDown={(e) => {
+                  // Para desktop, usar clique simples se não estiver selecionando
+                  if (!isSelecting) {
+                    handleClick(day);
+                  } else {
+                    handleMouseDown(day, e);
+                  }
+                }}
                 onMouseOver={() => handleMouseOver(day)}
                 onTouchStart={(e) => {
                   if (isMobile) {
