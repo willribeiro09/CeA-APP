@@ -270,6 +270,10 @@ export default function App() {
     let total = 0;
     
     projects.forEach(project => {
+      // Somar apenas projetos concluídos
+      if (project.status !== 'completed') {
+        return;
+      }
       // Filtrar projetos baseado no cliente
       if ((selectedClient === 'Power' && project.clientType !== 'Private') || 
           (selectedClient === 'Private' && project.clientType === 'Private')) {
