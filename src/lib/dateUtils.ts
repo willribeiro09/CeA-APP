@@ -303,8 +303,9 @@ export function addWeeksSafe(date: Date, weeks: number): Date {
 }
 
 /**
- * Função para gerar semanas para employees: Current week primeiro, depois Last week
+ * Função para gerar semanas para employees: Histórico completo mantido
  * Formato: "MM/DD To MM/DD"
+ * Gera 13 semanas: 12 passadas + 1 atual = histórico completo
  */
 export function getWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -317,8 +318,8 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
   const today = createSafeDate(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   const currentWeekMonday = findCurrentWeekMonday(today);
 
-  // Construir Current (i=0) e Last (i=-1) nesta ordem
-  const indices = [0, -1];
+  // Gerar 13 semanas: 12 passadas + 1 atual (i=0 a i=-12)
+  const indices = Array.from({ length: 13 }, (_, i) => -i); // [0, -1, -2, ..., -12]
   const now = new Date();
   const weeks = indices.map(i => {
     const weekMonday = new Date(currentWeekMonday);
@@ -418,9 +419,10 @@ function formatWeekLabel(startDate: Date, endDate: Date): string {
 
 
 /**
- * Função para gerar semanas para projetos: Current week e Last week
+ * Função para gerar semanas para projetos: Histórico completo mantido
  * Formato: "MM/DD To MM/DD"
  * Semanas começam na quarta-feira e terminam na terça-feira
+ * Gera 13 semanas: 12 passadas + 1 atual = histórico completo
  */
 export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   startDate: Date;
@@ -433,8 +435,8 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
   const today = createSafeDate(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   const currentWeekWednesday = findCurrentWeekWednesday(today);
 
-  // Construir Current (i=0) e Last (i=-1) nesta ordem
-  const indices = [0, -1];
+  // Gerar 13 semanas: 12 passadas + 1 atual (i=0 a i=-12)
+  const indices = Array.from({ length: 13 }, (_, i) => -i); // [0, -1, -2, ..., -12]
   const now = new Date();
   const weeks = indices.map(i => {
     const weekWednesday = new Date(currentWeekWednesday);
