@@ -1445,8 +1445,12 @@ export default function App() {
       const weekEnd = selectedWeekEnd;
       
       workedDatesInWeek = weekEmployee.workedDates.filter(dateStr => {
-        const date = new Date(dateStr);
-        return date >= weekStart && date <= weekEnd;
+        // Comparar apenas as strings de data (YYYY-MM-DD) para evitar problemas de timezone
+        const workedDateStr = dateStr.split('T')[0]; // Pega apenas a parte da data
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+        const weekEndStr = weekEnd.toISOString().split('T')[0];
+        
+        return workedDateStr >= weekStartStr && workedDateStr <= weekEndStr;
       });
     } else if (employee.workedDates) {
       // Se não tem registro específico, filtrar datas trabalhadas que estão na semana selecionada
@@ -1454,8 +1458,12 @@ export default function App() {
         const weekEnd = selectedWeekEnd;
         
         workedDatesInWeek = employee.workedDates.filter(dateStr => {
-          const date = new Date(dateStr);
-          return date >= weekStart && date <= weekEnd;
+          // Comparar apenas as strings de data (YYYY-MM-DD) para evitar problemas de timezone
+          const workedDateStr = dateStr.split('T')[0]; // Pega apenas a parte da data
+          const weekStartStr = weekStart.toISOString().split('T')[0];
+          const weekEndStr = weekEnd.toISOString().split('T')[0];
+          
+          return workedDateStr >= weekStartStr && workedDateStr <= weekEndStr;
         });
       }
       
