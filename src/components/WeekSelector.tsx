@@ -5,13 +5,14 @@ import { getWeeks, formatDateToISO } from '../lib/dateUtils';
 interface WeekSelectorProps {
   selectedWeekStart: Date;
   onWeekChange: (startDate: Date, endDate: Date) => void;
+  employeesData?: Record<string, any[]>;
 }
 
-export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorProps) {
+export function WeekSelector({ selectedWeekStart, onWeekChange, employeesData }: WeekSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   // Usar useMemo para evitar recálculo desnecessário das semanas
-  const weeks = useMemo(() => getWeeks(), []);
+  const weeks = useMemo(() => getWeeks(new Date(), employeesData), [employeesData]);
   
   const [selectedWeek, setSelectedWeek] = useState(() => {
     const allWeeks = getWeeks();

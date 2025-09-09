@@ -5,13 +5,14 @@ import { getProjectWeeks, formatDateToISO } from '../lib/dateUtils';
 interface ProjectWeekSelectorProps {
   selectedWeekStart: Date;
   onWeekChange: (startDate: Date, endDate: Date) => void;
+  projectsData?: any[];
 }
 
-export function ProjectWeekSelector({ selectedWeekStart, onWeekChange }: ProjectWeekSelectorProps) {
+export function ProjectWeekSelector({ selectedWeekStart, onWeekChange, projectsData }: ProjectWeekSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   // Obter semanas (fonte de verdade)
-  const weeks = useMemo(() => getProjectWeeks(), []);
+  const weeks = useMemo(() => getProjectWeeks(new Date(), projectsData), [projectsData]);
 
   // Detecção robusta de semana atual baseada no "now" entre start/end
   const now = useMemo(() => new Date(), []);

@@ -303,10 +303,11 @@ export function addWeeksSafe(date: Date, weeks: number): Date {
 }
 
 /**
- * Função para gerar semanas para employees: Current week primeiro, depois Last week
+ * Função para gerar semanas para employees: Histórico natural baseado em dados existentes
  * Formato: "MM/DD To MM/DD"
+ * Gera apenas semanas que têm dados + semana atual
  */
-export function getWeeks(currentDate: Date = new Date()): Array<{
+export function getWeeks(currentDate: Date = new Date(), employeesData?: Record<string, any[]>): Array<{
   startDate: Date;
   endDate: Date;
   label: string;
@@ -316,35 +317,62 @@ export function getWeeks(currentDate: Date = new Date()): Array<{
 }> {
   const today = createSafeDate(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   const currentWeekMonday = findCurrentWeekMonday(today);
-
-  // Construir Current (i=0) e Last (i=-1) nesta ordem
-  const indices = [0, -1];
   const now = new Date();
-  const weeks = indices.map(i => {
-    const weekMonday = new Date(currentWeekMonday);
-    weekMonday.setUTCDate(currentWeekMonday.getUTCDate() + (i * 7));
 
-    const weekStart = new Date(weekMonday);
-    weekStart.setUTCHours(12, 0, 0, 0);
+  // Sempre incluir a semana atual
+  const weeks = [createWeekData(currentWeekMonday, now, 0)];
 
-    const weekEnd = new Date(weekMonday);
-    weekEnd.setUTCDate(weekMonday.getUTCDate() + 5); // sábado
-    weekEnd.setUTCHours(23, 59, 59, 999);
+  // Se temos dados de funcionários, encontrar semanas que têm dados
+  if (employeesData) {
+    const usedWeeks = new Set<string>();
+    
+    // Coletar todas as semanas que têm dados
+    Object.keys(employeesData).forEach(weekKey => {
+      if (employeesData[weekKey] && employeesData[weekKey].length > 0) {
+        usedWeeks.add(weekKey);
+      }
+    });
 
-    const isCurrent = now >= weekStart && now <= weekEnd;
-    const isPast = now > weekEnd;
-
-    return {
-      startDate: weekStart,
-      endDate: weekEnd,
-      label: formatWeekLabel(weekStart, weekEnd),
-      value: formatDateToISO(weekStart),
-      isCurrent,
-      isPast
-    };
-  });
+    // Adicionar semanas passadas que têm dados (máximo 12 semanas para trás)
+    for (let i = 1; i <= 12; i++) {
+      const weekMonday = new Date(currentWeekMonday);
+      weekMonday.setUTCDate(currentWeekMonday.getUTCDate() - (i * 7));
+      
+      const weekValue = formatDateToISO(weekMonday);
+      
+      // Se esta semana tem dados, adicionar à lista
+      if (usedWeeks.has(weekValue)) {
+        weeks.push(createWeekData(weekMonday, now, -i));
+      }
+    }
+  } else {
+    // Fallback: incluir apenas a semana anterior se não temos dados
+    weeks.push(createWeekData(currentWeekMonday, now, -1));
+  }
 
   return weeks;
+}
+
+// Função auxiliar para criar dados da semana
+function createWeekData(weekMonday: Date, now: Date, offset: number) {
+  const weekStart = new Date(weekMonday);
+  weekStart.setUTCHours(12, 0, 0, 0);
+
+  const weekEnd = new Date(weekMonday);
+  weekEnd.setUTCDate(weekMonday.getUTCDate() + 5); // sábado
+  weekEnd.setUTCHours(23, 59, 59, 999);
+
+  const isCurrent = now >= weekStart && now <= weekEnd;
+  const isPast = now > weekEnd;
+
+  return {
+    startDate: weekStart,
+    endDate: weekEnd,
+    label: formatWeekLabel(weekStart, weekEnd),
+    value: formatDateToISO(weekStart),
+    isCurrent,
+    isPast
+  };
 }
 
 /**
@@ -418,11 +446,12 @@ function formatWeekLabel(startDate: Date, endDate: Date): string {
 
 
 /**
- * Função para gerar semanas para projetos: Current week e Last week
+ * Função para gerar semanas para projetos: Histórico natural baseado em dados existentes
  * Formato: "MM/DD To MM/DD"
  * Semanas começam na quarta-feira e terminam na terça-feira
+ * Gera apenas semanas que têm dados + semana atual
  */
-export function getProjectWeeks(currentDate: Date = new Date()): Array<{
+export function getProjectWeeks(currentDate: Date = new Date(), projectsData?: any[]): Array<{
   startDate: Date;
   endDate: Date;
   label: string;
@@ -432,35 +461,64 @@ export function getProjectWeeks(currentDate: Date = new Date()): Array<{
 }> {
   const today = createSafeDate(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   const currentWeekWednesday = findCurrentWeekWednesday(today);
-
-  // Construir Current (i=0) e Last (i=-1) nesta ordem
-  const indices = [0, -1];
   const now = new Date();
-  const weeks = indices.map(i => {
-    const weekWednesday = new Date(currentWeekWednesday);
-    weekWednesday.setUTCDate(currentWeekWednesday.getUTCDate() + (i * 7));
 
-    const weekStart = new Date(weekWednesday);
-    weekStart.setUTCHours(12, 0, 0, 0);
+  // Sempre incluir a semana atual
+  const weeks = [createProjectWeekData(currentWeekWednesday, now, 0)];
 
-    const weekEnd = new Date(weekWednesday);
-    weekEnd.setUTCDate(weekWednesday.getUTCDate() + 6); // Terça
-    weekEnd.setUTCHours(23, 59, 59, 999);
+  // Se temos dados de projetos, encontrar semanas que têm dados
+  if (projectsData && projectsData.length > 0) {
+    const usedWeeks = new Set<string>();
+    
+    // Coletar todas as semanas que têm projetos
+    projectsData.forEach(project => {
+      if (project.startDate) {
+        const projectWeekStart = getProjectWeekStart(new Date(project.startDate));
+        const weekValue = formatDateToISO(projectWeekStart);
+        usedWeeks.add(weekValue);
+      }
+    });
 
-    const isCurrent = now >= weekStart && now <= weekEnd;
-    const isPast = now > weekEnd;
-
-    return {
-      startDate: weekStart,
-      endDate: weekEnd,
-      label: formatWeekLabel(weekStart, weekEnd),
-      value: formatDateToISO(weekStart),
-      isCurrent,
-      isPast
-    };
-  });
+    // Adicionar semanas passadas que têm dados (máximo 12 semanas para trás)
+    for (let i = 1; i <= 12; i++) {
+      const weekWednesday = new Date(currentWeekWednesday);
+      weekWednesday.setUTCDate(currentWeekWednesday.getUTCDate() - (i * 7));
+      
+      const weekValue = formatDateToISO(weekWednesday);
+      
+      // Se esta semana tem dados, adicionar à lista
+      if (usedWeeks.has(weekValue)) {
+        weeks.push(createProjectWeekData(weekWednesday, now, -i));
+      }
+    }
+  } else {
+    // Fallback: incluir apenas a semana anterior se não temos dados
+    weeks.push(createProjectWeekData(currentWeekWednesday, now, -1));
+  }
 
   return weeks;
+}
+
+// Função auxiliar para criar dados da semana de projetos
+function createProjectWeekData(weekWednesday: Date, now: Date, offset: number) {
+  const weekStart = new Date(weekWednesday);
+  weekStart.setUTCHours(12, 0, 0, 0);
+
+  const weekEnd = new Date(weekWednesday);
+  weekEnd.setUTCDate(weekWednesday.getUTCDate() + 6); // Terça
+  weekEnd.setUTCHours(23, 59, 59, 999);
+
+  const isCurrent = now >= weekStart && now <= weekEnd;
+  const isPast = now > weekEnd;
+
+  return {
+    startDate: weekStart,
+    endDate: weekEnd,
+    label: formatWeekLabel(weekStart, weekEnd),
+    value: formatDateToISO(weekStart),
+    isCurrent,
+    isPast
+  };
 }
 
 /**

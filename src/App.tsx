@@ -1779,6 +1779,7 @@ export default function App() {
                         <ProjectWeekSelector 
                           selectedWeekStart={selectedWeekStart}
                           onWeekChange={isBackgroundSyncing ? () => {} : handleProjectWeekChange}
+                          projectsData={projects}
                         />
                       )}
                       {selectedClient === 'Private' && (
@@ -1807,6 +1808,7 @@ export default function App() {
                   <WeekSelector 
                     selectedWeekStart={selectedWeekStart}
                     onWeekChange={isBackgroundSyncing ? () => {} : handleWeekChange}
+                    employeesData={employees}
                   />
                 </div>
               </div>
