@@ -80,13 +80,6 @@ export class PhotoService {
 
   static async saveEditedPhoto(originalPhoto: ProjectPhoto, editedDataUrl: string, deviceId?: string): Promise<ProjectPhoto | null> {
     try {
-      console.log('🔄 PHOTO_SERVICE - Iniciando edição:', {
-        originalId: originalPhoto.id,
-        originalFilename: originalPhoto.filename,
-        originalPath: originalPhoto.path,
-        originalUrl: originalPhoto.url?.substring(0, 50) + '...'
-      });
-
       // Converter data URL para blob
       const response = await fetch(editedDataUrl);
       const blob = await response.blob();
@@ -94,12 +87,6 @@ export class PhotoService {
       const fileExtension = 'png'; // Data URL sempre vem como PNG
       const uniqueName = `edited_${uuidv4()}.${fileExtension}`;
       const storagePath = `${originalPhoto.projectId}/${uniqueName}`;
-      
-      console.log('📁 PHOTO_SERVICE - Upload para storage:', {
-        newFilename: uniqueName,
-        storagePath: storagePath,
-        blobSize: blob.size
-      });
 
       // Upload da imagem editada
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -111,21 +98,16 @@ export class PhotoService {
         });
 
       if (uploadError) {
-        console.error('❌ PHOTO_SERVICE - Erro no upload:', uploadError);
+        console.error('Erro no upload da imagem editada:', uploadError);
         return null;
       }
-
-      console.log('✅ PHOTO_SERVICE - Upload concluído');
 
       // Obter URL pública
       const { data: urlData } = supabase.storage
         .from(this.bucketName)
         .getPublicUrl(storagePath);
 
-      console.log('🔗 PHOTO_SERVICE - URL pública gerada:', urlData.publicUrl.substring(0, 50) + '...');
-
       // ATUALIZAR a foto original em vez de criar uma nova
-      console.log('💾 PHOTO_SERVICE - Atualizando registro no banco...');
       const { data: dbData, error: dbError } = await supabase
         .from('project_photos')
         .update({
@@ -147,28 +129,24 @@ export class PhotoService {
         .single();
 
       if (dbError) {
-        console.error('❌ PHOTO_SERVICE - Erro ao atualizar banco:', dbError);
+        console.error('Erro ao atualizar foto editada no banco:', dbError);
         // Limpar arquivo do storage se falhou ao salvar no banco
         await supabase.storage.from(this.bucketName).remove([storagePath]);
         return null;
       }
 
-      console.log('✅ PHOTO_SERVICE - Banco atualizado com sucesso');
-
       // Deletar arquivo original do storage se existir
       if (originalPhoto.path && originalPhoto.path !== storagePath) {
-        console.log('🗑️ PHOTO_SERVICE - Deletando arquivo original:', originalPhoto.path);
         try {
           await supabase.storage
             .from(this.bucketName)
             .remove([originalPhoto.path]);
-          console.log('✅ PHOTO_SERVICE - Arquivo original deletado');
         } catch (error) {
-          console.warn('⚠️ PHOTO_SERVICE - Erro ao deletar arquivo original:', error);
+          console.warn('Erro ao deletar arquivo original:', error);
         }
       }
 
-      const result = {
+      return {
         id: dbData.id,
         projectId: dbData.project_id,
         filename: dbData.filename,
@@ -183,17 +161,8 @@ export class PhotoService {
         originalPhotoId: dbData.original_photo_id,
         metadata: dbData.metadata
       };
-
-      console.log('🎉 PHOTO_SERVICE - Edição concluída:', {
-        finalId: result.id,
-        finalFilename: result.filename,
-        finalUrl: result.url?.substring(0, 50) + '...',
-        isEdited: result.isEdited
-      });
-
-      return result;
     } catch (error) {
-      console.error('❌ PHOTO_SERVICE - Erro geral:', error);
+      console.error('Erro ao salvar foto editada:', error);
       return null;
     }
   }

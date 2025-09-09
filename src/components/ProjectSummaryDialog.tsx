@@ -128,14 +128,6 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
   const handleDeletePhoto = async (photo: ProjectPhoto) => {
     if (!project || isDeleting) return;
     
-    console.log('🗑️ PHOTO_DELETE - Iniciando exclusão:', {
-      photoId: photo.id,
-      filename: photo.filename,
-      isEdited: photo.isEdited,
-      isLocal: photo.metadata?.isLocal,
-      url: photo.url?.substring(0, 50) + '...'
-    });
-    
     setIsDeleting(photo.id);
     
     try {
@@ -145,23 +137,14 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
                            !photo.metadata?.editedLocally;
       
       if (isServerPhoto) {
-        console.log('🌐 PHOTO_DELETE - Deletando do servidor...');
         const success = await PhotoService.deletePhoto(photo.id);
         if (!success) {
-          console.warn('⚠️ PHOTO_DELETE - Falha ao deletar do servidor');
-        } else {
-          console.log('✅ PHOTO_DELETE - Servidor atualizado');
+          console.warn('Não foi possível deletar a foto do servidor');
         }
-      } else {
-        console.log('📱 PHOTO_DELETE - Foto local, pulando servidor');
       }
       
       // Remover da lista local (sempre fazer isso)
       const updatedPhotos = photos.filter(p => p.id !== photo.id);
-      console.log('📝 PHOTO_DELETE - Lista atualizada:', {
-        antes: photos.length,
-        depois: updatedPhotos.length
-      });
       
       setPhotos(updatedPhotos);
       onPhotosChange(project.id, updatedPhotos);
@@ -170,10 +153,8 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
       if (photo.url.startsWith('blob:')) {
         URL.revokeObjectURL(photo.url);
       }
-      
-      console.log('✅ PHOTO_DELETE - Exclusão concluída');
     } catch (error) {
-      console.error('❌ PHOTO_DELETE - Erro:', error);
+      console.error('Erro ao deletar foto:', error);
     } finally {
       setIsDeleting(null);
     }
