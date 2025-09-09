@@ -128,14 +128,12 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
   const handleDeletePhoto = async (photo: ProjectPhoto) => {
     if (!project || isDeleting) return;
     
-    console.log('🗑️ DEBUG - Iniciando exclusão de foto:', {
+    console.log('🗑️ PHOTO_DELETE - Iniciando exclusão:', {
       photoId: photo.id,
-      photoFilename: photo.filename,
-      isLocal: photo.metadata?.isLocal,
-      startsWithLocal: photo.id.startsWith('local-'),
-      editedLocally: photo.metadata?.editedLocally,
+      filename: photo.filename,
       isEdited: photo.isEdited,
-      originalPhotoId: photo.originalPhotoId
+      isLocal: photo.metadata?.isLocal,
+      url: photo.url?.substring(0, 50) + '...'
     });
     
     setIsDeleting(photo.id);
@@ -146,40 +144,36 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
                            !photo.id.startsWith('local-') && 
                            !photo.metadata?.editedLocally;
       
-      console.log('🔍 DEBUG - Verificação de foto do servidor:', {
-        isServerPhoto,
-        metadata: photo.metadata,
-        id: photo.id
-      });
-      
       if (isServerPhoto) {
-        console.log('🌐 DEBUG - Tentando deletar do servidor...');
+        console.log('🌐 PHOTO_DELETE - Deletando do servidor...');
         const success = await PhotoService.deletePhoto(photo.id);
-        console.log('🌐 DEBUG - Resultado da exclusão do servidor:', success);
         if (!success) {
-          console.warn('Não foi possível deletar a foto do servidor');
+          console.warn('⚠️ PHOTO_DELETE - Falha ao deletar do servidor');
+        } else {
+          console.log('✅ PHOTO_DELETE - Servidor atualizado');
         }
       } else {
-        console.log('📱 DEBUG - Foto local, pulando exclusão do servidor');
+        console.log('📱 PHOTO_DELETE - Foto local, pulando servidor');
       }
       
       // Remover da lista local (sempre fazer isso)
-      console.log('📝 DEBUG - Fotos antes da remoção:', photos.length);
       const updatedPhotos = photos.filter(p => p.id !== photo.id);
-      console.log('📝 DEBUG - Fotos após remoção:', updatedPhotos.length);
+      console.log('📝 PHOTO_DELETE - Lista atualizada:', {
+        antes: photos.length,
+        depois: updatedPhotos.length
+      });
       
       setPhotos(updatedPhotos);
       onPhotosChange(project.id, updatedPhotos);
       
       // Limpar URL de objeto se for local
       if (photo.url.startsWith('blob:')) {
-        console.log('🧹 DEBUG - Limpando URL de objeto local');
         URL.revokeObjectURL(photo.url);
       }
       
-      console.log('✅ DEBUG - Exclusão concluída com sucesso');
+      console.log('✅ PHOTO_DELETE - Exclusão concluída');
     } catch (error) {
-      console.error('❌ DEBUG - Erro ao deletar foto:', error);
+      console.error('❌ PHOTO_DELETE - Erro:', error);
     } finally {
       setIsDeleting(null);
     }

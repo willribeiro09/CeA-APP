@@ -402,14 +402,6 @@ export default function App() {
   }, [photoUpdateTimeout]);
   
   const handleProjectPhotosChange = (projectId: string, photos: ProjectPhoto[]) => {
-    console.log('📸 DEBUG - Atualizando fotos do projeto:', {
-      projectId,
-      photosCount: photos.length,
-      photoIds: photos.map(p => p.id),
-      selectedProjectId: selectedProject?.id,
-      isSelectedProject: selectedProject?.id === projectId
-    });
-    
     // Marcar que estamos atualizando fotos para evitar loops de sincronização
     (window as any).__isUpdatingPhoto = true;
     
@@ -425,7 +417,6 @@ export default function App() {
           p.id === projectId ? { ...p, photos } : p
         );
         
-        console.log('💾 DEBUG - Salvando mudanças no storage...');
         // Salvar no storage
         saveChanges(createStorageData({
           expenses,
@@ -439,7 +430,6 @@ export default function App() {
       
       // Atualizar o projeto selecionado se for o mesmo
       if (selectedProject && selectedProject.id === projectId) {
-        console.log('🔄 DEBUG - Atualizando projeto selecionado');
         setSelectedProject({ ...selectedProject, photos });
       }
       
@@ -460,42 +450,75 @@ export default function App() {
   const handleSaveEditedPhoto = (editedPhoto: ProjectPhoto) => {
     if (!selectedProject) return;
     
-    console.log('🎨 DEBUG - Salvando foto editada:', {
-      selectedProjectId: selectedProject.id,
-      selectedPhotoId: selectedPhoto?.id,
-      editedPhotoId: editedPhoto.id,
-      editedPhotoFilename: editedPhoto.filename,
-      editedPhotoIsEdited: editedPhoto.isEdited,
-      editedPhotoOriginalId: editedPhoto.originalPhotoId,
-      currentPhotosCount: selectedProject.photos?.length || 0
+    console.log('🖼️ IMAGE_EDIT - Iniciando salvamento:', {
+      originalId: selectedPhoto?.id,
+      editedId: editedPhoto.id,
+      originalUrl: selectedPhoto?.url?.substring(0, 50) + '...',
+      editedUrl: editedPhoto.url?.substring(0, 50) + '...',
+      isEdited: editedPhoto.isEdited,
+      projectPhotosCount: selectedProject.photos?.length || 0
     });
     
     // Substituir a foto original pela editada, não adicionar
     const updatedPhotos = (selectedProject.photos || []).map(photo => {
       const isOriginal = photo.id === selectedPhoto?.id;
-      console.log('🔄 DEBUG - Mapeando foto:', {
-        photoId: photo.id,
-        isOriginal,
-        willReplace: isOriginal
-      });
+      if (isOriginal) {
+        console.log('🔄 IMAGE_EDIT - Substituindo foto original:', {
+          originalId: photo.id,
+          newId: editedPhoto.id,
+          originalFilename: photo.filename,
+          newFilename: editedPhoto.filename
+        });
+      }
       return isOriginal ? editedPhoto : photo;
     });
     
     // Se a foto original não foi encontrada (caso raro), adicionar a editada
     if (!updatedPhotos.find(p => p.id === editedPhoto.id)) {
-      console.log('➕ DEBUG - Foto original não encontrada, adicionando editada');
+      console.log('⚠️ IMAGE_EDIT - Foto original não encontrada, adicionando editada');
       updatedPhotos.push(editedPhoto);
     }
     
-    console.log('📊 DEBUG - Resultado final:', {
-      updatedPhotosCount: updatedPhotos.length,
-      editedPhotoInList: updatedPhotos.find(p => p.id === editedPhoto.id) ? 'SIM' : 'NÃO',
-      originalPhotoInList: updatedPhotos.find(p => p.id === selectedPhoto?.id) ? 'SIM' : 'NÃO'
+    console.log('✅ IMAGE_EDIT - Resultado da substituição:', {
+      totalPhotos: updatedPhotos.length,
+      editedPhotoExists: updatedPhotos.find(p => p.id === editedPhoto.id) ? 'SIM' : 'NÃO',
+      originalPhotoExists: updatedPhotos.find(p => p.id === selectedPhoto?.id) ? 'SIM' : 'NÃO'
     });
     
-    handleProjectPhotosChange(selectedProject.id, updatedPhotos);
+    // ATUALIZAÇÃO IMEDIATA DA UI (sem debounce para edições)
+    console.log('⚡ IMAGE_EDIT - Atualizando UI imediatamente...');
+    
+    // Marcar que estamos atualizando fotos para evitar loops de sincronização
+    (window as any).__isUpdatingPhoto = true;
+    
+    setProjects(prevProjects => {
+      const updatedProjects = prevProjects.map(p => 
+        p.id === selectedProject.id ? { ...p, photos: updatedPhotos } : p
+      );
+      
+      // Salvar no storage
+      saveChanges(createStorageData({
+        expenses,
+        projects: updatedProjects,
+        stock: stockItems,
+        employees
+      }));
+      
+      return updatedProjects;
+    });
+    
+    // Atualizar o projeto selecionado imediatamente
+    setSelectedProject({ ...selectedProject, photos: updatedPhotos });
+    
+    // Liberar flag após 1 segundo
+    setTimeout(() => {
+      (window as any).__isUpdatingPhoto = false;
+    }, 1000);
+    
     setIsImageEditorOpen(false);
     setSelectedPhoto(null); // Limpar foto selecionada
+    
+    console.log('🎉 IMAGE_EDIT - UI atualizada com sucesso!');
   };
 
   const handleTogglePaid = (id: string) => {
