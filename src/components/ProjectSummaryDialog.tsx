@@ -123,15 +123,19 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
     if (!project) return;
     
     try {
-      // Se for uma foto do servidor, tentar deletar
-      if (!photo.metadata?.isLocal && photo.id.startsWith('local-') === false) {
+      // Verificar se é uma foto do servidor (não local e não editada localmente)
+      const isServerPhoto = !photo.metadata?.isLocal && 
+                           !photo.id.startsWith('local-') && 
+                           !photo.metadata?.editedLocally;
+      
+      if (isServerPhoto) {
         const success = await PhotoService.deletePhoto(photo.id);
         if (!success) {
           console.warn('Não foi possível deletar a foto do servidor');
         }
       }
       
-      // Remover da lista local
+      // Remover da lista local (sempre fazer isso)
       const updatedPhotos = photos.filter(p => p.id !== photo.id);
       setPhotos(updatedPhotos);
       onPhotosChange(project.id, updatedPhotos);

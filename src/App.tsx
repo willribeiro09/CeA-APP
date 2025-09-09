@@ -420,7 +420,16 @@ export default function App() {
   const handleSaveEditedPhoto = (editedPhoto: ProjectPhoto) => {
     if (!selectedProject) return;
     
-    const updatedPhotos = [...(selectedProject.photos || []), editedPhoto];
+    // Substituir a foto original pela editada, não adicionar
+    const updatedPhotos = (selectedProject.photos || []).map(photo => 
+      photo.id === selectedPhoto?.id ? editedPhoto : photo
+    );
+    
+    // Se a foto original não foi encontrada (caso raro), adicionar a editada
+    if (!updatedPhotos.find(p => p.id === editedPhoto.id)) {
+      updatedPhotos.push(editedPhoto);
+    }
+    
     handleProjectPhotosChange(selectedProject.id, updatedPhotos);
     setIsImageEditorOpen(false);
   };

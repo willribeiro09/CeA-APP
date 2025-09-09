@@ -8,12 +8,13 @@ export class PhotoService {
   static async uploadPhoto(file: File, projectId: string, deviceId?: string): Promise<ProjectPhoto | null> {
     try {
       const fileExtension = file.name.split('.').pop();
-      const fileName = `${projectId}/${uuidv4()}.${fileExtension}`;
+      const uniqueName = `${uuidv4()}.${fileExtension}`;
+      const storagePath = `${projectId}/${uniqueName}`;
       
       // Upload para o Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(this.bucketName)
-        .upload(fileName, file, {
+        .upload(storagePath, file, {
           cacheControl: '3600',
           upsert: false
         });
@@ -26,13 +27,14 @@ export class PhotoService {
       // Obter URL pública
       const { data: urlData } = supabase.storage
         .from(this.bucketName)
-        .getPublicUrl(fileName);
+        .getPublicUrl(storagePath);
 
       // Criar registro na tabela
       const photoData = {
         id: uuidv4(),
         project_id: projectId,
-        filename: file.name,
+        // Guardar apenas o nome único; o caminho completo é project_id/filename
+        filename: uniqueName,
         url: urlData.publicUrl,
         file_size: file.size,
         mime_type: file.type,
@@ -53,7 +55,7 @@ export class PhotoService {
       if (dbError) {
         console.error('Erro ao salvar no banco:', dbError);
         // Limpar arquivo do storage se falhou ao salvar no banco
-        await supabase.storage.from(this.bucketName).remove([fileName]);
+        await supabase.storage.from(this.bucketName).remove([storagePath]);
         return null;
       }
 
@@ -61,7 +63,7 @@ export class PhotoService {
         id: dbData.id,
         projectId: dbData.project_id,
         filename: dbData.filename,
-        path: fileName,
+        path: storagePath,
         url: dbData.url,
         fileSize: dbData.file_size,
         mimeType: dbData.mime_type,
@@ -83,12 +85,13 @@ export class PhotoService {
       const blob = await response.blob();
       
       const fileExtension = 'png'; // Data URL sempre vem como PNG
-      const fileName = `${originalPhoto.projectId}/edited_${uuidv4()}.${fileExtension}`;
+      const uniqueName = `edited_${uuidv4()}.${fileExtension}`;
+      const storagePath = `${originalPhoto.projectId}/${uniqueName}`;
       
       // Upload da imagem editada
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(this.bucketName)
-        .upload(fileName, blob, {
+        .upload(storagePath, blob, {
           cacheControl: '3600',
           upsert: false,
           contentType: 'image/png'
@@ -102,13 +105,13 @@ export class PhotoService {
       // Obter URL pública
       const { data: urlData } = supabase.storage
         .from(this.bucketName)
-        .getPublicUrl(fileName);
+        .getPublicUrl(storagePath);
 
       // Criar registro na tabela
       const photoData = {
         id: uuidv4(),
         project_id: originalPhoto.projectId,
-        filename: `edited_${originalPhoto.filename || 'image.png'}`,
+        filename: uniqueName,
         url: urlData.publicUrl,
         file_size: blob.size,
         mime_type: 'image/png',
@@ -131,7 +134,7 @@ export class PhotoService {
       if (dbError) {
         console.error('Erro ao salvar foto editada no banco:', dbError);
         // Limpar arquivo do storage se falhou ao salvar no banco
-        await supabase.storage.from(this.bucketName).remove([fileName]);
+        await supabase.storage.from(this.bucketName).remove([storagePath]);
         return null;
       }
 
@@ -139,7 +142,7 @@ export class PhotoService {
         id: dbData.id,
         projectId: dbData.project_id,
         filename: dbData.filename,
-        path: fileName,
+        path: storagePath,
         url: dbData.url,
         fileSize: dbData.file_size,
         mimeType: dbData.mime_type,
@@ -173,7 +176,7 @@ export class PhotoService {
         id: photo.id,
         projectId: photo.project_id,
         filename: photo.filename,
-        path: photo.filename, // Usar filename como path
+        path: `${photo.project_id}/${photo.filename}`,
         url: photo.url,
         fileSize: photo.file_size,
         mimeType: photo.mime_type,
@@ -195,28 +198,49 @@ export class PhotoService {
       // Primeiro, buscar informações da foto para deletar do storage
       const { data: photoData, error: fetchError } = await supabase
         .from('project_photos')
-        .select('*')
+        .select('id, project_id, filename, url')
         .eq('id', photoId)
-        .single();
+        .maybeSingle();
 
-      if (fetchError || !photoData) {
-        console.error('Erro ao buscar dados da foto:', fetchError);
-        return false;
+      let projectIdFromDb: string | undefined = photoData?.project_id;
+      let filenameFromDb: string | undefined = photoData?.filename;
+      const urlFromDb: string | undefined = photoData?.url;
+
+      // Extrair caminho do storage via URL pública, se necessário
+      const derivePathFromUrl = (publicUrl?: string): { projectId?: string, filename?: string } => {
+        if (!publicUrl) return {};
+        try {
+          const url = new URL(publicUrl);
+          const parts = url.pathname.split('/');
+          // .../object/public/<bucket>/<project_id>/<filename>
+          const publicIndex = parts.findIndex(p => p === 'public');
+          if (publicIndex >= 0 && parts.length >= publicIndex + 3) {
+            const projectId = parts[publicIndex + 2];
+            const filename = parts[publicIndex + 3];
+            return { projectId, filename };
+          }
+        } catch {}
+        return {};
+      };
+
+      if (!projectIdFromDb || !filenameFromDb) {
+        const derived = derivePathFromUrl(urlFromDb);
+        projectIdFromDb = projectIdFromDb || derived.projectId;
+        filenameFromDb = filenameFromDb || derived.filename;
       }
 
       // Deletar do storage
-      const fileName = photoData.filename || photoData.url.split('/').pop();
-      if (fileName) {
+      if (projectIdFromDb && filenameFromDb) {
+        const storagePath = `${projectIdFromDb}/${filenameFromDb}`;
         const { error: storageError } = await supabase.storage
           .from(this.bucketName)
-          .remove([`${photoData.project_id}/${fileName}`]);
-        
+          .remove([storagePath]);
         if (storageError) {
           console.warn('Erro ao deletar do storage (continuando):', storageError);
         }
       }
 
-      // Deletar do banco
+      // Deletar do banco (idempotente)
       const { error: dbError } = await supabase
         .from('project_photos')
         .delete()
