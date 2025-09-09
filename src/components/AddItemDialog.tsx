@@ -82,10 +82,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Formulário enviado");
     const formData = new FormData(e.target as HTMLFormElement);
     const data = Object.fromEntries(formData);
-    console.log("Dados do formulário:", data);
     
     let itemData: Partial<Item>;
     let validationError: string | null = null;
@@ -113,34 +111,15 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         paid: false,
         is_paid: false
       } as Partial<Expense>;
-      console.log("Dados de despesa formatados:", itemData);
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (category === 'Projects') {
-      console.log('🔍 DEBUG - AddItemDialog - Dados do formulário:', {
-        dataStartDate: data.startDate,
-        selectedWeekStart: selectedWeekStart.toISOString(),
-        selectedWeekStartDate: selectedWeekStart.toISOString().split('T')[0]
-      });
-      
       // Usar a data do formulário se fornecida, caso contrário usar selectedWeekStart
       // Para formulários de data HTML, usar parseISODate em vez de normalizeDate para evitar problemas de fuso
       const startDate = data.startDate ? parseISODate(data.startDate as string) || selectedWeekStart : selectedWeekStart;
       const endDate = data.endDate ? parseISODate(data.endDate as string) : undefined;
       
-      console.log('🔍 DEBUG - AddItemDialog - Datas processadas:', {
-        startDate: startDate.toISOString(),
-        startDateDate: startDate.toISOString().split('T')[0],
-        endDate: endDate?.toISOString()
-      });
-      
-      // Adicione logs detalhados sobre os dados do projeto
-      console.log('Dados brutos do formulário de projeto:', data);
-      console.log('startDate processada:', startDate);
-      console.log('Valor bruto:', data.value);
-      
       // Garantir que temos todos os campos obrigatórios
       const projectValue = data.value ? normalizeMonetaryValue(data.value as string) : 0;
-      console.log('Valor normalizado:', projectValue);
       
       // Criar o objeto do projeto com todos os campos obrigatórios
       itemData = {
@@ -159,8 +138,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         photos: uploadedPhotos,
         category: 'Projects'
       } as Partial<Project>;
-      
-      console.log("Dados de projeto formatados completos:", itemData);
       validationError = validation.project(itemData as Partial<Project>);
     } else if (category === 'Stock') {
       itemData = {
@@ -169,7 +146,6 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         unit: data.unit as string,
         category: 'Stock'
       } as Partial<StockItem>;
-      console.log("Dados de estoque formatados:", itemData);
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else {
       // É um funcionário
@@ -188,10 +164,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         category: 'Employees',
         workedDates: []  // Inicializar com array vazio
       } as Partial<Employee>;
-      console.log("Dados de funcionário formatados:", itemData);
-      console.log("🔍 Chamando validation.employee...");
       validationError = validation.employee(itemData as Partial<Employee>);
-      console.log("🔍 Resultado da validação:", validationError);
     }
 
     if (validationError) {
@@ -200,13 +173,10 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       return;
     }
 
-    console.log("✅ Dados válidos, chamando onSubmit com:", itemData);
     setErrors([]);
     
     try {
-      console.log("🚀 Chamando onSubmit...");
       onSubmit(itemData);
-      console.log("🚀 onSubmit chamado com sucesso, fechando dialog...");
       onOpenChange(false);
     } catch (error) {
       console.error("❌ Erro ao chamar onSubmit:", error);
@@ -337,7 +307,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                   />
                 </div>
                 <div>
-                  <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="location" className="block text sm font-medium text-gray-700">
                     Location
                   </label>
                   <input
@@ -367,7 +337,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                     type="date"
                     id="startDate"
                     name="startDate"
-                    defaultValue={selectedWeekStart?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0]}
+                    defaultValue={selectedWeekStart ? formatDateToISO(selectedWeekStart) : formatDateToISO(new Date())}
                     onFocus={handleInputFocus}
                     onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"

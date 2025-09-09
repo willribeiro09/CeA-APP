@@ -82,7 +82,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         is_paid: (item as Expense).is_paid,
         paid: (item as Expense).paid
       };
-      console.log("Dados de despesa formatados:", itemData);
+      
       validationError = validation.expense(itemData as Partial<Expense>);
     } else if (item && 'client' in item) {
       // É um projeto
@@ -139,11 +139,11 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         unit: data.unit as string,
         category: 'Stock'
       } as Partial<StockItem>;
-      console.log("Dados de estoque formatados:", itemData);
+      
       validationError = validation.stockItem(itemData as Partial<StockItem>);
     } else if (item && 'employeeName' in item) {
       // É um funcionário
-      console.log("Formatando dados de funcionário:", data);
+      
       
       itemData = {
         ...item,
@@ -152,7 +152,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         dailyRate: parseFloat(data.dailyRate as string) || 250,
         category: 'Employees'
       };
-      console.log("Dados de funcionário formatados para edição:", itemData);
+      
       validationError = validation.employee(itemData as Partial<Employee>);
     } else {
       console.error("Categoria de item desconhecida");
@@ -257,7 +257,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     type="date"
                     id="dueDate"
                     name="dueDate"
-                    defaultValue={new Date((item as Expense).date).toISOString().split('T')[0]}
+                    defaultValue={formatDateToISO(parseISODate((item as Expense).date) || new Date())}
                     required
                     onFocus={handleInputFocus}
                     onBlur={handleInputBlur}
@@ -347,7 +347,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     type="date"
                     id="startDate"
                     name="startDate"
-                    defaultValue={new Date((item as Project).startDate).toISOString().split('T')[0]}
+                    defaultValue={formatDateToISO(parseISODate((item as Project).startDate) || new Date())}
                     required
                     onFocus={handleInputFocus}
                     onBlur={handleInputBlur}

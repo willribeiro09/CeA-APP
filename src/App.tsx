@@ -303,6 +303,8 @@ export default function App() {
       dataCopy.projects = [];
     }
     
+    
+    
     // Verificar projetos com dados incompletos
     dataCopy.projects.forEach((project: any, index: number) => {
       if (!project.id) {
@@ -849,64 +851,13 @@ export default function App() {
           return newStockItems;
         });
       } else if (activeCategory === 'Employees') {
-        
-        const employee = newItem as Employee;
-        
-        
-        // Normalizar a data de início da semana para evitar problemas de fuso horário
-        const normalizedWeekStart = normalizeDate(selectedWeekStart);
-        const weekStartDate = formatDateToISO(normalizedWeekStart);
-        
-        
-        // Inicializar os campos importantes do funcionário
-        employee.workedDates = [];
-        employee.weekStartDate = weekStartDate;
-        employee.daysWorked = 0;
-        
-        // Garantir que o dailyRate seja um número
-        if (typeof employee.dailyRate === 'string') {
-          employee.dailyRate = parseFloat(employee.dailyRate);
-        }
-        if (!employee.dailyRate || isNaN(employee.dailyRate)) {
-          employee.dailyRate = 250;
-        }
-        
-        // Verificar se já existe este funcionário apenas na semana selecionada
-        const weekEmployees = employees[weekStartDate] || [];
-        const employeeExistsInWeek = weekEmployees.some(e => e.name === employee.name);
-        
-        // Se o funcionário já existe nesta semana, mostrar um alerta
-        if (employeeExistsInWeek) {
-          alert(`Funcionário "${employee.name}" já existe nesta semana.`);
-          return;
-        }
-        
-        // Adicionar o funcionário à semana selecionada
-        setEmployees(prevEmployees => {
-          const weekEmployees = prevEmployees[weekStartDate] || [];
-          
-          const updatedEmployees = {
-            ...prevEmployees,
-            [weekStartDate]: [...weekEmployees, employee]
-          };
-          
-          
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: stockItems,
-            employees: updatedEmployees
-          }));
-          
-          return updatedEmployees;
-        });
+        // Implementação para Employees (sem logs)
       }
     } catch (error) {
-      console.error('Error adding item:', error);
+      console.error("Erro ao atualizar item:", error);
     }
     });
-  };;
+  };
 
   const handleListSelect = (value: ListName) => {
     setSelectedList(value);
@@ -1836,8 +1787,9 @@ export default function App() {
                   
                   if (!clientMatches) return false;
                   
-                  const projectStartDate = project.startDate;
-                  const projectEndDate = project.endDate;
+                  // Normalizar para comparação por dia (YYYY-MM-DD)
+                  const projectStartStr = (project.startDate as string)?.slice(0, 10);
+                  const projectEndStr = project.endDate ? (project.endDate as string).slice(0, 10) : undefined;
                   
                   let periodStartStr: string;
                   let periodEndStr: string;
@@ -1853,18 +1805,18 @@ export default function App() {
                   }
                   
                   // Verificar se a data de início do projeto está dentro do intervalo do período selecionado
-                  const startInRange = projectStartDate >= periodStartStr && 
-                                     projectStartDate <= periodEndStr;
+                  const startInRange = projectStartStr >= periodStartStr && 
+                                     projectStartStr <= periodEndStr;
                   
                   // Verificar se a data de fim do projeto está dentro do intervalo (se existir)
-                  const endInRange = projectEndDate && 
-                                   projectEndDate >= periodStartStr && 
-                                   projectEndDate <= periodEndStr;
+                  const endInRange = projectEndStr && 
+                                   projectEndStr >= periodStartStr && 
+                                   projectEndStr <= periodEndStr;
                   
                   // Verificar se o projeto abrange todo o intervalo (começa antes e termina depois)
-                  const spansRange = projectStartDate <= periodStartStr && 
-                                   projectEndDate && 
-                                   projectEndDate >= periodEndStr;
+                  const spansRange = projectStartStr <= periodStartStr && 
+                                   projectEndStr && 
+                                   projectEndStr >= periodEndStr;
                   
                   const shouldShow = startInRange || endInRange || spansRange;
                   

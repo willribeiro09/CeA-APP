@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronDown, Calendar } from 'lucide-react';
-import { getWeeks } from '../lib/dateUtils';
+import { getWeeks, formatDateToISO } from '../lib/dateUtils';
 
 interface WeekSelectorProps {
   selectedWeekStart: Date;
@@ -21,7 +21,7 @@ export function WeekSelector({ selectedWeekStart, onWeekChange }: WeekSelectorPr
   // Atualizar as semanas quando o componente montar ou quando selectedWeekStart mudar
   useEffect(() => {
     // Encontrar a semana que corresponde à data selecionada
-    const selectedWeekValue = selectedWeekStart.toISOString().split('T')[0];
+    const selectedWeekValue = formatDateToISO(selectedWeekStart);
     const matchingWeek = weeks.find(week => week.value === selectedWeekValue);
     
     if (matchingWeek) {
