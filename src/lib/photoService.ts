@@ -229,7 +229,31 @@ export class PhotoService {
         filenameFromDb = filenameFromDb || derived.filename;
       }
 
-      // Deletar do storage
+      // PRIMEIRO: Deletar todas as fotos editadas que referenciam esta foto original
+      const { data: editedPhotos, error: editedError } = await supabase
+        .from('project_photos')
+        .select('id, project_id, filename, url')
+        .eq('original_photo_id', photoId);
+
+      if (!editedError && editedPhotos) {
+        for (const editedPhoto of editedPhotos) {
+          // Deletar do storage
+          if (editedPhoto.project_id && editedPhoto.filename) {
+            const storagePath = `${editedPhoto.project_id}/${editedPhoto.filename}`;
+            await supabase.storage
+              .from(this.bucketName)
+              .remove([storagePath]);
+          }
+          
+          // Deletar do banco
+          await supabase
+            .from('project_photos')
+            .delete()
+            .eq('id', editedPhoto.id);
+        }
+      }
+
+      // SEGUNDO: Deletar a foto original do storage
       if (projectIdFromDb && filenameFromDb) {
         const storagePath = `${projectIdFromDb}/${filenameFromDb}`;
         const { error: storageError } = await supabase.storage
@@ -240,7 +264,7 @@ export class PhotoService {
         }
       }
 
-      // Deletar do banco (idempotente)
+      // TERCEIRO: Deletar a foto original do banco
       const { error: dbError } = await supabase
         .from('project_photos')
         .delete()

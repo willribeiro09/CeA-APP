@@ -17,6 +17,8 @@ type Props = {
 
 export default function ProjectSummaryDialog({ project, open, onOpenChange, onPhotosChange, onOpenEditor }: Props) {
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null); // ID da foto sendo deletada
+  const [isEditing, setIsEditing] = useState<string | null>(null); // ID da foto sendo editada
   const [photos, setPhotos] = useState<ProjectPhoto[]>([]);
   const [selectedPhotoForView, setSelectedPhotoForView] = useState<ProjectPhoto | null>(null);
   const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
@@ -26,6 +28,10 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
   useEffect(() => {
     if (project && open) {
       loadProjectPhotos();
+    } else if (!open) {
+      // Limpar estados quando o dialog fechar
+      setIsEditing(null);
+      setIsDeleting(null);
     }
   }, [project, open]);
 
@@ -120,7 +126,9 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
   };
 
   const handleDeletePhoto = async (photo: ProjectPhoto) => {
-    if (!project) return;
+    if (!project || isDeleting) return;
+    
+    setIsDeleting(photo.id);
     
     try {
       // Verificar se é uma foto do servidor (não local e não editada localmente)
@@ -146,6 +154,8 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
       }
     } catch (error) {
       console.error('Erro ao deletar foto:', error);
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -156,6 +166,7 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
 
   const handlePhotoViewerEdit = (photo: ProjectPhoto) => {
     setIsPhotoViewerOpen(false);
+    setIsEditing(photo.id);
     onOpenEditor(photo);
   };
 
@@ -261,9 +272,23 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
                           e.stopPropagation();
                           onOpenEditor(p);
                         }}
-                        className="flex-1 bg-blue-600/90 text-white rounded px-2 py-1 text-xs flex items-center justify-center gap-1 hover:bg-blue-700/90"
+                        disabled={isEditing === p.id}
+                        className={`flex-1 rounded px-2 py-1 text-xs flex items-center justify-center gap-1 ${
+                          isEditing === p.id 
+                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                            : 'bg-blue-600/90 text-white hover:bg-blue-700/90'
+                        }`}
                       >
-                        <Pencil className="w-3 h-3" /> Edit
+                        {isEditing === p.id ? (
+                          <>
+                            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                            Editing...
+                          </>
+                        ) : (
+                          <>
+                            <Pencil className="w-3 h-3" /> Edit
+                          </>
+                        )}
                       </button>
                       <button
                         onClick={(e) => {
@@ -272,9 +297,18 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
                             handleDeletePhoto(p);
                           }
                         }}
-                        className="bg-red-600/90 text-white rounded px-2 py-1 text-xs hover:bg-red-700/90"
+                        disabled={isDeleting === p.id}
+                        className={`rounded px-2 py-1 text-xs ${
+                          isDeleting === p.id 
+                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                            : 'bg-red-600/90 text-white hover:bg-red-700/90'
+                        }`}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        {isDeleting === p.id ? (
+                          <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
                       </button>
                     </div>
                     

@@ -432,6 +432,7 @@ export default function App() {
     
     handleProjectPhotosChange(selectedProject.id, updatedPhotos);
     setIsImageEditorOpen(false);
+    setSelectedPhoto(null); // Limpar foto selecionada
   };
 
   const handleTogglePaid = (id: string) => {
