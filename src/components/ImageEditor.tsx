@@ -477,45 +477,40 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
       const editedPhoto = await PhotoService.saveEditedPhoto(photo, dataUrl, deviceInfo.deviceId);
       
       if (editedPhoto) {
+        // Usar a foto editada do servidor
         onSave(editedPhoto);
       } else {
-        // Fallback para armazenamento local
-        const localEditedPhoto: ProjectPhoto = {
+        // Fallback: atualizar a foto original com a versão editada
+        const updatedPhoto: ProjectPhoto = {
           ...photo,
-          id: `local-edited-${photo.projectId}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          path: `local-edited-${photo.filename || 'image.png'}`,
           url: dataUrl,
           editedAt: new Date().toISOString(),
           isEdited: true,
-          originalPhotoId: photo.id,
           deviceId: deviceInfo.deviceId,
           metadata: { 
             ...photo.metadata,
-            isLocal: true,
-            editedLocally: true
+            editedLocally: true,
+            lastEdit: new Date().toISOString()
           }
         };
-        onSave(localEditedPhoto);
+        onSave(updatedPhoto);
       }
     } catch (error) {
       console.error('Erro ao salvar edição:', error);
-      // Fallback para armazenamento local
-      const localEditedPhoto: ProjectPhoto = {
+      // Fallback: atualizar a foto original com a versão editada
+      const updatedPhoto: ProjectPhoto = {
         ...photo,
-        id: `local-edited-${photo.projectId}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        path: `local-edited-${photo.filename || 'image.png'}`,
         url: dataUrl,
         editedAt: new Date().toISOString(),
         isEdited: true,
-        originalPhotoId: photo.id,
         deviceId: deviceInfo.deviceId,
         metadata: { 
           ...photo.metadata,
-          isLocal: true,
-          editedLocally: true
+          editedLocally: true,
+          lastEdit: new Date().toISOString()
         }
       };
-      onSave(localEditedPhoto);
+      onSave(updatedPhoto);
     } finally {
       setIsEditing(false);
       onOpenChange(false);

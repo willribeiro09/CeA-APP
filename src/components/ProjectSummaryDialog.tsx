@@ -128,6 +128,16 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
   const handleDeletePhoto = async (photo: ProjectPhoto) => {
     if (!project || isDeleting) return;
     
+    console.log('🗑️ DEBUG - Iniciando exclusão de foto:', {
+      photoId: photo.id,
+      photoFilename: photo.filename,
+      isLocal: photo.metadata?.isLocal,
+      startsWithLocal: photo.id.startsWith('local-'),
+      editedLocally: photo.metadata?.editedLocally,
+      isEdited: photo.isEdited,
+      originalPhotoId: photo.originalPhotoId
+    });
+    
     setIsDeleting(photo.id);
     
     try {
@@ -136,24 +146,40 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
                            !photo.id.startsWith('local-') && 
                            !photo.metadata?.editedLocally;
       
+      console.log('🔍 DEBUG - Verificação de foto do servidor:', {
+        isServerPhoto,
+        metadata: photo.metadata,
+        id: photo.id
+      });
+      
       if (isServerPhoto) {
+        console.log('🌐 DEBUG - Tentando deletar do servidor...');
         const success = await PhotoService.deletePhoto(photo.id);
+        console.log('🌐 DEBUG - Resultado da exclusão do servidor:', success);
         if (!success) {
           console.warn('Não foi possível deletar a foto do servidor');
         }
+      } else {
+        console.log('📱 DEBUG - Foto local, pulando exclusão do servidor');
       }
       
       // Remover da lista local (sempre fazer isso)
+      console.log('📝 DEBUG - Fotos antes da remoção:', photos.length);
       const updatedPhotos = photos.filter(p => p.id !== photo.id);
+      console.log('📝 DEBUG - Fotos após remoção:', updatedPhotos.length);
+      
       setPhotos(updatedPhotos);
       onPhotosChange(project.id, updatedPhotos);
       
       // Limpar URL de objeto se for local
       if (photo.url.startsWith('blob:')) {
+        console.log('🧹 DEBUG - Limpando URL de objeto local');
         URL.revokeObjectURL(photo.url);
       }
+      
+      console.log('✅ DEBUG - Exclusão concluída com sucesso');
     } catch (error) {
-      console.error('Erro ao deletar foto:', error);
+      console.error('❌ DEBUG - Erro ao deletar foto:', error);
     } finally {
       setIsDeleting(null);
     }

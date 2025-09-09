@@ -516,8 +516,9 @@ export const basicSyncService = {
         // IMPORTANTE: Disparar evento para atualizar UI apenas se não estivermos editando projeto
         // Verificar se há uma edição de projeto em andamento para evitar loop
         const isProjectBeingUpdated = (window as any).__isUpdatingProject || false;
+        const isPhotoBeingUpdated = (window as any).__isUpdatingPhoto || false;
         
-        if (!isProjectBeingUpdated) {
+        if (!isProjectBeingUpdated && !isPhotoBeingUpdated) {
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent('dataUpdated', { 
               detail: { ...data, __source: 'sync' }

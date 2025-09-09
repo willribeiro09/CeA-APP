@@ -107,35 +107,43 @@ export class PhotoService {
         .from(this.bucketName)
         .getPublicUrl(storagePath);
 
-      // Criar registro na tabela
-      const photoData = {
-        id: uuidv4(),
-        project_id: originalPhoto.projectId,
-        filename: uniqueName,
-        url: urlData.publicUrl,
-        file_size: blob.size,
-        mime_type: 'image/png',
-        device_id: deviceId,
-        is_edited: true,
-        original_photo_id: originalPhoto.id,
-        metadata: {
-          originalPhotoId: originalPhoto.id,
-          editedFrom: deviceId,
-          editedAt: new Date().toISOString()
-        }
-      };
-
+      // ATUALIZAR a foto original em vez de criar uma nova
       const { data: dbData, error: dbError } = await supabase
         .from('project_photos')
-        .insert([photoData])
+        .update({
+          filename: uniqueName,
+          url: urlData.publicUrl,
+          file_size: blob.size,
+          mime_type: 'image/png',
+          is_edited: true,
+          updated_at: new Date().toISOString(),
+          metadata: {
+            ...originalPhoto.metadata,
+            editedFrom: deviceId,
+            editedAt: new Date().toISOString(),
+            lastEdit: new Date().toISOString()
+          }
+        })
+        .eq('id', originalPhoto.id)
         .select()
         .single();
 
       if (dbError) {
-        console.error('Erro ao salvar foto editada no banco:', dbError);
+        console.error('Erro ao atualizar foto editada no banco:', dbError);
         // Limpar arquivo do storage se falhou ao salvar no banco
         await supabase.storage.from(this.bucketName).remove([storagePath]);
         return null;
+      }
+
+      // Deletar arquivo original do storage se existir
+      if (originalPhoto.path && originalPhoto.path !== storagePath) {
+        try {
+          await supabase.storage
+            .from(this.bucketName)
+            .remove([originalPhoto.path]);
+        } catch (error) {
+          console.warn('Erro ao deletar arquivo original:', error);
+        }
       }
 
       return {
@@ -147,7 +155,7 @@ export class PhotoService {
         fileSize: dbData.file_size,
         mimeType: dbData.mime_type,
         uploadedAt: dbData.uploaded_at,
-        editedAt: dbData.created_at,
+        editedAt: dbData.updated_at,
         deviceId: dbData.device_id,
         isEdited: dbData.is_edited,
         originalPhotoId: dbData.original_photo_id,
@@ -195,12 +203,20 @@ export class PhotoService {
 
   static async deletePhoto(photoId: string): Promise<boolean> {
     try {
+      console.log('🗑️ DEBUG - PhotoService.deletePhoto iniciado:', { photoId });
+      
       // Primeiro, buscar informações da foto para deletar do storage
       const { data: photoData, error: fetchError } = await supabase
         .from('project_photos')
         .select('id, project_id, filename, url')
         .eq('id', photoId)
         .maybeSingle();
+
+      console.log('🔍 DEBUG - Dados da foto encontrados:', {
+        photoData,
+        fetchError,
+        found: !!photoData
+      });
 
       let projectIdFromDb: string | undefined = photoData?.project_id;
       let filenameFromDb: string | undefined = photoData?.filename;
@@ -230,22 +246,32 @@ export class PhotoService {
       }
 
       // PRIMEIRO: Deletar todas as fotos editadas que referenciam esta foto original
+      console.log('🔍 DEBUG - Buscando fotos editadas que referenciam:', photoId);
       const { data: editedPhotos, error: editedError } = await supabase
         .from('project_photos')
         .select('id, project_id, filename, url')
         .eq('original_photo_id', photoId);
 
+      console.log('📝 DEBUG - Fotos editadas encontradas:', {
+        editedPhotos,
+        editedError,
+        count: editedPhotos?.length || 0
+      });
+
       if (!editedError && editedPhotos) {
         for (const editedPhoto of editedPhotos) {
+          console.log('🗑️ DEBUG - Deletando foto editada:', editedPhoto.id);
           // Deletar do storage
           if (editedPhoto.project_id && editedPhoto.filename) {
             const storagePath = `${editedPhoto.project_id}/${editedPhoto.filename}`;
+            console.log('📁 DEBUG - Deletando do storage:', storagePath);
             await supabase.storage
               .from(this.bucketName)
               .remove([storagePath]);
           }
           
           // Deletar do banco
+          console.log('🗄️ DEBUG - Deletando do banco:', editedPhoto.id);
           await supabase
             .from('project_photos')
             .delete()
@@ -256,25 +282,32 @@ export class PhotoService {
       // SEGUNDO: Deletar a foto original do storage
       if (projectIdFromDb && filenameFromDb) {
         const storagePath = `${projectIdFromDb}/${filenameFromDb}`;
+        console.log('📁 DEBUG - Deletando foto original do storage:', storagePath);
         const { error: storageError } = await supabase.storage
           .from(this.bucketName)
           .remove([storagePath]);
         if (storageError) {
-          console.warn('Erro ao deletar do storage (continuando):', storageError);
+          console.warn('⚠️ DEBUG - Erro ao deletar do storage (continuando):', storageError);
+        } else {
+          console.log('✅ DEBUG - Foto original deletada do storage com sucesso');
         }
+      } else {
+        console.log('⚠️ DEBUG - Não foi possível determinar caminho do storage para foto original');
       }
 
       // TERCEIRO: Deletar a foto original do banco
+      console.log('🗄️ DEBUG - Deletando foto original do banco:', photoId);
       const { error: dbError } = await supabase
         .from('project_photos')
         .delete()
         .eq('id', photoId);
 
       if (dbError) {
-        console.error('Erro ao deletar foto do banco:', dbError);
+        console.error('❌ DEBUG - Erro ao deletar foto do banco:', dbError);
         return false;
       }
 
+      console.log('✅ DEBUG - Foto original deletada do banco com sucesso');
       return true;
     } catch (error) {
       console.error('Erro ao deletar foto:', error);
