@@ -46,6 +46,10 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
   const [canvasPosition, setCanvasPosition] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastTouch, setLastTouch] = useState<{ x: number; y: number } | null>(null);
+  const [isMouseDragging, setIsMouseDragging] = useState(false);
+  const [lastMouse, setLastMouse] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!photo) return;
@@ -232,6 +236,80 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
   // Função para detectar se é um gesto de dois dedos
   const isTwoFingerGesture = (e: React.TouchEvent) => {
     return e.touches.length === 2;
+  };
+
+  // Handlers para zoom e arrastar (similar ao PhotoViewer)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      setLastTouch({ x: touch.clientX, y: touch.clientY });
+      setIsDragging(canvasScale > 1);
+    } else if (e.touches.length === 2) {
+      setIsDragging(false);
+      setLastTouch(null);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 2) {
+      // Zoom com pinça
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) + 
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
+      
+      const newScale = Math.min(Math.max(distance / 200, 0.5), 3);
+      setCanvasScale(newScale);
+      setIsDragging(newScale > 1);
+    } else if (e.touches.length === 1 && isDragging && lastTouch) {
+      // Pan/arrastar quando com zoom
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - lastTouch.x;
+      const deltaY = touch.clientY - lastTouch.y;
+      
+      setCanvasPosition(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
+      
+      setLastTouch({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setLastTouch(null);
+  };
+
+  // Handlers para mouse
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (canvasScale > 1) {
+      setIsMouseDragging(true);
+      setLastMouse({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isMouseDragging && lastMouse && canvasScale > 1) {
+      const deltaX = e.clientX - lastMouse.x;
+      const deltaY = e.clientY - lastMouse.y;
+      
+      setCanvasPosition(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
+      
+      setLastMouse({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsMouseDragging(false);
+    setLastMouse(null);
   };
 
   // Função para calcular a distância entre dois pontos
@@ -526,72 +604,72 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700">
-            <Dialog.Title className="text-white font-medium">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700">
+            <Dialog.Title className="text-white font-medium text-sm">
               Image Editor
             </Dialog.Title>
-            <Dialog.Close className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-700/50 transition-colors">
-              <X className="w-5 h-5" />
+            <Dialog.Close className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-700/50 transition-colors">
+              <X className="w-4 h-4" />
             </Dialog.Close>
           </div>
 
           {/* Toolbar */}
-          <div className="p-4 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700">
+          <div className="px-4 py-2 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700">
             {/* Ferramentas e Cor */}
-            <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="flex items-center justify-center gap-2 mb-2">
               <button
                 onClick={() => setTool('freehand')}
-                className={`p-3 rounded-xl transition-all ${
+                className={`p-2 rounded-lg transition-all ${
                   tool === 'freehand' 
                     ? 'bg-blue-600 text-white shadow-lg' 
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                <Pencil className="w-6 h-6" />
+                <Pencil className="w-5 h-5" />
               </button>
               
               <button
                 onClick={() => setTool('line')}
-                className={`p-3 rounded-xl transition-all ${
+                className={`p-2 rounded-lg transition-all ${
                   tool === 'line' 
                     ? 'bg-blue-600 text-white shadow-lg' 
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                <Minus className="w-6 h-6" />
+                <Minus className="w-5 h-5" />
               </button>
               
               <button
                 onClick={() => setTool('rectangle')}
-                className={`p-3 rounded-xl transition-all ${
+                className={`p-2 rounded-lg transition-all ${
                   tool === 'rectangle' 
                     ? 'bg-blue-600 text-white shadow-lg' 
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                <Square className="w-6 h-6" />
+                <Square className="w-5 h-5" />
               </button>
               
               <button
                 onClick={() => setTool('circle')}
-                className={`p-3 rounded-xl transition-all ${
+                className={`p-2 rounded-lg transition-all ${
                   tool === 'circle' 
                     ? 'bg-blue-600 text-white shadow-lg' 
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                <Circle className="w-6 h-6" />
+                <Circle className="w-5 h-5" />
               </button>
               
               <button
                 onClick={() => setTool('text')}
-                className={`p-3 rounded-xl transition-all ${
+                className={`p-2 rounded-lg transition-all ${
                   tool === 'text' 
                     ? 'bg-blue-600 text-white shadow-lg' 
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                <Type className="w-6 h-6" />
+                <Type className="w-5 h-5" />
               </button>
 
               {/* Separador visual */}
@@ -601,15 +679,15 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
               <div className="relative color-picker-container">
                 <button
                   onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
-                  className="p-3 rounded-xl bg-gray-700 hover:bg-gray-600 transition-colors relative"
+                  className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors relative"
                 >
                   <div
-                    className="w-6 h-6 rounded-full border-2 border-white shadow-lg"
+                    className="w-5 h-5 rounded-full border-2 border-white shadow-lg"
                     style={{ backgroundColor: color }}
                   />
                   {/* Indicador de dropdown */}
                   <svg 
-                    className={`w-3 h-3 text-white absolute -bottom-1 -right-1 transition-transform ${isColorPickerOpen ? 'rotate-180' : ''}`}
+                    className={`w-2 h-2 text-white absolute -bottom-0.5 -right-0.5 transition-transform ${isColorPickerOpen ? 'rotate-180' : ''}`}
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
@@ -643,55 +721,6 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
               </div>
             </div>
 
-            {/* Controls */}
-            <div className="flex items-center justify-center gap-3">
-              {/* Brush size */}
-              <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-2">
-                <span className="text-gray-300 text-sm">Size:</span>
-                <input
-                  type="range"
-                  min="2"
-                  max="20"
-                  value={size}
-                  onChange={(e) => setSize(parseInt(e.target.value))}
-                  className="w-16 accent-blue-600"
-                />
-                <span className="text-white text-sm w-6 text-center">{size}</span>
-              </div>
-
-              {/* Zoom indicator */}
-              <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-2">
-                <span className="text-gray-300 text-sm">Zoom:</span>
-                <span className="text-white text-sm font-medium">{Math.round(canvasScale * 100)}%</span>
-              </div>
-
-              {/* Pan indicator */}
-              {isPanning && (
-                <div className="flex items-center gap-2 bg-blue-600 rounded-lg px-3 py-2">
-                  <span className="text-white text-sm font-medium">Pan Mode</span>
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <button
-                onClick={undo}
-                disabled={history.length === 0}
-                className={`p-2 rounded-lg transition-all ${
-                  history.length === 0
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-yellow-600 text-white hover:bg-yellow-700'
-                }`}
-              >
-                <Undo2 className="w-5 h-5" />
-              </button>
-              
-              <button
-                onClick={reset}
-                className="p-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors"
-              >
-                <RotateCcw className="w-5 h-5" />
-              </button>
-            </div>
 
             {/* Text input (when text tool is selected) */}
             {tool === 'text' && (
@@ -708,7 +737,16 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
           </div>
 
           {/* Canvas Container */}
-          <div className="flex-1 overflow-hidden bg-black flex items-center justify-center p-4 relative">
+          <div 
+            className="flex-1 overflow-hidden bg-black flex items-center justify-center p-2 relative"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
             <div className="relative max-w-full max-h-full">
             <canvas
               ref={canvasRef}
@@ -728,7 +766,7 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
                   objectFit: 'contain',
                   transform: `translate(${canvasPosition.x}px, ${canvasPosition.y}px) scale(${canvasScale})`,
                   transformOrigin: 'center center',
-                  transition: 'transform 0.2s ease-out'
+                  transition: (isDragging || isMouseDragging) ? 'none' : 'transform 0.2s ease-out'
                 }}
               />
             </div>
@@ -755,6 +793,50 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
                 title="Reset Zoom"
               >
                 <RotateCcw className="w-5 h-5" />
+              </button>
+            </div>
+
+          </div>
+
+          {/* Barra de Ferramentas */}
+          <div className="px-4 py-2 bg-gray-800/95 backdrop-blur-sm border-t border-gray-700">
+            <div className="flex items-center justify-center gap-4">
+              {/* Controle de Espessura */}
+              <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-2">
+                <span className="text-gray-300 text-sm">Espessura:</span>
+                <input
+                  type="range"
+                  min="2"
+                  max="20"
+                  value={size}
+                  onChange={(e) => setSize(parseInt(e.target.value))}
+                  className="w-16 accent-blue-600"
+                />
+                <span className="text-white text-sm w-6 text-center">{size}</span>
+              </div>
+
+              {/* Botões de Ação */}
+              <button
+                onClick={undo}
+                disabled={history.length === 0}
+                className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
+                  history.length === 0
+                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-yellow-600 text-white hover:bg-yellow-700'
+                }`}
+                title="Desfazer"
+              >
+                <Undo2 className="w-4 h-4" />
+                <span className="text-sm">Desfazer</span>
+              </button>
+              
+              <button
+                onClick={reset}
+                className="px-3 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors flex items-center gap-2"
+                title="Resetar"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span className="text-sm">Resetar</span>
               </button>
             </div>
           </div>
