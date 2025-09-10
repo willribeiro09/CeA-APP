@@ -18,6 +18,8 @@ export default function PhotoViewer({ photo, open, onOpenChange, onEdit, onDelet
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastTouch, setLastTouch] = useState<{ x: number; y: number } | null>(null);
+  const [isMouseDragging, setIsMouseDragging] = useState(false);
+  const [lastMouse, setLastMouse] = useState<{ x: number; y: number } | null>(null);
 
   // Reset quando abrir nova foto
   useEffect(() => {
@@ -32,8 +34,10 @@ export default function PhotoViewer({ photo, open, onOpenChange, onEdit, onDelet
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       setLastTouch({ x: touch.clientX, y: touch.clientY });
-      setIsDragging(true);
+      // Permitir arrastar sempre que houver zoom
+      setIsDragging(scale > 1);
     } else if (e.touches.length === 2) {
+      // Para zoom com pinça, não permitir arrastar
       setIsDragging(false);
       setLastTouch(null);
     }
@@ -54,7 +58,10 @@ export default function PhotoViewer({ photo, open, onOpenChange, onEdit, onDelet
       // Simples aproximação para zoom - em produção seria melhor usar a distância inicial
       const newScale = Math.min(Math.max(distance / 200, 0.5), 3);
       setScale(newScale);
-    } else if (e.touches.length === 1 && isDragging && lastTouch && scale > 1) {
+      
+      // Atualizar isDragging baseado no novo scale
+      setIsDragging(newScale > 1);
+    } else if (e.touches.length === 1 && isDragging && lastTouch) {
       // Pan/arrastar quando com zoom
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastTouch.x;
@@ -72,6 +79,33 @@ export default function PhotoViewer({ photo, open, onOpenChange, onEdit, onDelet
   const handleTouchEnd = () => {
     setIsDragging(false);
     setLastTouch(null);
+  };
+
+  // Handlers para mouse
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (scale > 1) {
+      setIsMouseDragging(true);
+      setLastMouse({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isMouseDragging && lastMouse && scale > 1) {
+      const deltaX = e.clientX - lastMouse.x;
+      const deltaY = e.clientY - lastMouse.y;
+      
+      setPosition(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
+      
+      setLastMouse({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsMouseDragging(false);
+    setLastMouse(null);
   };
 
   // Manipular zoom com mouse wheel
@@ -108,35 +142,29 @@ export default function PhotoViewer({ photo, open, onOpenChange, onEdit, onDelet
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/95 z-50" />
+        <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-md z-50" />
         <Dialog.Content 
           className="fixed inset-0 z-[100] flex flex-col"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 bg-black/50 backdrop-blur-sm">
-            <Dialog.Title className="text-white font-medium truncate flex-1 mr-4">
+          {/* Header com dados do arquivo e botão X */}
+          <div className="flex items-center justify-between p-4 bg-black/20 backdrop-blur-sm">
+            <div className="text-white/80 text-sm">
               {photo.filename || 'Project Photo'}
-            </Dialog.Title>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => onEdit(photo)}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-              >
-                <Edit3 className="w-4 h-4" />
-                Edit
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
-              <Dialog.Close className="text-white/80 hover:text-white p-2">
-                <X className="w-6 h-6" />
-              </Dialog.Close>
+              {photo.uploadedAt && (
+                <span className="text-white/60 text-xs ml-2">
+                  • {new Date(photo.uploadedAt).toLocaleString('pt-BR')}
+                </span>
+              )}
+              {photo.fileSize && (
+                <span className="text-white/60 text-xs ml-1">
+                  • {(photo.fileSize / 1024 / 1024).toFixed(1)}MB
+                </span>
+              )}
             </div>
+            <Dialog.Close className="text-white/80 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+              <X className="w-6 h-6" />
+            </Dialog.Close>
           </div>
 
           {/* Image Container */}
@@ -146,20 +174,29 @@ export default function PhotoViewer({ photo, open, onOpenChange, onEdit, onDelet
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
             onWheel={handleWheel}
           >
-            <img
-              ref={imageRef}
-              src={photo.url}
-              alt="Project photo"
-              className="max-w-full max-h-full object-contain select-none touch-none"
+            <div
+              className="relative"
               style={{
                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+                transition: (isDragging || isMouseDragging) ? 'none' : 'transform 0.2s ease-out',
+                transformOrigin: 'center center'
               }}
-              draggable={false}
-              crossOrigin="anonymous"
-            />
+            >
+              <img
+                ref={imageRef}
+                src={photo.url}
+                alt="Project photo"
+                className="max-w-full max-h-full object-contain select-none touch-none"
+                draggable={false}
+                crossOrigin="anonymous"
+              />
+            </div>
 
             {/* Botões de Zoom - Canto inferior esquerdo */}
             <div className="absolute bottom-4 left-4 flex flex-col gap-2">
@@ -180,41 +217,27 @@ export default function PhotoViewer({ photo, open, onOpenChange, onEdit, onDelet
             </div>
           </div>
 
-          {/* Footer Info */}
+          {/* Footer com botões Edit/Delete */}
           <div className="p-4 bg-black/50 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-white/80 text-sm">
-              <div className="flex items-center gap-4">
-                <span>Zoom: {Math.round(scale * 100)}%</span>
-                {photo.isEdited && (
-                  <span className="px-2 py-1 bg-green-600/80 rounded text-xs">
-                    Edited
-                  </span>
-                )}
-                {photo.metadata?.isLocal && (
-                  <span className="px-2 py-1 bg-orange-600/80 rounded text-xs">
-                    Local
-                  </span>
-                )}
-              </div>
+            {/* Botões Edit/Delete */}
+            <div className="flex items-center justify-center gap-4">
               <button
-                onClick={resetImage}
-                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-xs transition-colors"
+                onClick={() => onEdit(photo)}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
               >
-                Reset Zoom
+                <Edit3 className="w-4 h-4" />
+                Edit
               </button>
-            </div>
-            <div className="text-white/60 text-xs mt-2">
-              {photo.uploadedAt && new Date(photo.uploadedAt).toLocaleString('pt-BR')}
-              {photo.fileSize && ` • ${(photo.fileSize / 1024 / 1024).toFixed(1)}MB`}
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
             </div>
           </div>
 
-          {/* Instructions overlay (appears briefly) */}
-          <div className="absolute inset-x-4 top-20 text-center text-white/60 text-sm pointer-events-none">
-            <div className="bg-black/50 rounded-lg p-3 backdrop-blur-sm">
-              Pinch to zoom • Drag to move • Double tap to reset
-            </div>
-          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

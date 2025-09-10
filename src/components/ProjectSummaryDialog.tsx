@@ -261,57 +261,11 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
                     <img 
                       src={p.url} 
                       alt="project" 
-                      className="w-full h-28 object-cover rounded transition-transform group-hover:scale-105" 
+                      className="w-full h-28 object-cover rounded transition-transform group-hover:scale-105 cursor-pointer" 
                       crossOrigin="anonymous"
+                      onClick={() => handlePhotoClick(p)}
                     />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded" />
-                    
-                    {/* Botões de ação */}
-                    <div className="absolute bottom-2 left-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenEditor(p);
-                        }}
-                        disabled={isEditing === p.id}
-                        className={`flex-1 rounded px-2 py-1 text-xs flex items-center justify-center gap-1 ${
-                          isEditing === p.id 
-                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                            : 'bg-blue-600/90 text-white hover:bg-blue-700/90'
-                        }`}
-                      >
-                        {isEditing === p.id ? (
-                          <>
-                            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-                            Editing...
-                          </>
-                        ) : (
-                          <>
-                            <Pencil className="w-3 h-3" /> Edit
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm('Are you sure you want to delete this photo?')) {
-                            handleDeletePhoto(p);
-                          }
-                        }}
-                        disabled={isDeleting === p.id}
-                        className={`rounded px-2 py-1 text-xs ${
-                          isDeleting === p.id 
-                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                            : 'bg-red-600/90 text-white hover:bg-red-700/90'
-                        }`}
-                      >
-                        {isDeleting === p.id ? (
-                          <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Trash2 className="w-3 h-3" />
-                        )}
-                      </button>
-                    </div>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded cursor-pointer" onClick={() => handlePhotoClick(p)} />
                     
                     {/* Indicadores de status */}
                     {p.isEdited && (
