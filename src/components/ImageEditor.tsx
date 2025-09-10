@@ -145,7 +145,7 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     if (!canvas || !ctx) return;
     
     const newHistory = [...history];
-    newHistory.pop(); // Remove última ação
+    newHistory.pop(); // Remove apenas a última ação
     
     if (newHistory.length > 0) {
       const lastState = newHistory[newHistory.length - 1];
@@ -243,7 +243,9 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       setLastTouch({ x: touch.clientX, y: touch.clientY });
-      setIsDragging(canvasScale > 1);
+      // Só permite arrastar se estiver com zoom E não estiver sobre o canvas
+      const target = e.target as HTMLElement;
+      setIsDragging(canvasScale > 1 && !target.tagName.includes('CANVAS'));
     } else if (e.touches.length === 2) {
       setIsDragging(false);
       setLastTouch(null);
@@ -361,6 +363,7 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
       return;
     }
     
+    // Para toque único no canvas, sempre editar (não mover)
     const pos = getPos(e);
     setDrawing(true);
     setStart(pos);
@@ -698,7 +701,7 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
 
                 {/* Dropdown de cores */}
                 {isColorPickerOpen && (
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-gray-800 rounded-xl p-3 shadow-2xl border border-gray-600 z-10">
+                  <div className="absolute top-0 left-0 right-0 h-full bg-gray-800 rounded-xl p-3 shadow-2xl border border-gray-600 z-50 flex items-center justify-center">
                     <div className="flex gap-2">
                       {COLOR_PALETTE.map((paletteColor) => (
                         <button
@@ -720,11 +723,8 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
                 )}
               </div>
 
-              {/* Separador visual */}
-              <div className="w-px h-8 bg-gray-600 mx-1" />
-
               {/* Controle de Espessura */}
-              <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-2 py-1">
+              <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-1">
                 <Sliders className="w-4 h-4 text-gray-300" />
                 <input
                   type="range"
@@ -732,7 +732,7 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
                   max="20"
                   value={size}
                   onChange={(e) => setSize(parseInt(e.target.value))}
-                  className="w-12 accent-blue-600"
+                  className="w-20 accent-blue-600"
                 />
                 <span className="text-white text-xs w-4 text-center">{size}</span>
               </div>
