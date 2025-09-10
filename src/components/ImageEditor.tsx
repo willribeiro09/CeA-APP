@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Pencil, Minus, Square, Circle, Type, Undo2, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, Pencil, Minus, Square, Circle, Type, Undo2, RotateCcw, Save, Trash2, ZoomIn, ZoomOut, Sliders } from 'lucide-react';
 import { ProjectPhoto } from '../types';
 import { PhotoService } from '../lib/photoService';
 import { getEnvironmentInfo } from '../lib/deviceUtils';
@@ -614,9 +614,9 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
           </div>
 
           {/* Toolbar */}
-          <div className="px-4 py-2 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700">
+          <div className="px-4 py-3 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700">
             {/* Ferramentas e Cor */}
-            <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="flex items-center justify-center gap-2">
               <button
                 onClick={() => setTool('freehand')}
                 className={`p-2 rounded-lg transition-all ${
@@ -719,18 +719,35 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
                   </div>
                 )}
               </div>
+
+              {/* Separador visual */}
+              <div className="w-px h-8 bg-gray-600 mx-1" />
+
+              {/* Controle de Espessura */}
+              <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-2 py-1">
+                <Sliders className="w-4 h-4 text-gray-300" />
+                <input
+                  type="range"
+                  min="2"
+                  max="20"
+                  value={size}
+                  onChange={(e) => setSize(parseInt(e.target.value))}
+                  className="w-12 accent-blue-600"
+                />
+                <span className="text-white text-xs w-4 text-center">{size}</span>
+              </div>
             </div>
 
 
             {/* Text input (when text tool is selected) */}
             {tool === 'text' && (
-              <div className="mt-4">
+              <div className="mt-2">
                 <input
                   type="text"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Type text here..."
-                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none placeholder-gray-400"
+                  className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none placeholder-gray-400"
                 />
               </div>
             )}
@@ -771,8 +788,8 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
               />
             </div>
 
-            {/* Botões de Zoom - Canto inferior direito */}
-            <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
+            {/* Botões de Zoom - Canto inferior esquerdo */}
+            <div className="absolute bottom-4 left-4 flex flex-col gap-2 z-10">
               <button
                 onClick={zoomIn}
                 className="w-12 h-12 bg-gray-800/90 hover:bg-gray-700/90 text-white rounded-full flex items-center justify-center transition-colors shadow-lg border border-gray-600"
@@ -787,59 +804,33 @@ export default function ImageEditor({ photo, open, onOpenChange, onSave }: Props
               >
                 <ZoomOut className="w-6 h-6" />
               </button>
-              <button
-                onClick={resetZoom}
-                className="w-12 h-12 bg-gray-800/90 hover:bg-gray-700/90 text-white rounded-full flex items-center justify-center transition-colors shadow-lg border border-gray-600"
-                title="Reset Zoom"
-              >
-                <RotateCcw className="w-5 h-5" />
-              </button>
             </div>
 
-          </div>
-
-          {/* Barra de Ferramentas */}
-          <div className="px-4 py-2 bg-gray-800/95 backdrop-blur-sm border-t border-gray-700">
-            <div className="flex items-center justify-center gap-4">
-              {/* Controle de Espessura */}
-              <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-2">
-                <span className="text-gray-300 text-sm">Espessura:</span>
-                <input
-                  type="range"
-                  min="2"
-                  max="20"
-                  value={size}
-                  onChange={(e) => setSize(parseInt(e.target.value))}
-                  className="w-16 accent-blue-600"
-                />
-                <span className="text-white text-sm w-6 text-center">{size}</span>
-              </div>
-
-              {/* Botões de Ação */}
+            {/* Botões de Ação - Canto inferior direito */}
+            <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
               <button
                 onClick={undo}
                 disabled={history.length === 0}
-                className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors shadow-lg border ${
                   history.length === 0
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-yellow-600 text-white hover:bg-yellow-700'
+                    ? 'bg-gray-800/50 text-gray-500 cursor-not-allowed border-gray-700'
+                    : 'bg-yellow-600/90 hover:bg-yellow-700/90 text-white border-yellow-500'
                 }`}
-                title="Desfazer"
+                title="Undo"
               >
-                <Undo2 className="w-4 h-4" />
-                <span className="text-sm">Desfazer</span>
+                <Undo2 className="w-6 h-6" />
               </button>
-              
               <button
                 onClick={reset}
-                className="px-3 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors flex items-center gap-2"
-                title="Resetar"
+                className="w-12 h-12 bg-orange-600/90 hover:bg-orange-700/90 text-white rounded-full flex items-center justify-center transition-colors shadow-lg border border-orange-500"
+                title="Reset"
               >
-                <RotateCcw className="w-4 h-4" />
-                <span className="text-sm">Resetar</span>
+                <RotateCcw className="w-6 h-6" />
               </button>
             </div>
+
           </div>
+
 
           {/* Bottom Actions */}
           <div className="p-4 bg-gray-800/95 backdrop-blur-sm border-t border-gray-700">
