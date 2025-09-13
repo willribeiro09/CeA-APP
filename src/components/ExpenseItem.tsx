@@ -121,7 +121,7 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit, onViewDet
           .sort((a, b) => new Date(b.paidDate!).getTime() - new Date(a.paidDate!).getTime())[0];
         
         if (lastPaidDate) {
-          return `Paid on ${format(new Date(lastPaidDate.paidDate!), 'MMM dd')}`;
+          return `${format(new Date(lastPaidDate.dueDate), 'MMM dd')} Paid`;
         }
         return 'Paid';
       }
