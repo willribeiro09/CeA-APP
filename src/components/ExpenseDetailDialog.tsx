@@ -3,6 +3,7 @@ import { format, addMonths, addDays, addWeeks } from 'date-fns';
 import { X, Edit, Trash2, Upload, Calendar, Check, Camera } from 'lucide-react';
 import { Expense, ExpenseInstallment, ExpenseReceipt } from '../types';
 import { getRecurrenceType } from '../lib/recurringUtils';
+import { ReceiptService } from '../lib/receiptService';
 import { ReceiptViewer } from './ReceiptViewer';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,6 +30,7 @@ export function ExpenseDetailDialog({
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [selectedReceipt, setSelectedReceipt] = useState<ExpenseReceipt | null>(null);
   const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
 
   useEffect(() => {
     if (expense) {
@@ -315,28 +317,73 @@ export function ExpenseDetailDialog({
     onClose();
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !localExpense) return;
     
-    // Simulate file upload - in real implementation, upload to Supabase
-    const receipt: ExpenseReceipt = {
-      id: uuidv4(),
-      filename: file.name,
-      url: URL.createObjectURL(file), // Temporary URL
-      uploadedAt: new Date().toISOString(),
-      fileSize: file.size,
-      mimeType: file.type
-    };
+    setIsUploadingReceipt(true);
     
-    setLocalExpense({
-      ...localExpense,
-      receipts: [...(localExpense.receipts || []), receipt]
-    });
+    try {
+      // Upload real para o Supabase Storage
+      const receipt = await ReceiptService.uploadReceipt(file, localExpense.id);
+      
+      if (receipt) {
+        setLocalExpense({
+          ...localExpense,
+          receipts: [...(localExpense.receipts || []), receipt]
+        });
+      } else {
+        // Fallback para armazenamento local se o upload falhar
+        const localReceipt: ExpenseReceipt = {
+          id: uuidv4(),
+          filename: file.name,
+          url: URL.createObjectURL(file),
+          uploadedAt: new Date().toISOString(),
+          fileSize: file.size,
+          mimeType: file.type
+        };
+        
+        setLocalExpense({
+          ...localExpense,
+          receipts: [...(localExpense.receipts || []), localReceipt]
+        });
+      }
+    } catch (error) {
+      console.error('Erro no upload do recibo:', error);
+      // Fallback para armazenamento local
+      const localReceipt: ExpenseReceipt = {
+        id: uuidv4(),
+        filename: file.name,
+        url: URL.createObjectURL(file),
+        uploadedAt: new Date().toISOString(),
+        fileSize: file.size,
+        mimeType: file.type
+      };
+      
+      setLocalExpense({
+        ...localExpense,
+        receipts: [...(localExpense.receipts || []), localReceipt]
+      });
+    } finally {
+      setIsUploadingReceipt(false);
+      // Limpar o input para permitir upload do mesmo arquivo novamente
+      event.target.value = '';
+    }
   };
 
-  const removeReceipt = (receiptId: string) => {
+  const removeReceipt = async (receiptId: string) => {
     if (!localExpense) return;
+    
+    const receiptToRemove = localExpense.receipts?.find(r => r.id === receiptId);
+    
+    // Tentar deletar do storage se for um recibo real (não local)
+    if (receiptToRemove && !receiptToRemove.url.startsWith('blob:')) {
+      try {
+        await ReceiptService.deleteReceipt(receiptToRemove);
+      } catch (error) {
+        console.error('Erro ao deletar recibo do storage:', error);
+      }
+    }
     
     setLocalExpense({
       ...localExpense,
@@ -581,13 +628,23 @@ export function ExpenseDetailDialog({
                   </button>
                 </div>
               ))}
-              <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 cursor-pointer">
-                <Upload className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-500">Upload Receipt</span>
+              <label className={`flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 cursor-pointer transition-colors ${isUploadingReceipt ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                {isUploadingReceipt ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                    <span className="text-sm text-gray-500">Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-500">Upload Receipt</span>
+                  </>
+                )}
                 <input
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/*,.pdf,.doc,.docx"
                   onChange={handleFileUpload}
+                  disabled={isUploadingReceipt}
                   className="hidden"
                 />
               </label>
