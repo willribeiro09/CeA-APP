@@ -5,6 +5,7 @@ import { Expense, ExpenseInstallment, ExpenseReceipt } from '../types';
 import { getRecurrenceType } from '../lib/recurringUtils';
 import { ReceiptService } from '../lib/receiptService';
 import { ReceiptViewer } from './ReceiptViewer';
+import { supabase } from '../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ExpenseDetailDialogProps {
@@ -328,10 +329,30 @@ export function ExpenseDetailDialog({
       const receipt = await ReceiptService.uploadReceipt(file, localExpense.id);
       
       if (receipt) {
+        // Atualizar estado local
         setLocalExpense({
           ...localExpense,
           receipts: [...(localExpense.receipts || []), receipt]
         });
+        
+        // Persistir no banco de dados usando a função SQL
+        try {
+          const { data, error } = await supabase.rpc('add_expense_receipt', {
+            p_expense_id: localExpense.id,
+            p_filename: receipt.filename,
+            p_url: receipt.url,
+            p_file_size: receipt.fileSize || 0,
+            p_mime_type: receipt.mimeType || 'application/octet-stream'
+          });
+          
+          if (error) {
+            console.error('Erro ao salvar recibo no banco:', error);
+          } else {
+            console.log('Recibo salvo no banco com sucesso');
+          }
+        } catch (dbError) {
+          console.error('Erro na chamada SQL:', dbError);
+        }
       } else {
         // Fallback para armazenamento local se o upload falhar
         const localReceipt: ExpenseReceipt = {
