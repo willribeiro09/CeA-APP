@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { ExpenseReceipt } from '../types';
 
@@ -9,6 +9,23 @@ interface ReceiptViewerProps {
 }
 
 export function ReceiptViewer({ receipt, isOpen, onClose }: ReceiptViewerProps) {
+  useEffect(() => {
+    if (isOpen) {
+      // Focus no modal para permitir navegação por teclado
+      const modal = document.querySelector('[data-receipt-viewer]') as HTMLElement;
+      if (modal) {
+        modal.focus();
+      }
+      
+      // Prevenir scroll do body
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        document.body.style.overflow = 'unset';
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen || !receipt) return null;
 
   const isImage = receipt.mimeType?.startsWith('image/') || 
@@ -23,16 +40,30 @@ export function ReceiptViewer({ receipt, isOpen, onClose }: ReceiptViewerProps) 
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
   return (
     <div 
+      data-receipt-viewer
       className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center p-4 z-50"
       onClick={handleBackdropClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={-1}
     >
       {/* Close button */}
       <button
-        onClick={onClose}
-        className="absolute top-4 right-4 z-60 p-2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full transition-all duration-200"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }}
+        className="absolute top-4 right-4 z-[60] p-3 bg-black bg-opacity-70 hover:bg-opacity-90 text-white rounded-full transition-all duration-200 touch-manipulation"
         aria-label="Close receipt viewer"
+        style={{ touchAction: 'manipulation' }}
       >
         <X className="w-6 h-6" />
       </button>
