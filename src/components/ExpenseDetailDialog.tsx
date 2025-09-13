@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format, addMonths, addDays, addWeeks } from 'date-fns';
-import { X, Edit, Trash2, Upload, Calendar, Check, Camera, Eye } from 'lucide-react';
+import { X, Edit, Trash2, Upload, Calendar, Check, Camera } from 'lucide-react';
 import { Expense, ExpenseInstallment, ExpenseReceipt } from '../types';
 import { getRecurrenceType } from '../lib/recurringUtils';
 import { ReceiptViewer } from './ReceiptViewer';
@@ -541,8 +541,11 @@ export function ExpenseDetailDialog({
             </label>
             <div className="space-y-2">
               {localExpense.receipts?.map((receipt) => (
-                <div key={receipt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div key={receipt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 cursor-pointer transition-colors">
+                  <div 
+                    className="flex items-center gap-3 flex-1 min-w-0"
+                    onClick={() => viewReceipt(receipt)}
+                  >
                     <div className="flex-shrink-0">
                       {receipt.mimeType?.startsWith('image/') ? (
                         <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
@@ -566,22 +569,16 @@ export function ExpenseDetailDialog({
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => viewReceipt(receipt)}
-                      className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
-                      title="View receipt"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => removeReceipt(receipt.id)}
-                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                      title="Remove receipt"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeReceipt(receipt.id);
+                    }}
+                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                    title="Remove receipt"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
               <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 cursor-pointer">
