@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { format, addMonths, addDays, addWeeks } from 'date-fns';
-import { X, Edit, Trash2, Upload, Calendar, Check, Camera } from 'lucide-react';
+import { X, Edit, Trash2, Upload, Calendar, Check, Camera, Eye } from 'lucide-react';
 import { Expense, ExpenseInstallment, ExpenseReceipt } from '../types';
 import { getRecurrenceType } from '../lib/recurringUtils';
+import { ReceiptViewer } from './ReceiptViewer';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ExpenseDetailDialogProps {
@@ -26,6 +27,8 @@ export function ExpenseDetailDialog({
   const [localExpense, setLocalExpense] = useState<Expense | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedReceipt, setSelectedReceipt] = useState<ExpenseReceipt | null>(null);
+  const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);
 
   useEffect(() => {
     if (expense) {
@@ -341,6 +344,16 @@ export function ExpenseDetailDialog({
     });
   };
 
+  const viewReceipt = (receipt: ExpenseReceipt) => {
+    setSelectedReceipt(receipt);
+    setIsReceiptViewerOpen(true);
+  };
+
+  const closeReceiptViewer = () => {
+    setIsReceiptViewerOpen(false);
+    setSelectedReceipt(null);
+  };
+
   if (!isOpen || !expense || !localExpense) return null;
 
   const nextDueDate = getNextDueDate();
@@ -528,14 +541,47 @@ export function ExpenseDetailDialog({
             </label>
             <div className="space-y-2">
               {localExpense.receipts?.map((receipt) => (
-                <div key={receipt.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <span className="text-sm text-gray-600 truncate">{receipt.filename}</span>
-                  <button
-                    onClick={() => removeReceipt(receipt.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                <div key={receipt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex-shrink-0">
+                      {receipt.mimeType?.startsWith('image/') ? (
+                        <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                          <span className="text-blue-600 text-xs font-medium">IMG</span>
+                        </div>
+                      ) : receipt.mimeType === 'application/pdf' ? (
+                        <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                          <span className="text-red-600 text-xs font-medium">PDF</span>
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                          <span className="text-gray-600 text-xs font-medium">FILE</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{receipt.filename}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(receipt.uploadedAt).toLocaleDateString()}
+                        {receipt.fileSize && ` • ${(receipt.fileSize / 1024).toFixed(1)} KB`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => viewReceipt(receipt)}
+                      className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
+                      title="View receipt"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => removeReceipt(receipt.id)}
+                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                      title="Remove receipt"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
               <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 cursor-pointer">
@@ -561,6 +607,13 @@ export function ExpenseDetailDialog({
           </button>
         </div>
       </div>
+
+      {/* Receipt Viewer Modal */}
+      <ReceiptViewer
+        receipt={selectedReceipt}
+        isOpen={isReceiptViewerOpen}
+        onClose={closeReceiptViewer}
+      />
     </div>
   );
 }
