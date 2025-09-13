@@ -270,7 +270,20 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit, onViewDet
       onDelete={() => onDelete(expense.id)}
     >
       <div 
-        className={`${getBackgroundColor()} transition-all duration-300 cursor-pointer rounded-lg shadow-sm hover:shadow-md border border-gray-200/40`}
+        className={`${getBackgroundColor()} transition-all duration-300 cursor-pointer rounded-lg shadow-md hover:shadow-lg border-2 backdrop-blur-sm ${
+          expenseStatus.type === 'paid' ? 'border-green-200/60 shadow-green-200/20' :
+          expenseStatus.type === 'overdue' ? 'border-red-200/60 shadow-red-200/20' :
+          expenseStatus.type === 'near_due' ? 'border-yellow-200/60 shadow-yellow-200/20' :
+          expenseStatus.type === 'partial' ? 'border-yellow-200/60 shadow-yellow-200/20' :
+          'border-gray-200/60 shadow-gray-200/20'
+        }`}
+        style={{
+          boxShadow: expenseStatus.type === 'paid' ? '0 4px 6px -1px rgba(34, 197, 94, 0.1), 0 2px 4px -1px rgba(34, 197, 94, 0.06)' :
+                     expenseStatus.type === 'overdue' ? '0 4px 6px -1px rgba(239, 68, 68, 0.1), 0 2px 4px -1px rgba(239, 68, 68, 0.06)' :
+                     expenseStatus.type === 'near_due' ? '0 4px 6px -1px rgba(234, 179, 8, 0.1), 0 2px 4px -1px rgba(234, 179, 8, 0.06)' :
+                     expenseStatus.type === 'partial' ? '0 4px 6px -1px rgba(234, 179, 8, 0.1), 0 2px 4px -1px rgba(234, 179, 8, 0.06)' :
+                     '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+        }}
         onClick={() => onViewDetails(expense)}
       >
         <div className="flex items-start p-4">

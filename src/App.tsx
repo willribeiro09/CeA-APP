@@ -1270,33 +1270,54 @@ export default function App() {
   const sortExpensesByDueDate = (expenseList: Expense[]) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
     
-    // Definir o limite para "próximo do vencimento" (7 dias)
-    const upcomingLimit = new Date(today);
-    upcomingLimit.setDate(today.getDate() + 7);
+    // Função para verificar se uma despesa está completamente paga no mês atual
+    const isFullyPaidThisMonth = (expense: Expense) => {
+      // Para despesas não recorrentes, usar o status direto
+      if (!expense.installments || expense.installments.length === 0) {
+        return expense.is_paid || expense.paid || false;
+      }
+      
+      // Para despesas recorrentes, verificar se todas as parcelas do mês atual estão pagas
+      const currentMonthInstallments = expense.installments.filter(inst => {
+        const instDate = new Date(inst.dueDate);
+        return instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear;
+      });
+      
+      if (currentMonthInstallments.length === 0) {
+        // Se não há parcelas do mês atual, verificar se há parcelas vencidas não pagas
+        const overdueInstallments = expense.installments.filter(inst => {
+          const instDate = new Date(inst.dueDate);
+          return instDate < today && !inst.isPaid;
+        });
+        return overdueInstallments.length === 0;
+      }
+      
+      // Verificar se todas as parcelas do mês atual estão pagas
+      return currentMonthInstallments.every(inst => inst.isPaid);
+    };
     
     return [...expenseList].sort((a, b) => {
+      // Primeiro: verificar se estão completamente pagas no mês atual
+      const isPaidA = isFullyPaidThisMonth(a);
+      const isPaidB = isFullyPaidThisMonth(b);
+      
+      // Se uma está paga e outra não, a paga vem primeiro
+      if (isPaidA && !isPaidB) return -1;
+      if (!isPaidA && isPaidB) return 1;
+      
+      // Se ambas estão pagas ou ambas não estão pagas, ordenar por data
       const dueDateA = new Date(a.date);
       const dueDateB = new Date(b.date);
       
-      // Verificar se as datas estão atrasadas (antes de hoje)
-      const isOverdueA = dueDateA < today;
-      const isOverdueB = dueDateB < today;
-      
-      // Verificar se as datas estão próximas do vencimento (entre hoje e o limite)
-      const isUpcomingA = !isOverdueA && dueDateA <= upcomingLimit;
-      const isUpcomingB = !isOverdueB && dueDateB <= upcomingLimit;
-      
-      // Categorizar por status de vencimento (independente do pagamento)
-      const categoryA = isOverdueA ? 1 : (isUpcomingA ? 2 : 3); // 1=atrasada, 2=próxima, 3=futura
-      const categoryB = isOverdueB ? 1 : (isUpcomingB ? 2 : 3);
-      
-      // Se estão em categorias diferentes, ordenar por categoria
-      if (categoryA !== categoryB) {
-        return categoryA - categoryB;
+      // Para despesas pagas: ordenar por data (mais recentes primeiro)
+      if (isPaidA && isPaidB) {
+        return dueDateB.getTime() - dueDateA.getTime();
       }
       
-      // Se estão na mesma categoria, ordenar por data (mais próximos primeiro)
+      // Para despesas não pagas: ordenar por data (mais próximas/vencidas primeiro)
       return dueDateA.getTime() - dueDateB.getTime();
     });
   };
