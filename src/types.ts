@@ -6,6 +6,23 @@ export interface BaseItem {
   deviceId?: string; // ID do dispositivo que criou/modificou
 }
 
+export interface ExpenseInstallment {
+  id: string;
+  dueDate: string;
+  amount: number;
+  isPaid: boolean;
+  paidDate?: string;
+}
+
+export interface ExpenseReceipt {
+  id: string;
+  filename: string;
+  url: string;
+  uploadedAt: string;
+  fileSize?: number;
+  mimeType?: string;
+}
+
 export interface Expense {
   id: string;
   description: string;
@@ -15,6 +32,9 @@ export interface Expense {
   notes?: string;
   is_paid?: boolean;
   paid?: boolean;
+  installments?: ExpenseInstallment[];
+  receipts?: ExpenseReceipt[];
+  totalInstallments?: number;
   lastModified?: number; // Timestamp para sincronização
   deviceId?: string; // ID do dispositivo que criou/modificou
 }

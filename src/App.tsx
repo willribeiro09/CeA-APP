@@ -7,6 +7,7 @@ import { AddButton } from './components/AddButton';
 import { Calendar } from './components/Calendar';
 import { AddItemDialog } from './components/AddItemDialog';
 import { EditItemDialog } from './components/EditItemDialog';
+import { ExpenseDetailDialog } from './components/ExpenseDetailDialog';
 import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems, SyncData, ProjectPhoto } from './types';
 import { ChevronDown, X } from 'lucide-react';
 import { storage } from './lib/storage';
@@ -99,6 +100,8 @@ export default function App() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
+  const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
+  const [expenseToView, setExpenseToView] = useState<Expense | null>(null);
   const [selectedList, setSelectedList] = useState<ListName>('C&A');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -630,6 +633,48 @@ export default function App() {
   const handleEditItem = (item: Item) => {
     setItemToEdit(item);
     setIsEditDialogOpen(true);
+  };
+
+  const handleViewExpenseDetails = (expense: Expense) => {
+    setExpenseToView(expense);
+    setIsExpenseDetailOpen(true);
+  };
+
+  const handleSaveExpenseDetails = (updatedExpense: Expense) => {
+    executeWhenUnblocked(async () => {
+      try {
+        setExpenses(prevExpenses => {
+          const newExpenses = { ...prevExpenses };
+          
+          if (!newExpenses[selectedList]) {
+            newExpenses[selectedList] = [];
+          }
+          
+          // Find and update the expense
+          const expenseIndex = newExpenses[selectedList].findIndex(exp => exp.id === updatedExpense.id);
+          if (expenseIndex !== -1) {
+            newExpenses[selectedList][expenseIndex] = {
+              ...updatedExpense,
+              lastModified: Date.now()
+            };
+          }
+          
+          saveChanges(createStorageData({
+            expenses: newExpenses,
+            projects,
+            stock: stockItems,
+            employees
+          }));
+          
+          return newExpenses;
+        });
+        
+        showFeedbackMessage('Expense updated successfully!', 'success');
+      } catch (error) {
+        console.error('Error updating expense:', error);
+        showFeedbackMessage('Failed to update expense', 'error');
+      }
+    });
   };
 
   const handleUpdateItem = (updatedItem: Partial<Item>) => {
@@ -1853,6 +1898,7 @@ export default function App() {
               onTogglePaid={isBackgroundSyncing ? () => {} : handleTogglePaid}
                       onDelete={isBackgroundSyncing ? () => {} : (id) => handleDeleteItem(id, 'Expenses')}
                       onEdit={isBackgroundSyncing ? () => {} : (expense) => handleEditItem(expense)}
+                      onViewDetails={isBackgroundSyncing ? () => {} : handleViewExpenseDetails}
                     />
                   </li>
                 ))}
@@ -2423,6 +2469,25 @@ export default function App() {
         onSave={handleSaveEditedPhoto}
       />
 
+      <ExpenseDetailDialog
+        expense={expenseToView}
+        isOpen={isExpenseDetailOpen}
+        onClose={() => {
+          setIsExpenseDetailOpen(false);
+          setExpenseToView(null);
+        }}
+        onEdit={(expense) => {
+          setIsExpenseDetailOpen(false);
+          setExpenseToView(null);
+          handleEditItem(expense);
+        }}
+        onDelete={(id) => {
+          setIsExpenseDetailOpen(false);
+          setExpenseToView(null);
+          handleDeleteItem(id, 'Expenses');
+        }}
+        onSave={handleSaveExpenseDetails}
+      />
 
     </>
   );
