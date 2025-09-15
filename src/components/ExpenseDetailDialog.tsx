@@ -37,11 +37,28 @@ export function ExpenseDetailDialog({
     if (expense) {
       setLocalExpense({ ...expense });
       setNotes(expense.notes || '');
-      
-      // Generate installments if they don't exist
+
+      // Sempre garantir que as parcelas reflitam o valor atual da despesa,
+      // preservando status de pagamento quando possível.
+      const generated = generateInstallments(expense);
+
       if (!expense.installments || expense.installments.length === 0) {
-        const installments = generateInstallments(expense);
-        setLocalExpense({ ...expense, installments });
+        setLocalExpense({ ...expense, installments: generated });
+      } else {
+        const existing = expense.installments;
+        // Mesclar por mês/ano (e dia), mantendo isPaid/paidDate das existentes
+        const merged = generated.map(gen => {
+          const gDate = new Date(gen.dueDate);
+          const match = existing.find(ex => {
+            const eDate = new Date(ex.dueDate);
+            return eDate.getFullYear() === gDate.getFullYear() &&
+                   eDate.getMonth() === gDate.getMonth() &&
+                   eDate.getDate() === gDate.getDate();
+          });
+          return match ? { ...gen, isPaid: match.isPaid, paidDate: match.paidDate } : gen;
+        });
+
+        setLocalExpense({ ...expense, installments: merged });
       }
     }
   }, [expense]);
@@ -88,15 +105,72 @@ export function ExpenseDetailDialog({
       }
     }
     
-    // Always add current month installment for recurring expenses
-    const currentMonthInstallment: ExpenseInstallment = {
-      id: uuidv4(),
-      dueDate: currentMonthDate.toISOString(),
-      amount: exp.amount,
-      isPaid: false,
-      paidDate: undefined
-    };
-    installments.push(currentMonthInstallment);
+    // Adicionar parcelas do mês atual conforme recorrência
+    // Regra: para quinzenal, garantir até 2 ocorrências dentro do mês corrente
+    if (recurrenceType === 'biweekly') {
+      // Calcular dia válido dentro do mês (evitar rollover para próximo mês)
+      const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const baseDay = Math.min(originalDate.getDate(), lastDayOfMonth);
+      const date1 = new Date(currentYear, currentMonth, baseDay);
+
+      // Candidato por +14 dias
+      const date2Candidate = addDays(date1, 14);
+      if (date2Candidate.getMonth() === currentMonth && date2Candidate.getFullYear() === currentYear) {
+        // Ambos no mês corrente
+        installments.push({
+          id: uuidv4(),
+          dueDate: date1.toISOString(),
+          amount: exp.amount,
+          isPaid: false,
+          paidDate: undefined
+        });
+        installments.push({
+          id: uuidv4(),
+          dueDate: date2Candidate.toISOString(),
+          amount: exp.amount,
+          isPaid: false,
+          paidDate: undefined
+        });
+      } else {
+        // Usar ocorrência anterior (-14) para manter duas no mês quando possível
+        const date0Candidate = addDays(date1, -14);
+        if (date0Candidate.getMonth() === currentMonth && date0Candidate.getFullYear() === currentYear) {
+          installments.push({
+            id: uuidv4(),
+            dueDate: date0Candidate.toISOString(),
+            amount: exp.amount,
+            isPaid: false,
+            paidDate: undefined
+          });
+          installments.push({
+            id: uuidv4(),
+            dueDate: date1.toISOString(),
+            amount: exp.amount,
+            isPaid: false,
+            paidDate: undefined
+          });
+        } else {
+          // Se não há espaço para duas no mês, manter ao menos uma (date1)
+          installments.push({
+            id: uuidv4(),
+            dueDate: date1.toISOString(),
+            amount: exp.amount,
+            isPaid: false,
+            paidDate: undefined
+          });
+        }
+      }
+    } else {
+      // Mensal e semanal: uma ocorrência base no mês atual
+      const firstInstallment: ExpenseInstallment = {
+        id: uuidv4(),
+        dueDate: currentMonthDate.toISOString(),
+        amount: exp.amount,
+        isPaid: false,
+        paidDate: undefined
+      };
+      installments.push(firstInstallment);
+    }
     
     // Check for overdue installments
     let checkDate = new Date(originalDate);

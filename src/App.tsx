@@ -964,7 +964,63 @@ export default function App() {
           return newStockItems;
         });
       } else if (activeCategory === 'Employees') {
-        // Implementação para Employees (sem logs)
+        const employee = newItem as Employee;
+
+        // Garantir campos essenciais
+        if (!employee.id) {
+          employee.id = uuidv4();
+        }
+        if (!employee.name) {
+          employee.name = employee.employeeName || 'Funcionário';
+        }
+        if (!employee.employeeName) {
+          employee.employeeName = employee.name;
+        }
+        if (!employee.weekStartDate) {
+          // Chave da semana no formato ISO compatível com a listagem
+          employee.weekStartDate = formatDateToISO(selectedWeekStart);
+        }
+        if (employee.daysWorked === undefined) {
+          employee.daysWorked = 0;
+        }
+        if (!employee.workedDates) {
+          employee.workedDates = [];
+        }
+        if (employee.dailyRate === undefined || Number.isNaN(employee.dailyRate)) {
+          employee.dailyRate = 250;
+        }
+
+        // Atualizar estado de employees organizado por semana
+        setEmployees(prevEmployees => {
+          const newEmployees = { ...prevEmployees };
+          const weekKey = employee.weekStartDate as string;
+
+          if (!newEmployees[weekKey]) {
+            newEmployees[weekKey] = [];
+          }
+
+          // Evitar duplicar pelo mesmo id na mesma semana
+          const existsIdx = newEmployees[weekKey].findIndex(e => e.id === employee.id);
+          if (existsIdx >= 0) {
+            const updated = [...newEmployees[weekKey]];
+            updated[existsIdx] = employee;
+            newEmployees[weekKey] = updated;
+          } else {
+            newEmployees[weekKey] = [...newEmployees[weekKey], employee];
+          }
+
+          // Persistir alterações
+          saveChanges(createStorageData({
+            expenses,
+            projects,
+            stock: stockItems,
+            employees: newEmployees,
+            willBaseRate,
+            willBonus
+          }));
+
+          return newEmployees;
+        });
       }
     } catch (error) {
       console.error("Erro ao atualizar item:", error);
