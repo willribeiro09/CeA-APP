@@ -218,7 +218,10 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
                 ) : null}
                 <div>
                   <div className="text-gray-500">Status</div>
-                  <div className="font-medium text-gray-900">{project.status === 'completed' ? 'Completed' : 'In Progress'}</div>
+                  <div className="font-medium text-gray-900">
+                    {project.status === 'completed' ? 'Completed' : 
+                     project.status === 'in_progress' ? 'In Progress' : 'Pending'}
+                  </div>
                 </div>
                 <div>
                   <div className="text-gray-500">Value</div>

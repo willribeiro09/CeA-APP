@@ -64,7 +64,7 @@ export interface Project {
   projectNumber?: string;
   startDate: string;
   endDate?: string;
-  status: 'completed' | 'in_progress';
+  status: 'pending' | 'in_progress' | 'completed';
   notes?: string;
   location?: string;
   value?: number;

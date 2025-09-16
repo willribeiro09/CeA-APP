@@ -350,8 +350,10 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
                   <select
                     id="status"
                     name="status"
+                    defaultValue="pending"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                   >
+                    <option value="pending">Pending</option>
                     <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                   </select>

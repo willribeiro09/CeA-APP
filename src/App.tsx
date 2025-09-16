@@ -2036,7 +2036,16 @@ export default function App() {
                     return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
                   }
                   
-                  // Para projetos Power, manter ordenação por data
+                  // Para projetos Power, ordenar por status: Completed > In Progress > Pending
+                  const statusOrder = { 'completed': 1, 'in_progress': 2, 'pending': 3 };
+                  const aOrder = statusOrder[a.status] || 4;
+                  const bOrder = statusOrder[b.status] || 4;
+                  
+                  if (aOrder !== bOrder) {
+                    return aOrder - bOrder;
+                  }
+                  
+                  // Se mesmo status, ordenar por data de criação
                   return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
                 })
                 .map(project => (
@@ -2113,7 +2122,7 @@ export default function App() {
                           <div className="flex items-center space-x-2">
                             {/* Botão de edição visível */}
                             {project.invoiceOk && (
-                              <span className={`text-xs px-3 py-1 rounded-md font-medium border ${
+                              <span className={`text-xs px-2 py-1 rounded-md font-medium border whitespace-nowrap ${
                                 project.clientType === 'Private' 
                                   ? 'bg-green-200 text-green-900 border-green-300'
                                   : 'bg-green-100 text-green-800 border-green-200'
@@ -2121,14 +2130,17 @@ export default function App() {
                                 Invoice OK
                               </span>
                             )}
-                            <span className={`text-xs px-3 py-1 rounded-md font-medium border ${
+                            <span className={`text-xs px-2 py-1 rounded-md font-medium border whitespace-nowrap ${
                               project.status === 'completed' 
                                 ? (project.clientType === 'Private' 
                                     ? 'bg-green-200 text-green-900 border-green-300'
                                     : 'bg-green-100 text-green-800 border-green-200')
-                                : 'bg-blue-100 text-blue-800 border-blue-200'
+                                : project.status === 'in_progress'
+                                  ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                  : 'bg-yellow-100 text-yellow-800 border-yellow-200'
                             }`}>
-                              {project.status === 'completed' ? 'Completed' : 'In Progress'}
+                              {project.status === 'completed' ? 'Completed' : 
+                               project.status === 'in_progress' ? 'In Progress' : 'Pending'}
                             </span>
                           </div>
                         </div>
