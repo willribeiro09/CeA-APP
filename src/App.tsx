@@ -2037,15 +2037,20 @@ export default function App() {
                   }
                   
                   // Para projetos Power, ordenar por status: Completed > In Progress > Pending
-                  const statusOrder = { 'completed': 1, 'in_progress': 2, 'pending': 3 };
-                  const aOrder = statusOrder[a.status] || 4;
-                  const bOrder = statusOrder[b.status] || 4;
-                  
-                  if (aOrder !== bOrder) {
-                    return aOrder - bOrder;
+                  if (selectedClient === 'Power') {
+                    const statusOrder = { 'completed': 1, 'in_progress': 2, 'pending': 3 };
+                    const aOrder = statusOrder[a.status as keyof typeof statusOrder] || 4;
+                    const bOrder = statusOrder[b.status as keyof typeof statusOrder] || 4;
+                    
+                    if (aOrder !== bOrder) {
+                      return aOrder - bOrder;
+                    }
+                    
+                    // Se mesmo status, ordenar por data de criação (mais recente primeiro)
+                    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
                   }
                   
-                  // Se mesmo status, ordenar por data de criação
+                  // Fallback: ordenar por data
                   return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
                 })
                 .map(project => (

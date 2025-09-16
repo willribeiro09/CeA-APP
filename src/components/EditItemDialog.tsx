@@ -101,7 +101,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         // Normalizar datas (importante para funcionar corretamente)
         // Para formulários de data HTML, usar parseISODate e depois formatDateToISO para evitar problemas de fuso
         const projectStartDate = data.startDate ? formatDateToISO(parseISODate(data.startDate as string) || new Date(projectItem.startDate)) : projectItem.startDate;
-        const projectStatus = data.status as 'completed' | 'in_progress';
+        const projectStatus = data.status as 'pending' | 'in_progress' | 'completed';
         const projectValue = normalizeMonetaryValue(data.value as string);
         const invoiceOk = data.invoiceOk === 'on';
         
