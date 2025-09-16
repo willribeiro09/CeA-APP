@@ -136,6 +136,7 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         invoiceOk: (data.invoiceOk === 'on'),
         notes: data.notes as string || '',
         photos: uploadedPhotos,
+        lastModified: Date.now(), // Adicionar timestamp de criação
         category: 'Projects'
       } as Partial<Project>;
       validationError = validation.project(itemData as Partial<Project>);

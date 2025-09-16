@@ -916,6 +916,11 @@ export default function App() {
         if (!project.status) project.status = "in_progress";
         if (!project.location) project.location = "";
         if (project.value === undefined) project.value = 0;
+        
+        // Garantir timestamp de modificação para ordenação correta
+        if (!project.lastModified) {
+          project.lastModified = Date.now();
+        }
 
         // Atualizar o estado
         setProjects(prevProjects => {
@@ -2024,30 +2029,34 @@ export default function App() {
                   return shouldShow;
                 })
                 .sort((a, b) => {
-                  // Para projetos Private, ordenar por status: completos/invoice ok primeiro
+                  // Para projetos Private, ordenar por status: Completed > In Progress > Pending
                   if (selectedClient === 'Private') {
-                    const aCompleted = a.status === 'completed' && a.invoiceOk;
-                    const bCompleted = b.status === 'completed' && b.invoiceOk;
+                    // Primeiro, ordenar por status
+                    if (a.status === 'completed' && b.status !== 'completed') return -1;
+                    if (a.status !== 'completed' && b.status === 'completed') return 1;
                     
-                    if (aCompleted && !bCompleted) return -1;
-                    if (!aCompleted && bCompleted) return 1;
+                    if (a.status === 'in_progress' && b.status === 'pending') return -1;
+                    if (a.status === 'pending' && b.status === 'in_progress') return 1;
                     
-                    // Se ambos têm o mesmo status de completude, ordenar por data
-                    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+                    // Se mesmo status, ordenar por data de adição (mais recente primeiro)
+                    const aTime = a.lastModified || new Date(a.startDate).getTime();
+                    const bTime = b.lastModified || new Date(b.startDate).getTime();
+                    return bTime - aTime;
                   }
                   
                   // Para projetos Power, ordenar por status: Completed > In Progress > Pending
                   if (selectedClient === 'Power') {
-                    const statusOrder = { 'completed': 1, 'in_progress': 2, 'pending': 3 };
-                    const aOrder = statusOrder[a.status as keyof typeof statusOrder] || 4;
-                    const bOrder = statusOrder[b.status as keyof typeof statusOrder] || 4;
+                    // Primeiro, ordenar por status
+                    if (a.status === 'completed' && b.status !== 'completed') return -1;
+                    if (a.status !== 'completed' && b.status === 'completed') return 1;
                     
-                    if (aOrder !== bOrder) {
-                      return aOrder - bOrder;
-                    }
+                    if (a.status === 'in_progress' && b.status === 'pending') return -1;
+                    if (a.status === 'pending' && b.status === 'in_progress') return 1;
                     
-                    // Se mesmo status, ordenar por data de criação (mais recente primeiro)
-                    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+                    // Se mesmo status, ordenar por data de adição (mais recente primeiro)
+                    const aTime = a.lastModified || new Date(a.startDate).getTime();
+                    const bTime = b.lastModified || new Date(b.startDate).getTime();
+                    return bTime - aTime;
                   }
                   
                   // Fallback: ordenar por data
