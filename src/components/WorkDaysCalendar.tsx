@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, eachDayOfInterval, startOfWeek, endOfWeek, addMonths, subMonths, isSameDay, isToday, isSameMonth } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { normalizeEmployeeDate, formatDateToISO } from '../lib/dateUtils';
+import { normalizeEmployeeDate, formatDateToISO, getEmployeeWeekStart, getEmployeeWeekEnd } from '../lib/dateUtils';
 import { isMobileDevice } from '../lib/deviceUtils';
 
 interface WorkDaysCalendarProps {
@@ -30,6 +30,19 @@ export function WorkDaysCalendar({
   const [isAdding, setIsAdding] = useState(true);
   const [mobileSelectionStart, setMobileSelectionStart] = useState<Date | null>(null);
   const [currentTouchDate, setCurrentTouchDate] = useState<Date | null>(null);
+
+  // Calcular o intervalo da semana atual selecionada
+  const weekRange = useMemo(() => {
+    const start = getEmployeeWeekStart(weekStartDate);
+    const end = getEmployeeWeekEnd(weekStartDate);
+    return { start, end };
+  }, [weekStartDate]);
+
+  // Verificar se uma data pertence à semana atual selecionada
+  const isDateInCurrentWeek = useCallback((date: Date): boolean => {
+    const normalizedDate = normalizeEmployeeDate(date);
+    return normalizedDate >= weekRange.start && normalizedDate <= weekRange.end;
+  }, [weekRange]);
 
   // Garantir que, ao trocar de semana (ou abrir na semana atual), o mês exibido acompanha a weekStartDate
   useEffect(() => {
@@ -188,6 +201,16 @@ export function WorkDaysCalendar({
         day: date.getDate()
       });
       
+      // Verificar se o dia pertence à semana atual selecionada
+      if (!isDateInCurrentWeek(date)) {
+        console.log("⚠️ Dia não pertence à semana atual selecionada:", {
+          date: date.toString(),
+          weekStart: weekRange.start.toString(),
+          weekEnd: weekRange.end.toString()
+        });
+        return;
+      }
+      
       // Usar normalizeEmployeeDate para ajustar a data antes de formatá-la
       const normalizedDate = normalizeEmployeeDate(date);
       const formattedDate = formatDateToISO(normalizedDate);
@@ -197,7 +220,8 @@ export function WorkDaysCalendar({
       console.log("🖱️ PROCESSANDO CLIQUE:", {
         formattedDate,
         isDateWorked,
-        workedDates
+        workedDates,
+        isInCurrentWeek: isDateInCurrentWeek(date)
       });
       
       // Alternar o estado de trabalho da data
@@ -359,6 +383,7 @@ export function WorkDaysCalendar({
             // Verificar se está na seleção atual ou já marcado como trabalhado
             const isWorked = workedDates.includes(formattedDate);
             const isSelected = isSelecting && isDateInSelection(day);
+            const isInCurrentWeek = isDateInCurrentWeek(day);
             
             // Debug específico para o dia atual
             if (isToday(day)) {
@@ -369,19 +394,24 @@ export function WorkDaysCalendar({
                 workedDates,
                 isToday: isToday(day),
                 dayString: day.toString(),
-                normalizedDate: normalizeEmployeeDate(day).toString()
+                normalizedDate: normalizeEmployeeDate(day).toString(),
+                isInCurrentWeek,
+                weekStart: weekRange.start.toString(),
+                weekEnd: weekRange.end.toString()
               });
             }
             
             // Classes para estilização - simplificada e mais clara
             const dayClasses = [
               "flex items-center justify-center",
-              "cursor-pointer select-none",
+              isInCurrentWeek ? "cursor-pointer select-none" : "cursor-not-allowed opacity-50",
               "transition-colors duration-200",
               isToday(day) ? "border-2 border-blue-500 font-bold" : "",
               isWorked 
                 ? "bg-green-500 text-white hover:bg-green-600 font-bold" 
-                : "hover:bg-gray-100 text-gray-700",
+                : isInCurrentWeek 
+                  ? "hover:bg-gray-100 text-gray-700"
+                  : "text-gray-400",
               isMobile ? "h-10 w-10" : "h-8 w-8",
               "rounded-md"
             ].filter(Boolean).join(" ");

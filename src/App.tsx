@@ -2023,6 +2023,22 @@ export default function App() {
                   
                   return shouldShow;
                 })
+                .sort((a, b) => {
+                  // Para projetos Private, ordenar por status: completos/invoice ok primeiro
+                  if (selectedClient === 'Private') {
+                    const aCompleted = a.status === 'completed' && a.invoiceOk;
+                    const bCompleted = b.status === 'completed' && b.invoiceOk;
+                    
+                    if (aCompleted && !bCompleted) return -1;
+                    if (!aCompleted && bCompleted) return 1;
+                    
+                    // Se ambos têm o mesmo status de completude, ordenar por data
+                    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+                  }
+                  
+                  // Para projetos Power, manter ordenação por data
+                  return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+                })
                 .map(project => (
                   <li key={project.id} className="list-none">
                     <SwipeableItem 
@@ -2030,7 +2046,20 @@ export default function App() {
                       onEdit={isBackgroundSyncing ? () => {} : () => handleEditItem(project)}
                     >
                       <div 
-                        className="bg-white p-4 rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                        className={`p-4 rounded-lg shadow-md cursor-pointer transition-all duration-300 border-2 backdrop-blur-sm hover:shadow-lg ${
+                          project.status === 'completed' && project.invoiceOk 
+                            ? (project.clientType === 'Private' 
+                                ? 'bg-green-100 hover:bg-green-150 border-green-300/80 shadow-green-300/30'
+                                : 'bg-green-50 hover:bg-green-100 border-green-200/60 shadow-green-200/20')
+                            : 'bg-white hover:bg-gray-50 border-gray-200/60 shadow-gray-200/20'
+                        }`}
+                        style={{
+                          boxShadow: project.status === 'completed' && project.invoiceOk 
+                            ? (project.clientType === 'Private'
+                                ? '0 4px 6px -1px rgba(34, 197, 94, 0.15), 0 2px 4px -1px rgba(34, 197, 94, 0.1)'
+                                : '0 4px 6px -1px rgba(34, 197, 94, 0.08), 0 2px 4px -1px rgba(34, 197, 94, 0.05)')
+                            : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                        }}
                         onClick={isBackgroundSyncing ? () => {} : () => handleOpenProjectSummary(project)}
                       >
                         <div className="flex justify-between items-start">
@@ -2084,13 +2113,20 @@ export default function App() {
                           <div className="flex items-center space-x-2">
                             {/* Botão de edição visível */}
                             {project.invoiceOk && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800">
+                              <span className={`text-xs px-3 py-1 rounded-md font-medium border ${
+                                project.clientType === 'Private' 
+                                  ? 'bg-green-200 text-green-900 border-green-300'
+                                  : 'bg-green-100 text-green-800 border-green-200'
+                              }`}>
                                 Invoice OK
                               </span>
                             )}
-                            <span className={`text-xs px-2 py-0.5 rounded ${
-                              project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              'bg-blue-100 text-blue-800'
+                            <span className={`text-xs px-3 py-1 rounded-md font-medium border ${
+                              project.status === 'completed' 
+                                ? (project.clientType === 'Private' 
+                                    ? 'bg-green-200 text-green-900 border-green-300'
+                                    : 'bg-green-100 text-green-800 border-green-200')
+                                : 'bg-blue-100 text-blue-800 border-blue-200'
                             }`}>
                               {project.status === 'completed' ? 'Completed' : 'In Progress'}
                             </span>
