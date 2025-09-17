@@ -20,10 +20,12 @@ export function SwipeableItem({
 }: SwipeableItemProps) {
   const [isSwiped, setIsSwiped] = useState(false);
   const startX = useRef<number | null>(null);
+  const startY = useRef<number | null>(null);
   const currentX = useRef<number | null>(null);
   const swipeDistance = useRef<number>(0);
   const itemRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef<boolean>(false);
+  const hasStartedSwipe = useRef<boolean>(false);
   
   // Função para resetar o swipe
   const resetSwipe = useCallback(() => {
@@ -32,31 +34,55 @@ export function SwipeableItem({
     }
     setIsSwiped(false);
     swipeDistance.current = 0;
+    hasStartedSwipe.current = false;
   }, []);
 
   // Touch events para dispositivos móveis
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     startX.current = touch.clientX;
+    startY.current = touch.clientY;
     currentX.current = touch.clientX;
     swipeDistance.current = 0;
     isDragging.current = true;
-    e.preventDefault(); // Prevenir scroll durante swipe
+    hasStartedSwipe.current = false;
+    // NÃO usar preventDefault aqui para permitir scroll vertical
   }, []);
   
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (startX.current === null || !isDragging.current) return;
+    if (startX.current === null || startY.current === null || !isDragging.current) return;
     
     const touch = e.touches[0];
     currentX.current = touch.clientX;
+    const currentY = touch.clientY;
     
-    if (itemRef.current) {
-      const deltaX = currentX.current - startX.current;
+    const deltaX = currentX.current - startX.current;
+    const deltaY = currentY - startY.current;
+    
+    // Verificar se ainda não iniciou o swipe
+    if (!hasStartedSwipe.current) {
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      
+      // Threshold mínimo de 15px para iniciar qualquer ação
+      if (absX < 15 && absY < 15) return;
+      
+      // Se o movimento vertical é maior que o horizontal, é scroll - não fazer nada
+      if (absY > absX) {
+        isDragging.current = false;
+        return;
+      }
+      
+      // Se chegou aqui, é um swipe horizontal válido
+      hasStartedSwipe.current = true;
+      e.preventDefault(); // Agora sim, prevenir scroll
+    }
+    
+    if (hasStartedSwipe.current && itemRef.current) {
       swipeDistance.current = deltaX;
       
       if (isSwiped) {
         // Se já está aberto, permitir arrastar de volta para fechar
-        // Começar de -150px (posição aberta) e permitir valores positivos
         const newPosition = Math.max(-150, -150 + deltaX);
         itemRef.current.style.transform = `translateX(${newPosition}px)`;
       } else {
@@ -64,20 +90,19 @@ export function SwipeableItem({
         const limitedDeltaX = Math.min(0, Math.max(-150, deltaX));
         itemRef.current.style.transform = `translateX(${limitedDeltaX}px)`;
       }
-    }
-    
-    // Atualizar o estado de swipe baseado na posição atual
-    if (itemRef.current) {
+      
+      // Atualizar o estado de swipe baseado na posição atual
       const transform = itemRef.current.style.transform;
       const currentPosition = parseInt(transform.replace('translateX(', '').replace('px)', '') || '0');
-      setIsSwiped(currentPosition < -25); // Threshold menor para melhor responsividade
+      setIsSwiped(currentPosition < -25);
     }
   }, [isSwiped]);
   
   const handleTouchEnd = useCallback(() => {
     if (!isDragging.current) return;
     
-    if (itemRef.current) {
+    // Só processar o fim do swipe se realmente iniciou um swipe
+    if (hasStartedSwipe.current && itemRef.current) {
       const transform = itemRef.current.style.transform;
       const currentPosition = parseInt(transform.replace('translateX(', '').replace('px)', '') || '0');
       
@@ -93,31 +118,55 @@ export function SwipeableItem({
     }
     
     startX.current = null;
+    startY.current = null;
     currentX.current = null;
     isDragging.current = false;
+    hasStartedSwipe.current = false;
   }, [resetSwipe]);
 
   // Mouse events para desktop
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     startX.current = e.clientX;
+    startY.current = e.clientY;
     currentX.current = e.clientX;
     swipeDistance.current = 0;
     isDragging.current = true;
+    hasStartedSwipe.current = false;
     e.preventDefault();
   }, []);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (startX.current === null || !isDragging.current) return;
+    if (startX.current === null || startY.current === null || !isDragging.current) return;
     
     currentX.current = e.clientX;
+    const currentY = e.clientY;
     
-    if (itemRef.current) {
-      const deltaX = currentX.current - startX.current;
+    const deltaX = currentX.current - startX.current;
+    const deltaY = currentY - startY.current;
+    
+    // Verificar se ainda não iniciou o swipe
+    if (!hasStartedSwipe.current) {
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      
+      // Threshold mínimo de 10px para mouse (menor que touch)
+      if (absX < 10 && absY < 10) return;
+      
+      // Se o movimento vertical é maior que o horizontal, não é swipe
+      if (absY > absX) {
+        isDragging.current = false;
+        return;
+      }
+      
+      // Se chegou aqui, é um swipe horizontal válido
+      hasStartedSwipe.current = true;
+    }
+    
+    if (hasStartedSwipe.current && itemRef.current) {
       swipeDistance.current = deltaX;
       
       if (isSwiped) {
         // Se já está aberto, permitir arrastar de volta para fechar
-        // Começar de -150px (posição aberta) e permitir valores positivos
         const newPosition = Math.max(-150, -150 + deltaX);
         itemRef.current.style.transform = `translateX(${newPosition}px)`;
       } else {
@@ -125,20 +174,19 @@ export function SwipeableItem({
         const limitedDeltaX = Math.min(0, Math.max(-150, deltaX));
         itemRef.current.style.transform = `translateX(${limitedDeltaX}px)`;
       }
-    }
-    
-    // Atualizar o estado de swipe baseado na posição atual
-    if (itemRef.current) {
+      
+      // Atualizar o estado de swipe baseado na posição atual
       const transform = itemRef.current.style.transform;
       const currentPosition = parseInt(transform.replace('translateX(', '').replace('px)', '') || '0');
-      setIsSwiped(currentPosition < -25); // Threshold menor para melhor responsividade
+      setIsSwiped(currentPosition < -25);
     }
   }, [isSwiped]);
 
   const handleMouseUp = useCallback(() => {
     if (!isDragging.current) return;
     
-    if (itemRef.current) {
+    // Só processar o fim do swipe se realmente iniciou um swipe
+    if (hasStartedSwipe.current && itemRef.current) {
       const transform = itemRef.current.style.transform;
       const currentPosition = parseInt(transform.replace('translateX(', '').replace('px)', '') || '0');
       
@@ -154,8 +202,10 @@ export function SwipeableItem({
     }
     
     startX.current = null;
+    startY.current = null;
     currentX.current = null;
     isDragging.current = false;
+    hasStartedSwipe.current = false;
   }, [resetSwipe]);
 
   // Click outside para fechar
