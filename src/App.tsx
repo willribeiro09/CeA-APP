@@ -252,21 +252,21 @@ export default function App() {
   useEffect(() => {
     if (projects.length === 0) return;
     
-    let startTime: number;
-    let endTime: number;
+    // Usar a mesma lógica da lista - comparação por string de data
+    let periodStartStr: string;
+    let periodEndStr: string;
     
     if (selectedClient === 'Power') {
       // Para Power, usar semana
-      startTime = selectedWeekStart.getTime();
-      endTime = selectedWeekEnd.getTime();
+      periodStartStr = selectedWeekStart.toISOString().split('T')[0];
+      periodEndStr = selectedWeekEnd.toISOString().split('T')[0];
     } else {
       // Para Private, usar mês
-      startTime = selectedMonthStart.getTime();
-      endTime = selectedMonthEnd.getTime();
+      periodStartStr = selectedMonthStart.toISOString().split('T')[0];
+      periodEndStr = selectedMonthEnd.toISOString().split('T')[0];
     }
     
     let total = 0;
-    
     
     projects.forEach(project => {
       // Somar apenas projetos concluídos
@@ -276,22 +276,26 @@ export default function App() {
       // Filtrar projetos baseado no cliente
       if ((selectedClient === 'Power' && project.clientType !== 'Private') || 
           (selectedClient === 'Private' && project.clientType === 'Private')) {
-        const projectDate = new Date(project.startDate).getTime();
-        if (projectDate >= startTime && projectDate <= endTime) {
+        
+        // Usar a mesma lógica da lista - comparação por string de data
+        const projectStartStr = (project.startDate as string)?.slice(0, 10);
+        const projectEndStr = project.endDate ? (project.endDate as string).slice(0, 10) : undefined;
+        
+        // Verificar se está no intervalo (mesma lógica da lista)
+        const startInRange = projectStartStr >= periodStartStr && 
+                            projectStartStr <= periodEndStr;
+        const endInRange = projectEndStr && 
+                          projectEndStr >= periodStartStr && 
+                          projectEndStr <= periodEndStr;
+        const spansRange = projectStartStr <= periodStartStr && 
+                          projectEndStr && 
+                          projectEndStr >= periodEndStr;
+        
+        if (startInRange || endInRange || spansRange) {
           total += project.value || 0;
         }
       }
     });
-    
-    // DEBUG: Log detalhado do cálculo
-    
-    
-    
-    
-    
-    
-    
-    
     
     setWeekTotalValue(total);
   }, [projects, selectedWeekStart, selectedWeekEnd, selectedMonthStart, selectedMonthEnd, selectedClient]);
