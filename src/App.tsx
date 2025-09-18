@@ -2088,14 +2088,14 @@ export default function App() {
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1 min-w-0 pr-2">
-                            <h3 className="font-medium text-gray-900 truncate">{project.client}</h3>
+                            <h3 className="font-semibold text-gray-900 truncate text-lg sm:text-xl">{project.client}</h3>
                             {project.projectNumber && (
                               <p className="text-gray-600 text-sm truncate">Number: {project.projectNumber}</p>
                             )}
                             <p className="text-gray-600 text-sm truncate">Location: {project.location || 'N/A'}</p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="font-semibold text-[#5ABB37] whitespace-nowrap text-sm sm:text-base">
+                            <p className="font-bold text-[#5ABB37] whitespace-nowrap text-lg sm:text-xl">
                               ${(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </p>
                             <p className="text-xs text-gray-500 whitespace-nowrap">
@@ -2115,14 +2115,14 @@ export default function App() {
                                       <img 
                                         src={photo.url} 
                                         alt={`Photo ${index + 1}`}
-                                        className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg object-cover border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow"
+                                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           target.style.display = 'none';
                                         }}
                                       />
                                       {photo.isEdited && (
-                                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                                        <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
                                       )}
                                     </div>
                                   ))}
