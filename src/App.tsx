@@ -2115,22 +2115,22 @@ export default function App() {
                                       <img 
                                         src={photo.url} 
                                         alt={`Photo ${index + 1}`}
-                                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow"
+                                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg object-cover border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           target.style.display = 'none';
                                         }}
                                       />
                                       {photo.isEdited && (
-                                        <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
                                       )}
                                     </div>
                                   ))}
                                 </div>
                                 {/* Contador se houver mais de 3 fotos */}
                                 {project.photos.length > 3 && (
-                                  <span className="text-xs text-gray-500 ml-1 font-medium">
-                                    +{project.photos.length - 3}
+                                  <span className="text-xs text-gray-500 ml-0.5 font-medium">
+                                    +
                                   </span>
                                 )}
                               </div>
@@ -2147,14 +2147,14 @@ export default function App() {
                                 Invoice OK
                               </span>
                             )}
-                            <span className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md font-medium border whitespace-nowrap ${
+                            <span className={`rounded-md font-medium border whitespace-nowrap ${
                               project.status === 'completed' 
                                 ? (project.clientType === 'Private' 
-                                    ? 'bg-green-200 text-green-900 border-green-300'
-                                    : 'bg-green-100 text-green-800 border-green-200')
+                                    ? 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-200 text-green-900 border-green-300'
+                                    : 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-100 text-green-800 border-green-200')
                                 : project.status === 'in_progress'
-                                  ? 'bg-blue-100 text-blue-800 border-blue-200'
-                                  : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                                  ? 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-100 text-blue-800 border-blue-200'
+                                  : 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-yellow-100 text-yellow-800 border-yellow-200'
                             }`}>
                               {project.status === 'completed' ? 'Completed' : 
                                project.status === 'in_progress' ? 'In Progress' : 'Pending'}
