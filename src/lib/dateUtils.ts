@@ -105,10 +105,10 @@ export function formatDateToISO(date: Date): string {
     return "";
   }
   
-  // Extrair componentes UTC da data
-  const year = date.getUTCFullYear();
-  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-  const day = date.getUTCDate().toString().padStart(2, '0');
+  // Extrair componentes locais da data (não UTC) para manter consistência
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
   
   return `${year}-${month}-${day}`;
 }
@@ -116,15 +116,15 @@ export function formatDateToISO(date: Date): string {
 /**
  * Converte uma string de data ISO para um objeto Date
  * @param dateString String de data no formato YYYY-MM-DD
- * @returns Objeto Date no padrão UTC
+ * @returns Objeto Date local (sem ajustes de fuso horário)
  */
 export function parseISODate(dateString: string): Date | null {
   if (!dateString) return null;
   
   try {
-    // Parseamos a string e criamos uma data UTC com horário meio-dia
+    // Criar data local diretamente sem conversões UTC para evitar problemas de fuso horário
     const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    return new Date(year, month - 1, day);
   } catch (error) {
     console.error("Erro ao converter string ISO para data:", error);
     return null;
@@ -132,9 +132,9 @@ export function parseISODate(dateString: string): Date | null {
 }
 
 /**
- * Formata uma data para exibição no formato local do usuário (DD/MM/YYYY)
+ * Formata uma data para exibição no formato americano (MM/DD/YYYY)
  * @param date Data a ser formatada
- * @returns Data formatada como DD/MM/YYYY
+ * @returns Data formatada como MM/DD/YYYY
  */
 export function formatDateForDisplay(date: Date | string): string {
   if (!date) return "";
@@ -152,8 +152,8 @@ export function formatDateForDisplay(date: Date | string): string {
     return "";
   }
   
-  // Usar Intl.DateTimeFormat para formatar a data no padrão local do usuário
-  return new Intl.DateTimeFormat('pt-BR').format(dateObj);
+  // Usar Intl.DateTimeFormat para formatar a data no padrão americano (MM/DD/YYYY)
+  return new Intl.DateTimeFormat('en-US').format(dateObj);
 }
 
 /**
@@ -631,7 +631,7 @@ export function adjustEmployeeDateDisplay(dateString: string): Date {
  * @param format Formato desejado
  * @returns String formatada
  */
-export function formatEmployeeDateForDisplay(date: Date | string, formatString: string = 'dd/MM/yyyy'): string {
+export function formatEmployeeDateForDisplay(date: Date | string, formatString: string = 'MM/dd/yyyy'): string {
   try {
     // Se for string, converter para Date usando nosso método de ajuste
     const dateObj = typeof date === 'string' ? adjustEmployeeDateDisplay(date) : date;

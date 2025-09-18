@@ -100,7 +100,10 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
         
         // Normalizar datas (importante para funcionar corretamente)
         // Para formulários de data HTML, usar parseISODate e depois formatDateToISO para evitar problemas de fuso
-        const projectStartDate = data.startDate ? formatDateToISO(parseISODate(data.startDate as string) || new Date(projectItem.startDate)) : projectItem.startDate;
+        // Se a data foi alterada no formulário, usar a nova data; senão, preservar a original
+        const projectStartDate = data.startDate ? 
+          formatDateToISO(parseISODate(data.startDate as string) || new Date(projectItem.startDate)) : 
+          projectItem.startDate;
         const projectStatus = data.status as 'pending' | 'in_progress' | 'completed';
         const projectValue = normalizeMonetaryValue(data.value as string);
         const invoiceOk = data.invoiceOk === 'on';
@@ -348,7 +351,6 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
                     id="startDate"
                     name="startDate"
                     defaultValue={formatDateToISO(parseISODate((item as Project).startDate) || new Date())}
-                    required
                     onFocus={handleInputFocus}
                     onBlur={handleInputBlur}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"

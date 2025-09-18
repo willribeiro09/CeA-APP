@@ -5,6 +5,7 @@ import { Project, ProjectPhoto } from '../types';
 import { Button } from './ui/button';
 import { PhotoService } from '../lib/photoService';
 import { getEnvironmentInfo } from '../lib/deviceUtils';
+import { formatDateForDisplay } from '../lib/dateUtils';
 import PhotoViewer from './PhotoViewer';
 
 type Props = {
@@ -208,7 +209,9 @@ export default function ProjectSummaryDialog({ project, open, onOpenChange, onPh
                 ) : null}
                 <div>
                   <div className="text-gray-500">Start Date</div>
-                  <div className="font-medium text-gray-900">{new Date(project.startDate).toLocaleDateString('en-US')}</div>
+                  <div className="font-medium text-gray-900">
+                    {formatDateForDisplay(project.startDate)}
+                  </div>
                 </div>
                 {project.location ? (
                   <div>

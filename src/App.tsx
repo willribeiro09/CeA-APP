@@ -46,7 +46,8 @@ import {
   getProjectWeekStart, 
   getProjectWeekEnd,
   normalizeDate,
-  testWeekRanges 
+  testWeekRanges,
+  formatDateForDisplay 
 } from './lib/dateUtils';
 import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
 
@@ -61,8 +62,8 @@ const initialExpenses: Record<ListName, Expense[]> = {
 const initialEmployees: Record<string, Employee[]> = {};
 
 const formatDateRange = (start: Date, end: Date): string => {
-  // Mostrar apenas dia e mês para economizar espaço
-  return `${format(start, 'dd/MM')} - ${format(end, 'dd/MM')}`;
+  // Mostrar apenas mês e dia para economizar espaço (formato americano)
+  return `${format(start, 'MM/dd')} - ${format(end, 'MM/dd')}`;
 };
 
 // Função auxiliar para criar o objeto StorageItems
@@ -1959,7 +1960,7 @@ export default function App() {
             {filterDate && (
               <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg mb-4 flex items-center justify-between">
                 <span className="text-sm">
-                  Filtrando por: {filterDate.toLocaleDateString('pt-BR')}
+                  Filtrando por: {filterDate.toLocaleDateString('en-US')}
                 </span>
                 <button 
                   onClick={clearDateFilter}
@@ -2086,25 +2087,27 @@ export default function App() {
                         onClick={isBackgroundSyncing ? () => {} : () => handleOpenProjectSummary(project)}
                       >
                         <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-medium text-gray-900">{project.client}</h3>
+                          <div className="flex-1 min-w-0 pr-2">
+                            <h3 className="font-medium text-gray-900 truncate">{project.client}</h3>
                             {project.projectNumber && (
-                              <p className="text-gray-600 text-sm">Number: {project.projectNumber}</p>
+                              <p className="text-gray-600 text-sm truncate">Number: {project.projectNumber}</p>
                             )}
-                            <p className="text-gray-600 text-sm">Location: {project.location || 'N/A'}</p>
+                            <p className="text-gray-600 text-sm truncate">Location: {project.location || 'N/A'}</p>
                           </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-[#5ABB37]">$ {(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(project.startDate).toLocaleDateString('en-US')}
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-semibold text-[#5ABB37] whitespace-nowrap text-sm sm:text-base">
+                              ${(project.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </p>
+                            <p className="text-xs text-gray-500 whitespace-nowrap">
+                              {formatDateForDisplay(project.startDate)}
                             </p>
                           </div>
                         </div>
-                        <div className="mt-2 flex justify-between items-center">
-                          <div className="flex items-center gap-2">
+                        <div className="mt-2 flex justify-between items-center gap-2">
+                          <div className="flex items-center gap-1 sm:gap-2 flex-1 min-w-0">
                             {project.photos && project.photos.length > 0 && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-600 font-medium">Photos:</span>
+                              <div className="flex items-center gap-1 sm:gap-2">
+                                <span className="text-xs text-gray-600 font-medium">Images:</span>
                                 {/* Miniaturas das fotos */}
                                 <div className="flex -space-x-1">
                                   {project.photos.slice(0, 3).map((photo, index) => (
@@ -2112,14 +2115,14 @@ export default function App() {
                                       <img 
                                         src={photo.url} 
                                         alt={`Photo ${index + 1}`}
-                                        className="w-8 h-8 rounded-lg object-cover border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow"
+                                        className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg object-cover border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           target.style.display = 'none';
                                         }}
                                       />
                                       {photo.isEdited && (
-                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
                                       )}
                                     </div>
                                   ))}
@@ -2133,10 +2136,10 @@ export default function App() {
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                             {/* Botão de edição visível */}
                             {project.invoiceOk && (
-                              <span className={`text-xs px-2 py-1 rounded-md font-medium border whitespace-nowrap ${
+                              <span className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md font-medium border whitespace-nowrap ${
                                 project.clientType === 'Private' 
                                   ? 'bg-green-200 text-green-900 border-green-300'
                                   : 'bg-green-100 text-green-800 border-green-200'
@@ -2144,7 +2147,7 @@ export default function App() {
                                 Invoice OK
                               </span>
                             )}
-                            <span className={`text-xs px-2 py-1 rounded-md font-medium border whitespace-nowrap ${
+                            <span className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md font-medium border whitespace-nowrap ${
                               project.status === 'completed' 
                                 ? (project.clientType === 'Private' 
                                     ? 'bg-green-200 text-green-900 border-green-300'

@@ -129,8 +129,8 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
         clientType: selectedClient || 'Power', // Definir o tipo de cliente
         projectNumber: data.projectNumber as string || '',
         location: data.location as string || '',
-        startDate: startDate ? startDate.toISOString() : selectedWeekStart.toISOString(),
-        endDate: endDate?.toISOString(),
+        startDate: startDate ? formatDateToISO(startDate) : formatDateToISO(selectedWeekStart),
+        endDate: endDate ? formatDateToISO(endDate) : undefined,
         status: (data.status as 'completed' | 'in_progress') || 'in_progress',
         value: projectValue,
         invoiceOk: (data.invoiceOk === 'on'),
