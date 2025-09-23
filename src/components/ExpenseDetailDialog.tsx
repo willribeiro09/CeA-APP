@@ -691,7 +691,6 @@ export function ExpenseDetailDialog({
                     key={receipt.id}
                     receipt={receipt}
                     onView={viewReceipt}
-                    onDelete={removeReceipt}
                   />
                 ))}
               </div>
@@ -736,6 +735,7 @@ export function ExpenseDetailDialog({
         receipt={selectedReceipt}
         isOpen={isReceiptViewerOpen}
         onClose={closeReceiptViewer}
+        onDelete={removeReceipt}
       />
     </div>
   );

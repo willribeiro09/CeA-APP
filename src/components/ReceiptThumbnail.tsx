@@ -1,24 +1,18 @@
 import React from 'react';
-import { X, FileText, Image as ImageIcon } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { ExpenseReceipt } from '../types';
 
 interface ReceiptThumbnailProps {
   receipt: ExpenseReceipt;
   onView: (receipt: ExpenseReceipt) => void;
-  onDelete: (receiptId: string) => void;
 }
 
-export function ReceiptThumbnail({ receipt, onView, onDelete }: ReceiptThumbnailProps) {
+export function ReceiptThumbnail({ receipt, onView }: ReceiptThumbnailProps) {
   const isImage = receipt.mimeType?.startsWith('image/') || 
                   receipt.filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/);
 
   const isPDF = receipt.mimeType === 'application/pdf' || 
                 receipt.filename.toLowerCase().endsWith('.pdf');
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete(receipt.id);
-  };
 
   const handleView = () => {
     onView(receipt);
@@ -67,29 +61,15 @@ export function ReceiptThumbnail({ receipt, onView, onDelete }: ReceiptThumbnail
   };
 
   return (
-    <div className="relative group flex flex-col">
+    <div className="flex flex-col">
       {/* Miniatura clicável */}
       <div
         onClick={handleView}
-        className="relative w-28 h-28 rounded-lg border-2 border-gray-200 hover:border-gray-300 cursor-pointer transition-all duration-200 overflow-hidden bg-white shadow-sm hover:shadow-md"
-      >
-        {renderThumbnailContent()}
-        
-        {/* Overlay com informações adicionais no hover */}
-        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center">
-          <ImageIcon className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-        </div>
-      </div>
-
-      {/* Botão de delete discreto */}
-      <button
-        onClick={handleDelete}
-        className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg touch-manipulation z-10"
-        title="Remover documento"
+        className="w-28 h-28 rounded-lg border-2 border-gray-200 active:border-gray-400 cursor-pointer transition-all duration-150 overflow-hidden bg-white shadow-sm active:shadow-md touch-manipulation"
         style={{ touchAction: 'manipulation' }}
       >
-        <X className="w-4 h-4" />
-      </button>
+        {renderThumbnailContent()}
+      </div>
 
       {/* Nome do arquivo abaixo da miniatura */}
       <div className="mt-2 w-full">

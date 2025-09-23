@@ -1,14 +1,15 @@
 import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { ExpenseReceipt } from '../types';
 
 interface ReceiptViewerProps {
   receipt: ExpenseReceipt | null;
   isOpen: boolean;
   onClose: () => void;
+  onDelete?: (receiptId: string) => void;
 }
 
-export function ReceiptViewer({ receipt, isOpen, onClose }: ReceiptViewerProps) {
+export function ReceiptViewer({ receipt, isOpen, onClose, onDelete }: ReceiptViewerProps) {
   useEffect(() => {
     if (isOpen) {
       // Focus no modal para permitir navegação por teclado
@@ -46,6 +47,15 @@ export function ReceiptViewer({ receipt, isOpen, onClose }: ReceiptViewerProps) 
     }
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (receipt && onDelete) {
+      onDelete(receipt.id);
+      onClose();
+    }
+  };
+
   return (
     <div 
       data-receipt-viewer
@@ -67,6 +77,19 @@ export function ReceiptViewer({ receipt, isOpen, onClose }: ReceiptViewerProps) 
       >
         <X className="w-6 h-6" />
       </button>
+
+      {/* Delete button */}
+      {onDelete && (
+        <button
+          onClick={handleDelete}
+          className="absolute bottom-4 right-4 z-[60] p-3 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-200 touch-manipulation shadow-lg"
+          aria-label="Delete document"
+          title="Deletar documento"
+          style={{ touchAction: 'manipulation' }}
+        >
+          <Trash2 className="w-6 h-6" />
+        </button>
+      )}
 
       {/* Content container */}
       <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
