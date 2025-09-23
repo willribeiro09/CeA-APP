@@ -5,6 +5,7 @@ import { Expense, ExpenseInstallment, ExpenseReceipt } from '../types';
 import { getRecurrenceType } from '../lib/recurringUtils';
 import { ReceiptService } from '../lib/receiptService';
 import { ReceiptViewer } from './ReceiptViewer';
+import { ReceiptThumbnail } from './ReceiptThumbnail';
 import { supabase } from '../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -678,72 +679,45 @@ export function ExpenseDetailDialog({
 
           {/* Receipt Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Receipts
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Documents
             </label>
-            <div className="space-y-2">
-              {localExpense.receipts?.map((receipt) => (
-                <div key={receipt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 cursor-pointer transition-colors">
-                  <div 
-                    className="flex items-center gap-3 flex-1 min-w-0"
-                    onClick={() => viewReceipt(receipt)}
-                  >
-                    <div className="flex-shrink-0">
-                      {receipt.mimeType?.startsWith('image/') ? (
-                        <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
-                          <span className="text-blue-600 text-xs font-medium">IMG</span>
-                        </div>
-                      ) : receipt.mimeType === 'application/pdf' ? (
-                        <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
-                          <span className="text-red-600 text-xs font-medium">PDF</span>
-                        </div>
-                      ) : (
-                        <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
-                          <span className="text-gray-600 text-xs font-medium">FILE</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{receipt.filename}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(receipt.uploadedAt).toLocaleDateString()}
-                        {receipt.fileSize && ` • ${(receipt.fileSize / 1024).toFixed(1)} KB`}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeReceipt(receipt.id);
-                    }}
-                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                    title="Remove receipt"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <label className={`flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 cursor-pointer transition-colors ${isUploadingReceipt ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                {isUploadingReceipt ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-                    <span className="text-sm text-gray-500">Uploading...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-500">Upload Receipt</span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept="image/*,.pdf,.doc,.docx"
-                  onChange={handleFileUpload}
-                  disabled={isUploadingReceipt}
-                  className="hidden"
-                />
-              </label>
-            </div>
+            
+            {/* Grid de miniaturas dos recibos */}
+            {localExpense.receipts && localExpense.receipts.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4 justify-items-start">
+                {localExpense.receipts.map((receipt) => (
+                  <ReceiptThumbnail
+                    key={receipt.id}
+                    receipt={receipt}
+                    onView={viewReceipt}
+                    onDelete={removeReceipt}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Botão de upload */}
+            <label className={`flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 cursor-pointer transition-colors ${isUploadingReceipt ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              {isUploadingReceipt ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                  <span className="text-sm text-gray-500">Enviando...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-500">Adicionar Documento</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*,.pdf,.doc,.docx"
+                onChange={handleFileUpload}
+                disabled={isUploadingReceipt}
+                className="hidden"
+              />
+            </label>
           </div>
 
 
