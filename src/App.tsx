@@ -507,12 +507,52 @@ export default function App() {
     
     if (index !== -1) {
       const updatedExpenses = [...selectedExpenses];
-      const newPaidStatus = !(updatedExpenses[index].is_paid || updatedExpenses[index].paid);
-      updatedExpenses[index] = {
-        ...updatedExpenses[index],
-        is_paid: newPaidStatus,
-        paid: newPaidStatus
-      };
+      const expense = updatedExpenses[index];
+      const newPaidStatus = !(expense.is_paid || expense.paid);
+      
+      // Se estamos marcando como paga uma despesa recorrente
+      if (newPaidStatus && expense.description && (expense.description.endsWith('*M') || expense.description.endsWith('*B') || expense.description.endsWith('*W'))) {
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        const expenseDate = new Date(expense.date);
+        const expenseMonth = expenseDate.getMonth();
+        const expenseYear = expenseDate.getFullYear();
+        
+        // Se a despesa é de mês anterior, atualizar para o mês atual
+        if (expenseYear < currentYear || (expenseYear === currentYear && expenseMonth < currentMonth)) {
+          // Calcular nova data mantendo o dia original
+          const originalDay = expenseDate.getDate();
+          let newDueDate = new Date(currentYear, currentMonth, originalDay);
+          
+          // Se o dia não existe no mês atual (ex: 31 de janeiro → 31 de fevereiro)
+          // ajustar para o último dia do mês
+          if (newDueDate.getDate() !== originalDay) {
+            newDueDate = new Date(currentYear, currentMonth + 1, 0); // Último dia do mês
+          }
+          
+          updatedExpenses[index] = {
+            ...expense,
+            date: newDueDate.toISOString(),
+            is_paid: newPaidStatus,
+            paid: newPaidStatus
+          };
+        } else {
+          // Se já é do mês atual, apenas marcar como paga
+          updatedExpenses[index] = {
+            ...expense,
+            is_paid: newPaidStatus,
+            paid: newPaidStatus
+          };
+        }
+      } else {
+        // Para despesas não recorrentes ou desmarcando como paga
+        updatedExpenses[index] = {
+          ...expense,
+          is_paid: newPaidStatus,
+          paid: newPaidStatus
+        };
+      }
       
       const newExpenses = {
         ...expenses,
@@ -1837,6 +1877,121 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [activeCategory]); // Removido selectedWeekStart e selectedWeekEnd para evitar loop
 
+  // Rollover automático mensal: quando acabar o último dia do mês, vira para o novo mês atual
+  useEffect(() => {
+    // agendar apenas quando estivermos em Projects Private (para evitar atualizações desnecessárias)
+    if (activeCategory !== 'Projects' || selectedClient !== 'Private') return;
+    
+    const now = new Date();
+    // Último momento do mês atual (último dia às 23:59:59.999)
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const delay = currentMonthEnd.getTime() - now.getTime() + 1; // próximo ms vira novo mês
+
+    if (delay <= 0) {
+      // já passou; atualiza imediatamente para o novo mês
+      const newNow = new Date();
+      const nextMonthStart = new Date(newNow.getFullYear(), newNow.getMonth(), 1);
+      const nextMonthEnd = new Date(newNow.getFullYear(), newNow.getMonth() + 1, 0);
+      setSelectedMonthStart(nextMonthStart);
+      setSelectedMonthEnd(nextMonthEnd);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const newNow = new Date();
+      const nextMonthStart = new Date(newNow.getFullYear(), newNow.getMonth(), 1);
+      const nextMonthEnd = new Date(newNow.getFullYear(), newNow.getMonth() + 1, 0);
+      setSelectedMonthStart(nextMonthStart);
+      setSelectedMonthEnd(nextMonthEnd);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [activeCategory, selectedClient]); // Incluir selectedClient para reagir à mudança
+
+  // Rollover automático de despesas recorrentes: quando acabar o último dia do mês
+  useEffect(() => {
+    const now = new Date();
+    // Último momento do mês atual (último dia às 23:59:59.999)
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const delay = currentMonthEnd.getTime() - now.getTime() + 1; // próximo ms vira novo mês
+
+    const processMonthlyExpensesReset = () => {
+      const newNow = new Date();
+      const currentMonth = newNow.getMonth();
+      const currentYear = newNow.getFullYear();
+      
+      // Processar todas as listas de despesas
+      const updatedExpenses = { ...expenses };
+      let hasChanges = false;
+      
+      Object.keys(updatedExpenses).forEach(listName => {
+        const listExpenses = [...updatedExpenses[listName as ListName]];
+        
+        listExpenses.forEach((expense, index) => {
+          // Verificar se é despesa recorrente
+          if (expense.description && (expense.description.endsWith('*M') || expense.description.endsWith('*B') || expense.description.endsWith('*W'))) {
+            const expenseDate = new Date(expense.date);
+            const expenseMonth = expenseDate.getMonth();
+            const expenseYear = expenseDate.getFullYear();
+            
+            // Se a despesa é de mês anterior e estava paga, resetar para o mês atual
+            if ((expenseYear < currentYear || (expenseYear === currentYear && expenseMonth < currentMonth)) && 
+                (expense.is_paid || expense.paid)) {
+              
+              // Calcular nova data mantendo o dia original
+              const originalDay = expenseDate.getDate();
+              let newDueDate = new Date(currentYear, currentMonth, originalDay);
+              
+              // Se o dia não existe no mês atual (ex: 31 de janeiro → 31 de fevereiro)
+              // ajustar para o último dia do mês
+              if (newDueDate.getDate() !== originalDay) {
+                newDueDate = new Date(currentYear, currentMonth + 1, 0); // Último dia do mês
+              }
+              
+              listExpenses[index] = {
+                ...expense,
+                date: newDueDate.toISOString(),
+                is_paid: false,
+                paid: false
+              };
+              
+              hasChanges = true;
+            }
+          }
+        });
+        
+        updatedExpenses[listName as ListName] = listExpenses;
+      });
+      
+      // Se houve mudanças, atualizar estado e salvar
+      if (hasChanges) {
+        setExpenses(updatedExpenses);
+        
+        const storageData: StorageItems = {
+          expenses: updatedExpenses,
+          projects,
+          stock: stockItems,
+          employees,
+          willBaseRate,
+          willBonus,
+          lastSync: Date.now()
+        };
+        
+        saveChanges(storageData);
+      }
+    };
+
+    if (delay <= 0) {
+      // já passou; processar reset imediatamente
+      processMonthlyExpensesReset();
+      return;
+    }
+
+    const timer = setTimeout(processMonthlyExpensesReset, delay);
+
+    return () => clearTimeout(timer);
+  }, []); // Array vazio para executar apenas uma vez por inicialização
+
   return (
     <>
       <div className="min-h-screen bg-gray-50">
@@ -2015,23 +2170,52 @@ export default function App() {
                     periodEndStr = selectedMonthEnd.toISOString().split('T')[0];
                   }
                   
-                  // Verificar se a data de início do projeto está dentro do intervalo do período selecionado
+                  // Lógica especial para Projects Private
+                  if (selectedClient === 'Private') {
+                    // Projetos em progresso ou pendentes sempre aparecem no mês atual
+                    if (project.status === 'in_progress' || project.status === 'pending') {
+                      const now = new Date();
+                      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                      const currentMonthStartStr = currentMonthStart.toISOString().split('T')[0];
+                      const currentMonthEndStr = currentMonthEnd.toISOString().split('T')[0];
+                      
+                      // Se estamos visualizando o mês atual, mostrar projetos em progresso/pendentes
+                      if (periodStartStr === currentMonthStartStr && periodEndStr === currentMonthEndStr) {
+                        return true;
+                      }
+                      // Se estamos visualizando mês passado, não mostrar projetos em progresso/pendentes
+                      else {
+                        return false;
+                      }
+                    }
+                    
+                    // Projetos completos ficam no período onde foram criados/completados
+                    if (project.status === 'completed') {
+                      const startInRange = projectStartStr >= periodStartStr && 
+                                         projectStartStr <= periodEndStr;
+                      const endInRange = projectEndStr && 
+                                       projectEndStr >= periodStartStr && 
+                                       projectEndStr <= periodEndStr;
+                      const spansRange = projectStartStr <= periodStartStr && 
+                                       projectEndStr && 
+                                       projectEndStr >= periodEndStr;
+                      
+                      return startInRange || endInRange || spansRange;
+                    }
+                  }
+                  
+                  // Para Power ou lógica padrão
                   const startInRange = projectStartStr >= periodStartStr && 
                                      projectStartStr <= periodEndStr;
-                  
-                  // Verificar se a data de fim do projeto está dentro do intervalo (se existir)
                   const endInRange = projectEndStr && 
                                    projectEndStr >= periodStartStr && 
                                    projectEndStr <= periodEndStr;
-                  
-                  // Verificar se o projeto abrange todo o intervalo (começa antes e termina depois)
                   const spansRange = projectStartStr <= periodStartStr && 
                                    projectEndStr && 
                                    projectEndStr >= periodEndStr;
                   
-                  const shouldShow = startInRange || endInRange || spansRange;
-                  
-                  return shouldShow;
+                  return startInRange || endInRange || spansRange;
                 })
                 .sort((a, b) => {
                   // Para projetos Private, ordenar por status: Completed > In Progress > Pending
