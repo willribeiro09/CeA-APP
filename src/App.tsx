@@ -115,7 +115,7 @@ export default function App() {
     return weekEnd;
   });
   const [weekTotalValue, setWeekTotalValue] = useState<number>(0);
-  const [selectedClient, setSelectedClient] = useState<ClientType>('Power');
+  const [selectedClient, setSelectedClient] = useState<ClientType>('Private');
   const [selectedMonthStart, setSelectedMonthStart] = useState<Date>(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -2258,19 +2258,13 @@ export default function App() {
                       onEdit={isBackgroundSyncing ? () => {} : () => handleEditItem(project)}
                     >
                       <div 
-                        className={`p-4 rounded-lg shadow-md cursor-pointer transition-all duration-300 border-2 backdrop-blur-sm hover:shadow-lg ${
+                        className={`p-4 rounded-lg shadow-md cursor-pointer transition-all duration-300 border-2 backdrop-blur-sm ${
                           project.status === 'completed' && project.invoiceOk 
-                            ? (project.clientType === 'Private' 
-                                ? 'bg-green-100 hover:bg-green-150 border-green-300/80 shadow-green-300/30'
-                                : 'bg-green-50 hover:bg-green-100 border-green-200/60 shadow-green-200/20')
-                            : 'bg-white hover:bg-gray-50 border-gray-200/60 shadow-gray-200/20'
+                            ? 'bg-gradient-to-br from-white to-green-50/50 border-green-300/80 shadow-green-200/20'
+                            : 'bg-white border-gray-200/60 shadow-gray-200/20'
                         }`}
                         style={{
-                          boxShadow: project.status === 'completed' && project.invoiceOk 
-                            ? (project.clientType === 'Private'
-                                ? '0 4px 6px -1px rgba(34, 197, 94, 0.15), 0 2px 4px -1px rgba(34, 197, 94, 0.1)'
-                                : '0 4px 6px -1px rgba(34, 197, 94, 0.08), 0 2px 4px -1px rgba(34, 197, 94, 0.05)')
-                            : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                         }}
                         onClick={isBackgroundSyncing ? () => {} : () => handleOpenProjectSummary(project)}
                       >

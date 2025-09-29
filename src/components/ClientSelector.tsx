@@ -42,20 +42,20 @@ export function ClientSelector({ selectedClient, onClientChange }: ClientSelecto
       {isDropdownOpen && (
         <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40 min-w-[120px]">
           <button
-            onClick={() => handleClientSelect('Power')}
-            className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
-              selectedClient === 'Power' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-            }`}
-          >
-            <span className="font-medium text-sm">Power</span>
-          </button>
-          <button
             onClick={() => handleClientSelect('Private')}
             className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
               selectedClient === 'Private' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
             }`}
           >
             <span className="font-medium text-sm">Private</span>
+          </button>
+          <button
+            onClick={() => handleClientSelect('Power')}
+            className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
+              selectedClient === 'Power' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+            }`}
+          >
+            <span className="font-medium text-sm">Power</span>
           </button>
         </div>
       )}
