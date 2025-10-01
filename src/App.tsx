@@ -1372,7 +1372,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [activeCategory]); // Removido selectedWeekStart e selectedWeekEnd para evitar loop
 
-  // Função para ordenar despesas por data de vencimento (mais próximos ou vencidos primeiro)
+  // Função para ordenar despesas por status: vencidas → prestes a vencer → não vencidas → pagas
   const sortExpensesByDueDate = (expenseList: Expense[]) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1405,27 +1405,108 @@ export default function App() {
       return currentMonthInstallments.every(inst => inst.isPaid);
     };
     
-    return [...expenseList].sort((a, b) => {
-      // Primeiro: verificar se estão completamente pagas no mês atual
-      const isPaidA = isFullyPaidThisMonth(a);
-      const isPaidB = isFullyPaidThisMonth(b);
+    // Função para determinar o status de uma despesa
+    const getExpenseStatus = (expense: Expense) => {
+      if (isFullyPaidThisMonth(expense)) {
+        return 'paid';
+      }
       
-      // Se uma está paga e outra não, a paga vem primeiro
-      if (isPaidA && !isPaidB) return -1;
-      if (!isPaidA && isPaidB) return 1;
+      // Para despesas recorrentes, verificar as parcelas
+      if (expense.installments && expense.installments.length > 0) {
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        
+        // Encontrar a próxima parcela não paga
+        const nextUnpaidInstallment = expense.installments
+          .filter(inst => !inst.isPaid)
+          .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+        
+        if (!nextUnpaidInstallment) {
+          return 'paid';
+        }
+        
+        const dueDate = new Date(nextUnpaidInstallment.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        
+        const diffTime = dueDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          return 'overdue'; // Vencida
+        } else if (diffDays <= 5) {
+          return 'due_soon'; // Prestes a vencer
+        } else {
+          return 'not_due'; // Não vencida
+        }
+      }
       
-      // Se ambas estão pagas ou ambas não estão pagas, ordenar por data
+      // Para despesas não recorrentes, usar a data direta
+      const dueDate = new Date(expense.date);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      const diffTime = dueDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 0) {
+        return 'overdue'; // Vencida
+      } else if (diffDays <= 5) {
+        return 'due_soon'; // Prestes a vencer
+      } else {
+        return 'not_due'; // Não vencida
+      }
+    };
+    
+    const sortedList = [...expenseList].sort((a, b) => {
+      const statusA = getExpenseStatus(a);
+      const statusB = getExpenseStatus(b);
+      
+      // Definir ordem de prioridade: vencidas → prestes a vencer → não vencidas → pagas
+      const statusOrder = {
+        'overdue': 1,
+        'due_soon': 2,
+        'not_due': 3,
+        'paid': 4
+      };
+      
+      const orderA = statusOrder[statusA as keyof typeof statusOrder];
+      const orderB = statusOrder[statusB as keyof typeof statusOrder];
+      
+      // Debug log para verificar ordenação
+      if (a.description && (a.description.includes('Carlos') || a.description.includes('Diego') || a.description.includes('C&A'))) {
+        console.log('Sort Debug:', {
+          description: a.description,
+          status: statusA,
+          order: orderA,
+          date: a.date
+        });
+      }
+      
+      // Se têm status diferentes, ordenar por prioridade
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      // Se têm o mesmo status, ordenar por data
       const dueDateA = new Date(a.date);
       const dueDateB = new Date(b.date);
       
       // Para despesas pagas: ordenar por data (mais recentes primeiro)
-      if (isPaidA && isPaidB) {
+      if (statusA === 'paid') {
         return dueDateB.getTime() - dueDateA.getTime();
       }
       
-      // Para despesas não pagas: ordenar por data (mais próximas/vencidas primeiro)
+      // Para outras despesas: ordenar por data (mais próximas/vencidas primeiro)
       return dueDateA.getTime() - dueDateB.getTime();
     });
+    
+    // Debug: mostrar ordem final
+    console.log('Final order:', sortedList.map(exp => ({
+      description: exp.description,
+      status: getExpenseStatus(exp),
+      date: exp.date
+    })));
+    
+    return sortedList;
   };
 
   // Função para verificar se um item está relacionado à data selecionada

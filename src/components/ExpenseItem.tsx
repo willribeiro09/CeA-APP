@@ -47,8 +47,8 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit, onViewDet
       id: uuidv4(),
       dueDate: currentMonthDate.toISOString(),
       amount: expense.amount,
-      isPaid: false,
-      paidDate: undefined
+      isPaid: expense.is_paid || expense.paid || false,
+      paidDate: (expense.is_paid || expense.paid) ? expense.date : undefined
     };
     installmentsArray.push(currentMonthInstallment);
     
@@ -197,21 +197,34 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit, onViewDet
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time for accurate comparison
     
-    const currentMonthInstallments = installments.filter(inst => {
+    // Get all relevant installments (current month + overdue from previous months)
+    const relevantInstallments = installments.filter(inst => {
       const instDate = new Date(inst.dueDate);
-      return instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear;
+      
+      // Include current month installments
+      if (instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear) {
+        return true;
+      }
+      
+      // Include overdue installments from previous months that are unpaid
+      if (instDate < today && !inst.isPaid) {
+        return true;
+      }
+      
+      return false;
     });
     
-    const paidInstallments = currentMonthInstallments.filter(inst => inst.isPaid);
-    const unpaidInstallments = currentMonthInstallments.filter(inst => !inst.isPaid);
+    const paidInstallments = relevantInstallments.filter(inst => inst.isPaid);
+    const unpaidInstallments = relevantInstallments.filter(inst => !inst.isPaid);
     
-    // If all installments are paid, return green
-    if (currentMonthInstallments.length > 0 && paidInstallments.length === currentMonthInstallments.length) {
+    
+    // If all relevant installments are paid, return green
+    if (relevantInstallments.length > 0 && paidInstallments.length === relevantInstallments.length) {
       return { type: 'paid', color: 'bg-green-50' };
     }
     
-    // If no installments this month, return white
-    if (currentMonthInstallments.length === 0) {
+    // If no relevant installments, return white
+    if (relevantInstallments.length === 0) {
       return { type: 'none', color: 'bg-white' };
     }
     
@@ -297,34 +310,52 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit, onViewDet
               <Repeat className="w-4 h-4 text-gray-400" title="Recurring expense" />
             )}
           </div>
-            {expenseStatus.type === 'paid' ? (
-              <div className="flex items-center gap-1 mt-1">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                <p className="text-sm text-green-600 font-medium">Paid</p>
-              </div>
-            ) : nextDueDate && (
-              <p className="text-sm text-gray-600 mt-1">
-                {(() => {
-                  const dueDate = new Date(nextDueDate);
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  dueDate.setHours(0, 0, 0, 0);
-                  
-                  const diffTime = dueDate.getTime() - today.getTime();
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  
-                  if (diffDays < 0) {
-                    return `Due on: ${format(dueDate, 'MMM d')}`;
-                  } else if (diffDays <= 5) {
-                    if (diffDays === 0) return 'Due today';
-                    if (diffDays === 1) return 'Due in 1 day';
-                    return `Due in ${diffDays} days`;
-                  } else {
-                    return `Due on: ${format(dueDate, 'MMM d')}`;
-                  }
-                })()}
-              </p>
-            )}
+            {(() => {
+              const currentMonth = new Date().getMonth();
+              const currentYear = new Date().getFullYear();
+              
+              // Check if current month installment is paid
+              const currentMonthInstallments = installments.filter(inst => {
+                const instDate = new Date(inst.dueDate);
+                return instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear;
+              });
+              
+              const isCurrentMonthPaid = currentMonthInstallments.length > 0 && 
+                currentMonthInstallments.every(inst => inst.isPaid);
+              
+              if (isCurrentMonthPaid) {
+                return (
+                  <div className="flex items-center gap-1 mt-1">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <p className="text-sm text-green-600 font-medium">Paid</p>
+                  </div>
+                );
+              }
+              
+              return nextDueDate && (
+                <p className="text-sm text-gray-600 mt-1">
+                  {(() => {
+                    const dueDate = new Date(nextDueDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    dueDate.setHours(0, 0, 0, 0);
+                    
+                    const diffTime = dueDate.getTime() - today.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays < 0) {
+                      return `Due on: ${format(dueDate, 'MMM d')}`;
+                    } else if (diffDays <= 5) {
+                      if (diffDays === 0) return 'Due today';
+                      if (diffDays === 1) return 'Due in 1 day';
+                      return `Due in ${diffDays} days`;
+                    } else {
+                      return `Due on: ${format(dueDate, 'MMM d')}`;
+                    }
+                  })()}
+                </p>
+              );
+            })()}
         </div>
 
           {/* Right side - Amount and status */}
