@@ -179,18 +179,17 @@ export function ExpenseDetailDialog({
       const checkMonth = checkDate.getMonth();
       const checkYear = checkDate.getFullYear();
       
-      // If this date was in a previous month and wasn't paid, add as overdue
+      // If this date was in a previous month, add as overdue (independentemente do status geral is_paid/paid)
       if (checkYear < currentYear || (checkYear === currentYear && checkMonth < currentMonth)) {
-        if (!(exp.is_paid || exp.paid)) {
-          const overdueInstallment: ExpenseInstallment = {
-            id: uuidv4(),
-            dueDate: checkDate.toISOString(),
-            amount: exp.amount,
-            isPaid: false,
-            paidDate: undefined
-          };
-          installments.unshift(overdueInstallment);
-        }
+        const overdueInstallment: ExpenseInstallment = {
+          id: uuidv4(),
+          dueDate: checkDate.toISOString(),
+          amount: exp.amount,
+          isPaid: false,
+          paidDate: undefined
+        };
+        // adicionar no início para manter ordem cronológica correta (mais antiga primeiro)
+        installments.unshift(overdueInstallment);
       }
       
       // Move to next occurrence

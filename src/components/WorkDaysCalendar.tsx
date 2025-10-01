@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { format, eachDayOfInterval, startOfWeek, endOfWeek, addMonths, subMonths, isSameDay, isToday, isSameMonth } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { normalizeEmployeeDate, formatDateToISO, getEmployeeWeekStart, getEmployeeWeekEnd } from '../lib/dateUtils';
@@ -30,6 +30,10 @@ export function WorkDaysCalendar({
   const [isAdding, setIsAdding] = useState(true);
   const [mobileSelectionStart, setMobileSelectionStart] = useState<Date | null>(null);
   const [currentTouchDate, setCurrentTouchDate] = useState<Date | null>(null);
+
+  // Operações pendentes por data (apenas visual/local): add/remove
+  const [pendingOps, setPendingOps] = useState<Record<string, 'add' | 'remove'>>({});
+  const pendingTimersRef = useRef<Record<string, number>>({});
 
   // Calcular o intervalo da semana atual selecionada
   const weekRange = useMemo(() => {
@@ -70,15 +74,55 @@ export function WorkDaysCalendar({
     return format(currentMonth, 'MMMM yyyy', { locale: enUS });
   }, [currentMonth]);
 
-  // Atualizar as datas trabalhadas quando as props mudarem
-  // Com debounce para evitar loops de atualização
+  // Sincronizar estado base (apenas como referência local, sem forçar UI)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setWorkedDates(initialWorkedDates || []);
-    }, 100); // Debounce de 100ms
-    
-    return () => clearTimeout(timeoutId);
+    setWorkedDates(initialWorkedDates || []);
   }, [initialWorkedDates]);
+
+  // Quando o backend refletir a mudança (props atualizadas), limpar pendências correspondentes
+  useEffect(() => {
+    const next = { ...pendingOps };
+    let changed = false;
+    for (const date of Object.keys(next)) {
+      const op = next[date];
+      const present = (initialWorkedDates || []).includes(date);
+      if ((op === 'add' && present) || (op === 'remove' && !present)) {
+        delete next[date];
+        changed = true;
+      }
+    }
+    if (changed) setPendingOps(next);
+  }, [initialWorkedDates, pendingOps]);
+
+  // Ouvir dataUpdated para revalidar pendências assim que sync chegar
+  useEffect(() => {
+    const handler = () => {
+      const next = { ...pendingOps };
+      let changed = false;
+      for (const date of Object.keys(next)) {
+        const op = next[date];
+        const present = (initialWorkedDates || []).includes(date);
+        if ((op === 'add' && present) || (op === 'remove' && !present)) {
+          delete next[date];
+          changed = true;
+        }
+      }
+      if (changed) setPendingOps(next);
+    };
+    window.addEventListener('dataUpdated', handler as EventListener);
+    return () => window.removeEventListener('dataUpdated', handler as EventListener);
+  }, [pendingOps, initialWorkedDates]);
+
+  // Conjunto efetivo: props (base) ajustado por pendências locais
+  const isWorkedEffective = useCallback((date: Date): boolean => {
+    const normalizedDate = normalizeEmployeeDate(date);
+    const key = formatDateToISO(normalizedDate);
+    const inBase = (initialWorkedDates || []).includes(key);
+    const op = pendingOps[key];
+    if (op === 'add') return true;
+    if (op === 'remove') return false;
+    return inBase;
+  }, [initialWorkedDates, pendingOps]);
 
   // Função para verificar se uma data está dentro da seleção atual
   const isDateInSelection = useCallback((date: Date): boolean => {
@@ -140,7 +184,8 @@ export function WorkDaysCalendar({
         // Se estamos adicionando e não está marcado, ou removendo e está marcado
         if ((isAdding && !isCurrentlyWorked) || (!isAdding && isCurrentlyWorked)) {
           onDateToggle(formattedDate);
-          
+          setPendingOps(prev => ({ ...prev, [formattedDate]: isAdding ? 'add' : 'remove' }));
+          // Sem fallback: amarelo só sai quando o pai confirmar via props
           // Atualizar o estado local para feedback visual
           if (isAdding) {
             setWorkedDates(prev => [...prev, formattedDate]);
@@ -195,11 +240,13 @@ export function WorkDaysCalendar({
   // Função para lidar com clique único (para dispositivos móveis)
   const handleClick = (date: Date) => {
     try {
-      console.log("🖱️ CLIQUE DETECTADO:", {
-        date: date.toString(),
-        isToday: isToday(date),
-        day: date.getDate()
-      });
+      if ((window as any).__DEBUG) {
+        console.log("🖱️ CLIQUE DETECTADO:", {
+          date: date.toString(),
+          isToday: isToday(date),
+          day: date.getDate()
+        });
+      }
       
       // Verificar se o dia pertence à semana atual selecionada
       if (!isDateInCurrentWeek(date)) {
@@ -215,24 +262,30 @@ export function WorkDaysCalendar({
       const normalizedDate = normalizeEmployeeDate(date);
       const formattedDate = formatDateToISO(normalizedDate);
       
-      const isDateWorked = workedDates.includes(formattedDate);
+      const isDateWorked = isWorkedEffective(date);
       
-      console.log("🖱️ PROCESSANDO CLIQUE:", {
-        formattedDate,
-        isDateWorked,
-        workedDates,
-        isInCurrentWeek: isDateInCurrentWeek(date)
-      });
+      if ((window as any).__DEBUG) {
+        console.log("🖱️ PROCESSANDO CLIQUE:", {
+          formattedDate,
+          isDateWorked,
+          workedDates,
+          isInCurrentWeek: isDateInCurrentWeek(date)
+        });
+      }
       
       // Alternar o estado de trabalho da data
       onDateToggle(formattedDate);
+      setPendingOps(prev => ({ ...prev, [formattedDate]: isDateWorked ? 'remove' : 'add' }));
+      // Sem fallback: amarelo só sai quando o pai confirmar via props
       
       // Atualizar o estado local imediatamente para feedback visual
-      if (isDateWorked) {
-        setWorkedDates(prev => prev.filter(d => d !== formattedDate));
-      } else {
-        setWorkedDates(prev => [...prev, formattedDate]);
-      }
+      // Atualização local opcional (não essencial, render usa isWorkedEffective)
+      setWorkedDates(prev => {
+        const has = prev.includes(formattedDate);
+        if (isDateWorked && has) return prev.filter(d => d !== formattedDate);
+        if (!isDateWorked && !has) return [...prev, formattedDate];
+        return prev;
+      });
     } catch (error) {
       console.error("Erro ao processar clique no calendário:", error);
     }
@@ -380,13 +433,13 @@ export function WorkDaysCalendar({
             const normalizedDate = normalizeEmployeeDate(day);
             const formattedDate = formatDateToISO(normalizedDate);
             
-            // Verificar se está na seleção atual ou já marcado como trabalhado
-            const isWorked = workedDates.includes(formattedDate);
+            // Verificar se está na seleção atual ou já marcado como trabalhado (efetivo)
+            const isWorked = isWorkedEffective(day);
             const isSelected = isSelecting && isDateInSelection(day);
             const isInCurrentWeek = isDateInCurrentWeek(day);
             
             // Debug específico para o dia atual
-            if (isToday(day)) {
+            if ((window as any).__DEBUG && isToday(day)) {
               console.log("📅 DIA ATUAL DEBUG:", {
                 day: day.getDate(),
                 formattedDate,
@@ -407,11 +460,11 @@ export function WorkDaysCalendar({
               isInCurrentWeek ? "cursor-pointer select-none" : "cursor-not-allowed opacity-50",
               "transition-colors duration-200",
               isToday(day) ? "border-2 border-blue-500 font-bold" : "",
-              isWorked 
+              (isWorked 
                 ? "bg-green-500 text-white hover:bg-green-600 font-bold" 
                 : isInCurrentWeek 
                   ? "hover:bg-gray-100 text-gray-700"
-                  : "text-gray-400",
+                  : "text-gray-400"),
               isMobile ? "h-10 w-10" : "h-8 w-8",
               "rounded-md"
             ].filter(Boolean).join(" ");
@@ -433,11 +486,8 @@ export function WorkDaysCalendar({
                 onTouchStart={(e) => {
                   if (isMobile) {
                     e.preventDefault();
-                    if (!isSelecting) {
-                      handleMobileMultiSelectStart(day);
-                    } else {
-                      handleMobileMultiSelectMove(day);
-                    }
+                    // Usar apenas o touch como clique simples para evitar sequência touch -> click
+                    handleClick(day);
                   } else {
                     handleClick(day);
                   }
@@ -465,7 +515,7 @@ export function WorkDaysCalendar({
                     handleMobileMultiSelectEnd();
                   }
                 }}
-                onClick={() => isMobile && !isSelecting && handleClick(day)}
+                // Removido onClick específico para mobile para evitar duplo toggle
                 data-date={format(day, 'yyyy-MM-dd')}
                 aria-label={`${day.getDate()} ${format(day, 'MMMM yyyy')}`}
                 role="button"
