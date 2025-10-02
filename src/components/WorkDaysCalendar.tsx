@@ -34,6 +34,10 @@ export function WorkDaysCalendar({
   // Operações pendentes por data (apenas visual/local): add/remove
   const [pendingOps, setPendingOps] = useState<Record<string, 'add' | 'remove'>>({});
   const pendingTimersRef = useRef<Record<string, number>>({});
+  
+  // Refs para prevenir duplo toggle em dispositivos mobile (touch + mouse events)
+  const lastEventTimeRef = useRef<number>(0);
+  const lastEventTypeRef = useRef<'touch' | 'mouse' | null>(null);
 
   // Calcular o intervalo da semana atual selecionada
   const weekRange = useMemo(() => {
@@ -238,13 +242,37 @@ export function WorkDaysCalendar({
   };
 
   // Função para lidar com clique único (para dispositivos móveis)
-  const handleClick = (date: Date) => {
+  const handleClick = (date: Date, eventType: 'touch' | 'mouse' = 'mouse') => {
     try {
+      const now = Date.now();
+      const timeSinceLastEvent = now - lastEventTimeRef.current;
+      
+      // Prevenir duplo toggle: se foi touch seguido de mouse em menos de 500ms, ignorar o mouse
+      if (
+        lastEventTypeRef.current === 'touch' && 
+        eventType === 'mouse' && 
+        timeSinceLastEvent < 500
+      ) {
+        if ((window as any).__DEBUG) {
+          console.log('🚫 Evento mouse ignorado após touch (prevenir duplo toggle)', {
+            timeSinceLastEvent,
+            date: date.toString()
+          });
+        }
+        return;
+      }
+      
+      // Atualizar tracking de eventos
+      lastEventTimeRef.current = now;
+      lastEventTypeRef.current = eventType;
+      
       if ((window as any).__DEBUG) {
         console.log("🖱️ CLIQUE DETECTADO:", {
+          eventType,
           date: date.toString(),
           isToday: isToday(date),
-          day: date.getDate()
+          day: date.getDate(),
+          timeSinceLastEvent
         });
       }
       
@@ -477,7 +505,7 @@ export function WorkDaysCalendar({
                 onMouseDown={(e) => {
                   // Para desktop, usar clique simples se não estiver selecionando
                   if (!isSelecting) {
-                    handleClick(day);
+                    handleClick(day, 'mouse');
                   } else {
                     handleMouseDown(day, e);
                   }
@@ -487,9 +515,9 @@ export function WorkDaysCalendar({
                   if (isMobile) {
                     e.preventDefault();
                     // Usar apenas o touch como clique simples para evitar sequência touch -> click
-                    handleClick(day);
+                    handleClick(day, 'touch');
                   } else {
-                    handleClick(day);
+                    handleClick(day, 'touch');
                   }
                 }}
                 onTouchMove={(e) => {
