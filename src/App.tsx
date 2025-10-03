@@ -16,7 +16,7 @@ import { basicSyncService, loadData, saveData } from './lib/basicSync';
 import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
-import { format, addDays, startOfDay, getDay, addWeeks } from 'date-fns';
+import { format, addDays, startOfDay, getDay, addWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import { SwipeableItem } from './components/SwipeableItem';
 import * as Dialog from '@radix-ui/react-dialog';
 import { WillItemFixed } from './components/WillItemFixed';
@@ -118,11 +118,11 @@ export default function App() {
   const [selectedClient, setSelectedClient] = useState<ClientType>('Private');
   const [selectedMonthStart, setSelectedMonthStart] = useState<Date>(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    return startOfMonth(now);
   });
   const [selectedMonthEnd, setSelectedMonthEnd] = useState<Date>(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return endOfMonth(now);
   });
   const [isSaving, setIsSaving] = useState(false);
   const [showFeedback, setShowFeedback] = useState({ show: false, message: '', type: 'success' });
@@ -2218,8 +2218,8 @@ export default function App() {
                     // Projetos em progresso ou pendentes sempre aparecem no mês atual
                     if (project.status === 'in_progress' || project.status === 'pending') {
                       const now = new Date();
-                      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                      const currentMonthStart = startOfMonth(now);
+                      const currentMonthEnd = endOfMonth(now);
                       const currentMonthStartStr = currentMonthStart.toISOString().split('T')[0];
                       const currentMonthEndStr = currentMonthEnd.toISOString().split('T')[0];
                       
