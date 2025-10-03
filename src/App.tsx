@@ -258,12 +258,12 @@ export default function App() {
     
     if (selectedClient === 'Power') {
       // Para Power, usar semana
-      periodStartStr = selectedWeekStart.toISOString().split('T')[0];
-      periodEndStr = selectedWeekEnd.toISOString().split('T')[0];
+      periodStartStr = format(selectedWeekStart, 'yyyy-MM-dd');
+      periodEndStr = format(selectedWeekEnd, 'yyyy-MM-dd');
     } else {
       // Para Private, usar mês
-      periodStartStr = selectedMonthStart.toISOString().split('T')[0];
-      periodEndStr = selectedMonthEnd.toISOString().split('T')[0];
+      periodStartStr = format(selectedMonthStart, 'yyyy-MM-dd');
+      periodEndStr = format(selectedMonthEnd, 'yyyy-MM-dd');
     }
     
     let total = 0;
@@ -2205,12 +2205,12 @@ export default function App() {
                   
                   if (selectedClient === 'Power') {
                     // Para Power, usar semana
-                    periodStartStr = selectedWeekStart.toISOString().split('T')[0];
-                    periodEndStr = selectedWeekEnd.toISOString().split('T')[0];
+                    periodStartStr = format(selectedWeekStart, 'yyyy-MM-dd');
+                    periodEndStr = format(selectedWeekEnd, 'yyyy-MM-dd');
                   } else {
                     // Para Private, usar mês
-                    periodStartStr = selectedMonthStart.toISOString().split('T')[0];
-                    periodEndStr = selectedMonthEnd.toISOString().split('T')[0];
+                    periodStartStr = format(selectedMonthStart, 'yyyy-MM-dd');
+                    periodEndStr = format(selectedMonthEnd, 'yyyy-MM-dd');
                   }
                   
                   // Lógica especial para Projects Private
@@ -2220,8 +2220,8 @@ export default function App() {
                       const now = new Date();
                       const currentMonthStart = startOfMonth(now);
                       const currentMonthEnd = endOfMonth(now);
-                      const currentMonthStartStr = currentMonthStart.toISOString().split('T')[0];
-                      const currentMonthEndStr = currentMonthEnd.toISOString().split('T')[0];
+                      const currentMonthStartStr = format(currentMonthStart, 'yyyy-MM-dd');
+                      const currentMonthEndStr = format(currentMonthEnd, 'yyyy-MM-dd');
                       
                       // Se estamos visualizando o mês atual, mostrar projetos em progresso/pendentes
                       if (periodStartStr === currentMonthStartStr && periodEndStr === currentMonthEndStr) {
