@@ -51,7 +51,7 @@ import {
 } from './lib/dateUtils';
 import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
 import { initializeNotifications, setupForegroundNotificationListener } from './lib/notificationService';
-import { notifyProjectStatusChange } from './lib/expenseNotifications';
+import { notifyProjectStatusChange, notifyNewProject } from './lib/expenseNotifications';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -1086,6 +1086,11 @@ export default function App() {
           } else {
             // Adicionar novo projeto
             newProjects = [...existingProjects, project];
+            
+            // Notificar que novo projeto foi criado
+            notifyNewProject(project).catch(error => {
+              console.error('Erro ao enviar notificação de novo projeto:', error);
+            });
           }
           
           // Salvar as alterações
