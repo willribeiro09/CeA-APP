@@ -43,7 +43,7 @@ export function Header({ activeCategory }: HeaderProps) {
             </p>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center">
           {/* Botão de Teste de Notificação */}
           <button
             onClick={handleTestNotification}
@@ -55,10 +55,6 @@ export function Header({ activeCategory }: HeaderProps) {
               className={`w-6 h-6 text-white ${isSending ? 'animate-bounce' : ''}`}
             />
           </button>
-          
-          <div className="text-white text-lg font-medium">
-            {activeCategory}
-          </div>
         </div>
       </div>
     </header>
