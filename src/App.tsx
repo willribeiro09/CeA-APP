@@ -50,6 +50,7 @@ import {
   formatDateForDisplay 
 } from './lib/dateUtils';
 import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
+import { initializeNotifications, setupForegroundNotificationListener } from './lib/notificationService';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -246,6 +247,52 @@ export default function App() {
     };
 
     initializeData();
+  }, []);
+
+  // Inicializar sistema de notificações push
+  useEffect(() => {
+    const setupNotifications = async () => {
+      try {
+        console.log('[App] Inicializando sistema de notificações push...');
+        
+        // Inicializar notificações (solicitar permissão e obter token)
+        const result = await initializeNotifications();
+        
+        if (result.success) {
+          console.log('[App] Notificações configuradas com sucesso!');
+          console.log('[App] Token FCM:', result.token);
+          
+          // Configurar listener para notificações em foreground
+          setupForegroundNotificationListener((payload) => {
+            console.log('[App] Notificação recebida enquanto app está aberto:', payload);
+            
+            // Aqui você pode adicionar lógica customizada
+            // Por exemplo: atualizar dados, mostrar toast, etc.
+            if (payload.data?.type === 'sync') {
+              // Se for notificação de sincronização, recarregar dados
+              console.log('[App] Recarregando dados por notificação de sync...');
+              loadData().then(data => {
+                if (data) {
+                  setExpenses(data.expenses || {});
+                  setProjects(data.projects || []);
+                  setStockItems(data.stock || []);
+                  setEmployees(data.employees || {});
+                }
+              });
+            }
+          });
+        } else {
+          console.warn('[App] Não foi possível configurar notificações:', result.error);
+        }
+      } catch (error) {
+        console.error('[App] Erro ao configurar notificações:', error);
+      }
+    };
+
+    // Inicializar notificações após um pequeno delay para não interferir com carregamento inicial
+    const timer = setTimeout(setupNotifications, 2000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Calcular o total dos projetos baseado no cliente e período selecionado
@@ -714,10 +761,12 @@ export default function App() {
           return newExpenses;
         });
         
-        showFeedbackMessage('Expense updated successfully!', 'success');
+        setShowFeedback({ show: true, message: 'Expense updated successfully!', type: 'success' });
+        setTimeout(() => setShowFeedback({ show: false, message: '', type: 'success' }), 3000);
       } catch (error) {
         console.error('Error updating expense:', error);
-        showFeedbackMessage('Failed to update expense', 'error');
+        setShowFeedback({ show: true, message: 'Failed to update expense', type: 'error' });
+        setTimeout(() => setShowFeedback({ show: false, message: '', type: 'success' }), 3000);
       }
     });
   };

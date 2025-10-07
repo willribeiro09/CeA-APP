@@ -1,5 +1,23 @@
 // This is the service worker with the Advanced caching
 
+// Importar Firebase Messaging para notificações push
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+
+// Configuração do Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyD-kvKLT9VaowZetAjePs_D4OyOWmHEkvY",
+  authDomain: "cea-gutters-app-b8a3d.firebaseapp.com",
+  projectId: "cea-gutters-app-b8a3d",
+  storageBucket: "cea-gutters-app-b8a3d.firebasestorage.app",
+  messagingSenderId: "1023177835021",
+  appId: "1:1023177835021:web:e68a57b9606b917ffc4b44"
+};
+
+// Inicializar Firebase no Service Worker
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
+
 const CACHE = "cea-app-v1.8.1-safe";
 const cacheFiles = [
   "/",
@@ -152,4 +170,50 @@ self.addEventListener('message', event => {
       });
     }
   }
+});
+
+// ========== NOTIFICAÇÕES PUSH (FIREBASE) ==========
+
+// Handler para notificações em background (quando o app não está aberto)
+messaging.onBackgroundMessage((payload) => {
+  console.log('[ServiceWorker] Notificação recebida em background:', payload);
+  
+  const notificationTitle = payload.notification?.title || 'CeA APP';
+  const notificationOptions = {
+    body: payload.notification?.body || 'Nova notificação',
+    icon: payload.notification?.icon || '/cealogo.png',
+    badge: '/cealogo.png',
+    tag: payload.data?.tag || 'cea-notification',
+    data: payload.data || {},
+    requireInteraction: false,
+    vibrate: [200, 100, 200]
+  };
+
+  return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handler para quando o usuário clica na notificação
+self.addEventListener('notificationclick', (event) => {
+  console.log('[ServiceWorker] Notificação clicada:', event.notification.tag);
+  
+  event.notification.close();
+
+  // Abre ou foca na janela do app
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Se já existe uma janela aberta, foca nela
+        for (let i = 0; i < clientList.length; i++) {
+          const client = clientList[i];
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        
+        // Se não existe janela aberta, abre uma nova
+        if (clients.openWindow) {
+          return clients.openWindow('/');
+        }
+      })
+  );
 }); 

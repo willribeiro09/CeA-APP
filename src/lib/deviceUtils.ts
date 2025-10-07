@@ -27,6 +27,25 @@ export function isPwaInstalled(): boolean {
 }
 
 /**
+ * Obtém ou gera um ID único para o dispositivo
+ * @returns string com ID único do dispositivo
+ */
+export function getDeviceId(): string {
+  const STORAGE_KEY = 'cea_device_id';
+  
+  // Tentar recuperar ID existente do localStorage
+  let deviceId = localStorage.getItem(STORAGE_KEY);
+  
+  if (!deviceId) {
+    // Gerar novo ID único baseado em timestamp + random
+    deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    localStorage.setItem(STORAGE_KEY, deviceId);
+  }
+  
+  return deviceId;
+}
+
+/**
  * Obtém informações detalhadas sobre o ambiente de execução
  * @returns Objeto com informações sobre o ambiente
  */

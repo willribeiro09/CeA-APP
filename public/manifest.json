@@ -1,0 +1,19 @@
+{
+  "name": "C&A Gutters APP",
+  "short_name": "CeA APP",
+  "description": "Sistema de gestão para C&A Gutters",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#073763",
+  "theme_color": "#073763",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/cealogo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

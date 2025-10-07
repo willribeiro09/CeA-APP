@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
     }),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'firebase-messaging-sw.js'],
       manifest: {
         name: 'EXPENSES',
         short_name: 'EXPENSES',
