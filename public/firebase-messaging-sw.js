@@ -30,7 +30,6 @@ messaging.onBackgroundMessage((payload) => {
   const notificationOptions = {
     body: payload.notification?.body || 'Nova notificação',
     icon: payload.notification?.icon || '/cealogo.png',
-    badge: '/cealogo.png',
     tag: payload.data?.tag || 'cea-notification',
     data: payload.data || {},
     requireInteraction: false,
@@ -54,10 +53,13 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   console.log('[Firebase SW] Notificação clicada:', event.notification.tag);
   
+  // Pegar dados da notificação
+  const notificationData = event.notification.data || {};
+  
   // Fechar a notificação
   event.notification.close();
 
-  // Abrir ou focar na janela do app
+  // Abrir ou focar na janela do app e enviar dados
   event.waitUntil(
     clients.matchAll({ 
       type: 'window', 
@@ -66,14 +68,35 @@ self.addEventListener('notificationclick', (event) => {
       // Tentar encontrar uma janela já aberta do app
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          return client.focus();
+        if (client.url.includes(self.location.origin)) {
+          // Enviar dados para o app
+          client.postMessage({
+            type: 'notification-click',
+            data: notificationData
+          });
+          
+          // Focar na janela
+          if ('focus' in client) {
+            return client.focus();
+          }
+          return client;
         }
       }
       
       // Se não encontrou janela aberta, abrir uma nova
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow('/').then(windowClient => {
+          // Aguardar um pouco para o app carregar e então enviar dados
+          if (windowClient) {
+            setTimeout(() => {
+              windowClient.postMessage({
+                type: 'notification-click',
+                data: notificationData
+              });
+            }, 1000);
+          }
+          return windowClient;
+        });
       }
     })
   );

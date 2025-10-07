@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Expense } from '../types';
+import { Expense, Project } from '../types';
 
 /**
  * Envia notificação via Edge Function do Supabase
@@ -7,13 +7,15 @@ import { Expense } from '../types';
 export const sendExpenseNotification = async (
   title: string,
   body: string,
+  data?: Record<string, any>,
   deviceId?: string
 ): Promise<boolean> => {
   try {
-    const { data, error } = await supabase.functions.invoke('send-expense-notification', {
+    const { data: result, error } = await supabase.functions.invoke('send-expense-notification', {
       body: {
         title,
         body,
+        data, // Dados extras para deep link
         deviceId // Se não passar, envia para todos os dispositivos
       }
     });
@@ -23,7 +25,7 @@ export const sendExpenseNotification = async (
       return false;
     }
 
-    console.log('✅ Notificação enviada:', data);
+    console.log('✅ Notificação enviada:', result);
     return true;
   } catch (error) {
     console.error('Erro ao chamar Edge Function:', error);
@@ -115,3 +117,112 @@ export const notifySyncCompleted = async (itemsCount: number) => {
   await sendExpenseNotification(title, body);
 };
 
+/**
+ * Notifica despesa vencendo em X dias
+ */
+export const notifyExpenseDueSoon = async (
+  expense: Expense,
+  listName: string,
+  daysUntilDue: number,
+  amount: number
+): Promise<boolean> => {
+  const title = `🔔 Vencimento Próximo`;
+  const body = `${expense.description} - R$ ${amount.toFixed(2)}\nVence em ${daysUntilDue} dias`;
+  
+  const data = {
+    type: 'expense',
+    expenseId: expense.id,
+    listName: listName,
+    action: 'view'
+  };
+  
+  return await sendExpenseNotification(title, body, data);
+};
+
+/**
+ * Notifica despesa vencendo HOJE
+ */
+export const notifyExpenseDueToday = async (
+  expense: Expense,
+  listName: string,
+  amount: number
+): Promise<boolean> => {
+  const title = `⚠️ Despesa Vence Hoje!`;
+  const body = `${expense.description} - R$ ${amount.toFixed(2)}\nVencimento: HOJE`;
+  
+  const data = {
+    type: 'expense',
+    expenseId: expense.id,
+    listName: listName,
+    action: 'view'
+  };
+  
+  return await sendExpenseNotification(title, body, data);
+};
+
+/**
+ * Notifica quando novo projeto é criado
+ */
+export const notifyNewProject = async (project: Project): Promise<boolean> => {
+  const title = `🆕 Novo Projeto Adicionado`;
+  const location = project.location ? `\n${project.location.substring(0, 30)}...` : '';
+  const value = project.value ? `\nValor: R$ ${project.value.toFixed(2)}` : '';
+  const body = `Cliente: ${project.client}${location}${value}`;
+  
+  const data = {
+    type: 'project',
+    projectId: project.id,
+    action: 'view'
+  };
+  
+  return await sendExpenseNotification(title, body, data);
+};
+
+/**
+ * Notifica quando status do projeto muda
+ */
+export const notifyProjectStatusChange = async (
+  project: Project,
+  oldStatus: string,
+  newStatus: string
+): Promise<boolean> => {
+  // Mapear status para texto em português
+  const statusMap: Record<string, { emoji: string; text: string }> = {
+    'pending': { emoji: '⏳', text: 'Pendente' },
+    'in_progress': { emoji: '🚧', text: 'Em Andamento' },
+    'completed': { emoji: '✅', text: 'Concluído' }
+  };
+  
+  const statusInfo = statusMap[newStatus] || { emoji: '📊', text: newStatus };
+  const title = `${statusInfo.emoji} Projeto ${statusInfo.text}`;
+  
+  const location = project.location ? `\n${project.location.substring(0, 30)}...` : '';
+  const value = project.value ? `\nValor: R$ ${project.value.toFixed(2)}` : '';
+  const body = `Cliente: ${project.client}${location}${value}`;
+  
+  const data = {
+    type: 'project',
+    projectId: project.id,
+    action: 'view',
+    oldStatus,
+    newStatus
+  };
+  
+  return await sendExpenseNotification(title, body, data);
+};
+
+/**
+ * Envia lembrete para atualizar dias trabalhados dos funcionários
+ */
+export const notifyEmployeeReminder = async (): Promise<boolean> => {
+  const title = `⏰ Hora de Atualizar!`;
+  const body = `Atualize os dias trabalhados dos funcionários`;
+  
+  const data = {
+    type: 'employee_reminder',
+    action: 'navigate',
+    category: 'Employees'
+  };
+  
+  return await sendExpenseNotification(title, body, data);
+};

@@ -51,6 +51,7 @@ import {
 } from './lib/dateUtils';
 import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
 import { initializeNotifications, setupForegroundNotificationListener } from './lib/notificationService';
+import { notifyProjectStatusChange } from './lib/expenseNotifications';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -294,6 +295,48 @@ export default function App() {
     
     return () => clearTimeout(timer);
   }, []);
+
+  // Listener para deep links - abrir popup quando notificação é clicada
+  useEffect(() => {
+    const handleNotificationClick = (event: MessageEvent) => {
+      if (event.data?.type === 'notification-click') {
+        const notificationData = event.data.data;
+        console.log('[Deep Link] Notificação clicada:', notificationData);
+
+        if (notificationData.type === 'expense') {
+          // Buscar a despesa na lista correta
+          const listName = notificationData.listName as ListName;
+          const expenseList = expenses[listName] || [];
+          const expense = expenseList.find(e => e.id === notificationData.expenseId);
+          
+          if (expense) {
+            setExpenseToView(expense);
+            setIsExpenseDetailOpen(true);
+            setActiveCategory('Expenses');
+          }
+        } else if (notificationData.type === 'project') {
+          // Buscar o projeto
+          const project = projects.find(p => p.id === notificationData.projectId);
+          
+          if (project) {
+            setSelectedProject(project);
+            setIsProjectSummaryOpen(true);
+            setActiveCategory('Projects');
+          }
+        } else if (notificationData.type === 'employee_reminder') {
+          // Ir para menu de funcionários
+          setActiveCategory('Employees');
+        }
+      }
+    };
+
+    // Registrar listener
+    navigator.serviceWorker?.addEventListener('message', handleNotificationClick);
+
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleNotificationClick);
+    };
+  }, [expenses, projects]);
 
   // Calcular o total dos projetos baseado no cliente e período selecionado
   useEffect(() => {
@@ -806,6 +849,17 @@ export default function App() {
               id: itemWithTimestamp.id || existingProject.id,
               photos: itemWithTimestamp.photos || existingProject.photos || [],
             };
+            
+            // Detectar mudança de status e enviar notificação
+            if (itemWithTimestamp.status && existingProject.status !== itemWithTimestamp.status) {
+              notifyProjectStatusChange(
+                updatedProject,
+                existingProject.status,
+                itemWithTimestamp.status
+              ).catch(error => {
+                console.error('Erro ao enviar notificação de mudança de status:', error);
+              });
+            }
             
             // Criar um novo array para evitar mutação direta
             const newProjects = [...prevProjects];

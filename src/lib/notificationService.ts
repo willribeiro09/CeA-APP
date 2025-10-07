@@ -234,7 +234,6 @@ export const setupForegroundNotificationListener = (
       new Notification(title || 'CeA APP', {
         body: body || '',
         icon: icon || '/cealogo.png',
-        badge: '/cealogo.png',
         data: payload.data
       });
     }
