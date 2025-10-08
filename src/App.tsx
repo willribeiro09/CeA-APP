@@ -2143,11 +2143,39 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []); // Array vazio para executar apenas uma vez por inicialização
 
+  // Handler para cliques em notificações do dropdown
+  const handleNotificationClick = (notification: any) => {
+    console.log('[App] Notificação clicada:', notification);
+    
+    if (notification.data?.type === 'expense') {
+      const listName = notification.data.listName as ListName;
+      const expenseList = expenses[listName] || [];
+      const expense = expenseList.find(e => e.id === notification.data.expenseId);
+      
+      if (expense) {
+        setExpenseToView(expense);
+        setIsExpenseDetailOpen(true);
+        setActiveCategory('Expenses');
+      }
+    } else if (notification.data?.type === 'project') {
+      const project = projects.find(p => p.id === notification.data.projectId);
+      
+      if (project) {
+        setSelectedProject(project);
+        setIsProjectSummaryOpen(true);
+        setActiveCategory('Projects');
+      }
+    } else if (notification.data?.type === 'employee_reminder') {
+      setActiveCategory('Employees');
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gray-50">
         <Header 
-          activeCategory={activeCategory} 
+          activeCategory={activeCategory}
+          onNotificationClick={handleNotificationClick}
         />
         <Navigation
           activeCategory={activeCategory}
