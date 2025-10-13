@@ -23,7 +23,7 @@ serve(async (req) => {
     // Buscar todos os dados de sync
     const { data: syncData, error: syncError } = await supabaseClient
       .from('sync_data')
-      .select('data')
+      .select('expenses, projects, employees')
       .order('updated_at', { ascending: false })
       .limit(1)
 
@@ -40,7 +40,7 @@ serve(async (req) => {
       )
     }
 
-    const appData = syncData[0].data
+    const appData = syncData[0]
     console.log('[check-expense-due] Dados carregados:', JSON.stringify(appData).substring(0, 200))
 
     // Extrair todas as despesas de todas as listas
@@ -182,4 +182,5 @@ async function sendNotification(
     return false
   }
 }
+
 
