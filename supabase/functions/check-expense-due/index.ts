@@ -64,21 +64,65 @@ serve(async (req) => {
     // Verificar vencimentos
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
-    const threeDaysFromNow = new Date(today)
-    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
 
     let notificationsSent = 0
     const notificationsLog: any[] = []
 
     for (const expense of allExpenses) {
-      const dueDate = new Date(expense.due_date)
-      dueDate.setHours(0, 0, 0, 0)
+      // Detectar tipo de recorrência pela descrição
+      const description = expense.description || ''
+      const isMonthly = description.endsWith('*M')
+      const isBiweekly = description.endsWith('*B')
+      const isWeekly = description.endsWith('*W')
+      const isRecurring = isMonthly || isBiweekly || isWeekly
+
+      // Obter a data base (usar 'date' em vez de 'due_date')
+      if (!expense.date) {
+        console.log(`[check-expense-due] Despesa sem data: ${expense.description}`)
+        continue
+      }
+
+      const originalDate = new Date(expense.date)
+      originalDate.setHours(0, 0, 0, 0)
+
+      let dueDate: Date
+
+      if (isRecurring) {
+        // Para despesas recorrentes, calcular a próxima data de vencimento
+        const currentMonth = today.getMonth()
+        const currentYear = today.getFullYear()
+        
+        if (isMonthly) {
+          // Calcular data do mês atual
+          dueDate = new Date(currentYear, currentMonth, originalDate.getDate())
+          dueDate.setHours(0, 0, 0, 0)
+          
+          // Se já passou neste mês, avançar para o próximo mês
+          if (dueDate < today) {
+            dueDate = new Date(currentYear, currentMonth + 1, originalDate.getDate())
+            dueDate.setHours(0, 0, 0, 0)
+          }
+        } else if (isBiweekly || isWeekly) {
+          // Para biweekly e weekly, calcular a próxima ocorrência
+          dueDate = new Date(originalDate)
+          const daysToAdd = isBiweekly ? 14 : 7
+          
+          while (dueDate < today) {
+            dueDate.setDate(dueDate.getDate() + daysToAdd)
+          }
+          dueDate.setHours(0, 0, 0, 0)
+        } else {
+          dueDate = originalDate
+        }
+      } else {
+        // Despesa única, usar a data original
+        dueDate = originalDate
+      }
 
       const diffTime = dueDate.getTime() - today.getTime()
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-      console.log(`[check-expense-due] Despesa: ${expense.description}, Vencimento: ${expense.due_date}, Dias até vencer: ${diffDays}`)
+      console.log(`[check-expense-due] Despesa: ${expense.description}, Data Original: ${expense.date}, Data Venc: ${dueDate.toISOString()}, Dias: ${diffDays}, Recorrente: ${isRecurring}`)
 
       // Notificar se vence em 3 dias
       if (diffDays === 3) {
@@ -87,10 +131,11 @@ serve(async (req) => {
           expense,
           expense.listName,
           3,
-          expense.value || 0
+          expense.amount || 0
         )
         notificationsLog.push({
           expense: expense.description,
+          dueDate: dueDate.toISOString(),
           type: '3_days',
           success: notificationResult
         })
@@ -104,10 +149,11 @@ serve(async (req) => {
           expense,
           expense.listName,
           0,
-          expense.value || 0
+          expense.amount || 0
         )
         notificationsLog.push({
           expense: expense.description,
+          dueDate: dueDate.toISOString(),
           type: 'today',
           success: notificationResult
         })
