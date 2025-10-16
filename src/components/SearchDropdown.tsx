@@ -197,7 +197,7 @@ export function SearchDropdown({
 
       {/* Caixa de Busca Deslizante */}
       <div
-        className={`absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl z-50 overflow-hidden transition-all duration-300 ease-out origin-top ${
+        className={`fixed md:absolute left-4 right-4 md:left-auto md:right-0 mt-2 md:w-96 bg-white rounded-lg shadow-xl z-50 overflow-hidden transition-all duration-300 ease-out origin-top ${
           isOpen 
             ? 'opacity-100 translate-y-0 scale-100 visible' 
             : 'opacity-0 -translate-y-4 scale-95 invisible'
