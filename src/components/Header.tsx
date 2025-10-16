@@ -2,13 +2,28 @@ import { format } from 'date-fns';
 import { useMemo } from 'react';
 import { Logo } from './Logo';
 import { NotificationDropdown } from './NotificationDropdown';
+import { SearchDropdown } from './SearchDropdown';
+import { Expense, Project, StockItem, Employee } from '../types';
 
 interface HeaderProps {
   activeCategory: string;
   onNotificationClick: (notification: any) => void;
+  expenses: Record<string, Expense[]>;
+  projects: Project[];
+  stockItems: StockItem[];
+  employees: Record<string, Employee[]>;
+  onSearchResultClick?: (result: any) => void;
 }
 
-export function Header({ activeCategory, onNotificationClick }: HeaderProps) {
+export function Header({ 
+  activeCategory, 
+  onNotificationClick, 
+  expenses, 
+  projects, 
+  stockItems, 
+  employees,
+  onSearchResultClick 
+}: HeaderProps) {
   const currentMonthYear = useMemo(() => format(new Date(), 'MMMM yyyy'), []);
   
   return (
@@ -23,7 +38,14 @@ export function Header({ activeCategory, onNotificationClick }: HeaderProps) {
             </p>
           </div>
         </div>
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center gap-2">
+          <SearchDropdown 
+            expenses={expenses}
+            projects={projects}
+            stockItems={stockItems}
+            employees={employees}
+            onSearchResultClick={onSearchResultClick}
+          />
           <NotificationDropdown onNotificationClick={onNotificationClick} />
         </div>
       </div>

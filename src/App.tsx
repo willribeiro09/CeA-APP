@@ -2176,6 +2176,33 @@ export default function App() {
         <Header 
           activeCategory={activeCategory}
           onNotificationClick={handleNotificationClick}
+          expenses={expenses}
+          projects={projects}
+          stockItems={stockItems}
+          employees={employees}
+          onSearchResultClick={(result) => {
+            console.log('Resultado da busca clicado:', result);
+            
+            if (result.type === 'expense') {
+              const expense = result.data as Expense;
+              setExpenseToView(expense);
+              setIsExpenseDetailOpen(true);
+              setActiveCategory('Expenses');
+            } else if (result.type === 'project') {
+              const project = result.data as Project;
+              setSelectedProject(project);
+              setIsProjectSummaryOpen(true);
+              setActiveCategory('Projects');
+            } else if (result.type === 'stock') {
+              const stockItem = result.data as StockItem;
+              setItemToEdit(stockItem);
+              setIsEditDialogOpen(true);
+              setActiveCategory('Stock');
+            } else if (result.type === 'employee') {
+              // Apenas mudar para o menu de funcionários
+              setActiveCategory('Employees');
+            }
+          }}
         />
         <Navigation
           activeCategory={activeCategory}
