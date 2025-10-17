@@ -18,7 +18,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-const CACHE = "cea-app-v1.8.1-safe";
+const CACHE = "cea-app-v1.8.2-no-duplicate";
 const cacheFiles = [
   "/",
   "index.html",
@@ -178,18 +178,17 @@ self.addEventListener('message', event => {
 messaging.onBackgroundMessage((payload) => {
   console.log('[ServiceWorker] Notificação recebida em background:', payload);
   
-  const notificationTitle = payload.notification?.title || 'CeA APP';
-  const notificationOptions = {
-    body: payload.notification?.body || 'Nova notificação',
-    icon: payload.notification?.icon || '/cealogo.png',
-    badge: '/cealogo.png',
-    tag: payload.data?.tag || 'cea-notification',
-    data: payload.data || {},
-    requireInteraction: false,
-    vibrate: [200, 100, 200]
-  };
-
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+  // IMPORTANTE: NÃO chamar showNotification() aqui!
+  // O Firebase já mostra automaticamente quando há payload.notification
+  // Se mostrarmos aqui também, a notificação aparece DUPLICADA
+  
+  // Este handler é apenas para processar dados extras se necessário
+  if (payload.data?.type === 'sync') {
+    console.log('[ServiceWorker] Tipo sync detectado - processando...');
+    // Aqui você pode adicionar lógica extra se necessário
+  }
+  
+  // NÃO retornar showNotification para evitar duplicação
 });
 
 // Handler para quando o usuário clica na notificação
