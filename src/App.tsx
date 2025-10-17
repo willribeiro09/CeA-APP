@@ -824,6 +824,10 @@ export default function App() {
         setIsUpdatingProject(true);
         (window as any).__isUpdatingProject = true;
         
+        // Variáveis para detectar mudança de status ANTES de atualizar
+        let shouldNotifyStatusChange = false;
+        let statusNotificationData: { project: Project; oldStatus: string; newStatus: string } | null = null;
+        
         setProjects(prevProjects => {
           try {
             // Verificar se o ID existe
@@ -850,15 +854,14 @@ export default function App() {
               photos: itemWithTimestamp.photos || existingProject.photos || [],
             };
             
-            // Detectar mudança de status e enviar notificação
+            // Detectar mudança de status para enviar notificação DEPOIS
             if (itemWithTimestamp.status && existingProject.status !== itemWithTimestamp.status) {
-              notifyProjectStatusChange(
-                updatedProject,
-                existingProject.status,
-                itemWithTimestamp.status
-              ).catch(error => {
-                console.error('Erro ao enviar notificação de mudança de status:', error);
-              });
+              shouldNotifyStatusChange = true;
+              statusNotificationData = {
+                project: updatedProject,
+                oldStatus: existingProject.status,
+                newStatus: itemWithTimestamp.status
+              };
             }
             
             // Criar um novo array para evitar mutação direta
@@ -879,6 +882,17 @@ export default function App() {
             return prevProjects;
           }
         });
+
+        // Enviar notificação de mudança de status APÓS atualizar o estado
+        if (shouldNotifyStatusChange && statusNotificationData) {
+          notifyProjectStatusChange(
+            statusNotificationData.project,
+            statusNotificationData.oldStatus,
+            statusNotificationData.newStatus
+          ).catch(error => {
+            console.error('Erro ao enviar notificação de mudança de status:', error);
+          });
+        }
         
         // Limpar flag após delay mínimo
         setTimeout(() => {
@@ -1070,6 +1084,9 @@ export default function App() {
           project.lastModified = Date.now();
         }
 
+        // Verificar se é um novo projeto ANTES de atualizar o estado
+        const isNewProject = !projects.find((p: Project) => p.id === project.id);
+
         // Atualizar o estado
         setProjects(prevProjects => {
           // Clone profundo para evitar problemas de referência
@@ -1086,11 +1103,6 @@ export default function App() {
           } else {
             // Adicionar novo projeto
             newProjects = [...existingProjects, project];
-            
-            // Notificar que novo projeto foi criado
-            notifyNewProject(project).catch(error => {
-              console.error('Erro ao enviar notificação de novo projeto:', error);
-            });
           }
           
           // Salvar as alterações
@@ -1103,6 +1115,13 @@ export default function App() {
           
           return newProjects;
         });
+
+        // Notificar APÓS atualizar o estado, apenas se for novo projeto
+        if (isNewProject) {
+          notifyNewProject(project).catch(error => {
+            console.error('Erro ao enviar notificação de novo projeto:', error);
+          });
+        }
       } else if (activeCategory === 'Stock') {
         const stockItem = newItem as StockItem;
         stockItem.id = uuidv4();
