@@ -1,73 +1,64 @@
 import React from 'react';
-import { ReceiptText, Briefcase, Package, Users } from 'lucide-react';
+import { ReceiptText, Briefcase, Package, Users, Home } from 'lucide-react';
 
 interface NavigationProps {
-  activeCategory: 'Expenses' | 'Projects' | 'Stock' | 'Employees';
-  onCategoryChange: (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => void;
+  activeCategory: 'Home' | 'Expenses' | 'Projects' | 'Stock' | 'Employees';
+  onCategoryChange: (category: 'Home' | 'Expenses' | 'Projects' | 'Stock' | 'Employees') => void;
   disabled?: boolean;
 }
 
 export function Navigation({ activeCategory, onCategoryChange, disabled = false }: NavigationProps) {
   return (
-    <nav className="fixed top-[100px] left-0 right-0 bg-[#5ABB37] rounded-b-xl z-40">
-      <div className="flex justify-around">
+    <nav className="fixed bottom-0 left-0 right-0 bg-[#5ABB37] z-40 pb-safe">
+      <div className="flex justify-around items-center h-16 px-2 relative">
+        {/* Home */}
+        <button
+          onClick={disabled ? () => {} : () => onCategoryChange('Home')}
+          disabled={disabled}
+          className="flex flex-col items-center justify-center flex-1"
+        >
+          <Home className={`w-6 h-6 ${activeCategory === 'Home' ? 'text-white' : 'text-white/60'}`} />
+          <span className={`text-xs mt-1 ${activeCategory === 'Home' ? 'text-white font-medium' : 'text-white/60'}`}>
+            Home
+          </span>
+        </button>
+
+        {/* Expenses */}
         <button
           onClick={disabled ? () => {} : () => onCategoryChange('Expenses')}
           disabled={disabled}
-          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 flex-1 justify-center relative rounded-lg ${
-            activeCategory === 'Expenses' 
-              ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
-              : ''
-          }`}
+          className="flex flex-col items-center justify-center flex-1"
         >
-          <ReceiptText className={`w-[22px] h-[22px] ${activeCategory === 'Expenses' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
-          <span className={`text-sm ${activeCategory === 'Expenses' ? 'text-white font-medium' : 'text-white'}`}>
+          <ReceiptText className={`w-6 h-6 ${activeCategory === 'Expenses' ? 'text-white' : 'text-white/60'}`} />
+          <span className={`text-xs mt-1 ${activeCategory === 'Expenses' ? 'text-white font-medium' : 'text-white/60'}`}>
             Expenses
           </span>
         </button>
-        <div className="w-px bg-white/20 my-1.5"></div>
+
+        {/* Espaço para o botão + */}
+        <div className="flex-1"></div>
+
+        {/* Projects */}
         <button
           onClick={disabled ? () => {} : () => onCategoryChange('Projects')}
           disabled={disabled}
-          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 flex-1 justify-center relative rounded-lg ${
-            activeCategory === 'Projects' 
-              ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
-              : ''
-          }`}
+          className="flex flex-col items-center justify-center flex-1"
         >
-          <Briefcase className={`w-[22px] h-[22px] ${activeCategory === 'Projects' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
-          <span className={`text-sm ${activeCategory === 'Projects' ? 'text-white font-medium' : 'text-white'}`}>
+          <Briefcase className={`w-6 h-6 ${activeCategory === 'Projects' ? 'text-white' : 'text-white/60'}`} />
+          <span className={`text-xs mt-1 ${activeCategory === 'Projects' ? 'text-white font-medium' : 'text-white/60'}`}>
             Projects
           </span>
         </button>
-        <div className="w-px bg-white/20 my-1.5"></div>
+
+        {/* Employees */}
         <button
           onClick={disabled ? () => {} : () => onCategoryChange('Employees')}
           disabled={disabled}
-          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 flex-1 justify-center relative rounded-lg ${
-            activeCategory === 'Employees' 
-              ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
-              : ''
-          }`}
+          className="flex flex-col items-center justify-center flex-1"
         >
-          <Users className={`w-[22px] h-[22px] ${activeCategory === 'Employees' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
-          <span className={`text-sm ${activeCategory === 'Employees' ? 'text-white font-medium' : 'text-white'}`}>
+          <Users className={`w-6 h-6 ${activeCategory === 'Employees' ? 'text-white' : 'text-white/60'}`} />
+          <span className={`text-xs mt-1 ${activeCategory === 'Employees' ? 'text-white font-medium' : 'text-white/60'}`}>
             Employees
-          </span>
-        </button>
-        <div className="w-px bg-white/20 my-1.5"></div>
-        <button
-          onClick={disabled ? () => {} : () => onCategoryChange('Stock')}
-          disabled={disabled}
-          className={`flex flex-col items-center gap-0.5 px-4 py-1.5 flex-1 justify-center relative rounded-lg ${
-            activeCategory === 'Stock' 
-              ? 'bg-gradient-to-b from-white/30 to-white/5 after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-white after:rounded-full' 
-              : ''
-          }`}
-        >
-          <Package className={`w-[22px] h-[22px] ${activeCategory === 'Stock' ? 'text-white' : 'text-white'} stroke-[2.5px]`} />
-          <span className={`text-sm ${activeCategory === 'Stock' ? 'text-white font-medium' : 'text-white'}`}>
-            Inventory
           </span>
         </button>
       </div>

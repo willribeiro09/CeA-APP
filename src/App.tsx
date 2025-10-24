@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { ExpenseItem } from './components/ExpenseItem';
 import { Navigation } from './components/Navigation';
+import { Dashboard } from './components/Dashboard';
 import { CalendarButton } from './components/CalendarButton';
 import { AddButton } from './components/AddButton';
 import { Calendar } from './components/Calendar';
@@ -97,7 +98,7 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [employees, setEmployees] = useState<Record<string, Employee[]>>(initialEmployees);
-  const [activeCategory, setActiveCategory] = useState<'Expenses' | 'Projects' | 'Stock' | 'Employees'>('Expenses');
+  const [activeCategory, setActiveCategory] = useState<'Home' | 'Expenses' | 'Projects' | 'Stock' | 'Employees'>('Home');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -667,7 +668,7 @@ export default function App() {
     }
   };
 
-  const handleDeleteItem = (id: string, category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
+  const handleDeleteItem = (id: string, category: 'Home' | 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
     setDeletedIds(prev => {
       if (!prev.includes(id)) {
         return [...prev, id];
@@ -1455,7 +1456,7 @@ export default function App() {
   };
 
   // Função para atualizar as datas da semana com base na categoria
-  const updateWeekDatesForCategory = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
+  const updateWeekDatesForCategory = (category: 'Home' | 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
     const today = new Date();
     if (category === 'Employees') {
       const weekStart = getEmployeeWeekStart(today);
@@ -2229,12 +2230,32 @@ export default function App() {
           disabled={isBackgroundSyncing}
         />
         
+        {/* Botão + flutuante no centro */}
+        <button
+          onClick={() => !isBackgroundSyncing && setIsAddDialogOpen(true)}
+          disabled={isBackgroundSyncing}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-14 h-14 bg-[#5ABB37] rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
+        >
+          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
 
         
         {/* Notificações de conflito */}
         <ConflictNotification />
         
-        <div className="pt-[170px]">
+        <div className={`pt-[100px] pb-20 ${activeCategory === 'Home' ? 'bg-gray-50' : ''}`}>
+          {activeCategory === 'Home' && (
+            <Dashboard
+              expenses={expenses}
+              projects={projects}
+              stockItems={stockItems}
+              employees={employees}
+              onNavigate={setActiveCategory}
+            />
+          )}
+
           {(activeCategory === 'Expenses') && (
             <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
               <div className="relative max-w-[800px] mx-auto pb-2">
