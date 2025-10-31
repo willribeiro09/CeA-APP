@@ -17,8 +17,8 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
           disabled={disabled}
           className="flex flex-col items-center justify-center flex-1"
         >
-          <Home className={`w-6 h-6 ${activeCategory === 'Home' ? 'text-white' : 'text-white/60'}`} />
-          <span className={`text-xs mt-1 ${activeCategory === 'Home' ? 'text-white font-medium' : 'text-white/60'}`}>
+          <Home className={`w-6 h-6 ${activeCategory === 'Home' ? 'text-white drop-shadow-lg scale-110' : 'text-white/80'}`} />
+          <span className={`text-xs mt-1 ${activeCategory === 'Home' ? 'text-white font-bold drop-shadow' : 'text-white/80'}`}>
             Home
           </span>
         </button>
@@ -29,8 +29,8 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
           disabled={disabled}
           className="flex flex-col items-center justify-center flex-1"
         >
-          <ReceiptText className={`w-6 h-6 ${activeCategory === 'Expenses' ? 'text-white' : 'text-white/60'}`} />
-          <span className={`text-xs mt-1 ${activeCategory === 'Expenses' ? 'text-white font-medium' : 'text-white/60'}`}>
+          <ReceiptText className={`w-6 h-6 ${activeCategory === 'Expenses' ? 'text-white drop-shadow-lg scale-110' : 'text-white/80'}`} />
+          <span className={`text-xs mt-1 ${activeCategory === 'Expenses' ? 'text-white font-bold drop-shadow' : 'text-white/80'}`}>
             Expenses
           </span>
         </button>
@@ -44,8 +44,8 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
           disabled={disabled}
           className="flex flex-col items-center justify-center flex-1"
         >
-          <Briefcase className={`w-6 h-6 ${activeCategory === 'Projects' ? 'text-white' : 'text-white/60'}`} />
-          <span className={`text-xs mt-1 ${activeCategory === 'Projects' ? 'text-white font-medium' : 'text-white/60'}`}>
+          <Briefcase className={`w-6 h-6 ${activeCategory === 'Projects' ? 'text-white drop-shadow-lg scale-110' : 'text-white/80'}`} />
+          <span className={`text-xs mt-1 ${activeCategory === 'Projects' ? 'text-white font-bold drop-shadow' : 'text-white/80'}`}>
             Projects
           </span>
         </button>
@@ -56,8 +56,8 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
           disabled={disabled}
           className="flex flex-col items-center justify-center flex-1"
         >
-          <Users className={`w-6 h-6 ${activeCategory === 'Employees' ? 'text-white' : 'text-white/60'}`} />
-          <span className={`text-xs mt-1 ${activeCategory === 'Employees' ? 'text-white font-medium' : 'text-white/60'}`}>
+          <Users className={`w-6 h-6 ${activeCategory === 'Employees' ? 'text-white drop-shadow-lg scale-110' : 'text-white/80'}`} />
+          <span className={`text-xs mt-1 ${activeCategory === 'Employees' ? 'text-white font-bold drop-shadow' : 'text-white/80'}`}>
             Employees
           </span>
         </button>

@@ -4,7 +4,6 @@ import { ExpenseItem } from './components/ExpenseItem';
 import { Navigation } from './components/Navigation';
 import { Dashboard } from './components/Dashboard';
 import { CalendarButton } from './components/CalendarButton';
-import { AddButton } from './components/AddButton';
 import { Calendar } from './components/Calendar';
 import { AddItemDialog } from './components/AddItemDialog';
 import { EditItemDialog } from './components/EditItemDialog';
@@ -2192,7 +2191,7 @@ export default function App() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Header 
           activeCategory={activeCategory}
           onNotificationClick={handleNotificationClick}
@@ -2229,15 +2228,19 @@ export default function App() {
           onCategoryChange={isBackgroundSyncing ? () => {} : setActiveCategory}
           disabled={isBackgroundSyncing}
         />
+
+        {/* Faixa azul global (um pouco abaixo do header, com bordas suaves) */}
+        <div className="fixed top-[100px] left-0 right-0 h-[120px] bg-[#073863] rounded-b-[1rem] z-0"></div>
         
         {/* Botão + flutuante no centro */}
         <button
           onClick={() => !isBackgroundSyncing && setIsAddDialogOpen(true)}
           disabled={isBackgroundSyncing}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-14 h-14 bg-[#5ABB37] rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-16 h-16 bg-gradient-to-br from-[#fe7e26] to-[#e57121] rounded-full shadow-2xl border-4 border-white flex items-center justify-center active:scale-95 transition-all hover:shadow-3xl disabled:opacity-50"
+          style={{ boxShadow: '0 10px 40px rgba(254, 126, 38, 0.4), 0 0 0 8px rgba(254, 126, 38, 0.1)' }}
         >
           <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
           </svg>
         </button>
 
@@ -2245,7 +2248,7 @@ export default function App() {
         {/* Notificações de conflito */}
         <ConflictNotification />
         
-        <div className={`pt-[100px] pb-20 ${activeCategory === 'Home' ? 'bg-gray-50' : ''}`}>
+        <div className="relative z-10 pt-[100px] pb-20">
           {activeCategory === 'Home' && (
             <Dashboard
               expenses={expenses}
@@ -2257,7 +2260,7 @@ export default function App() {
           )}
 
           {(activeCategory === 'Expenses') && (
-            <div className="sticky top-[170px] left-0 right-0 px-4 z-30 bg-gray-50">
+            <div className="sticky top-[200px] left-0 right-0 px-4 z-30 bg-gray-50">
               <div className="relative max-w-[800px] mx-auto pb-2">
                 <button
                   onClick={isBackgroundSyncing ? () => {} : () => setIsDropdownOpen(!isDropdownOpen)}
@@ -2776,10 +2779,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* CalendarButton removido conforme solicitado */}
-      {!isBackgroundSyncing && (
-        <AddButton onClick={() => setIsAddDialogOpen(true)} />
-      )}
+      {/* AddButton removido - usando apenas o botão + central do rodapé */}
 
       {/* Popup flutuante do total para Projects */}
       {activeCategory === 'Projects' && (
