@@ -84,7 +84,7 @@ export function Dashboard({
   const overdueExpenses = useMemo(() => {
     const now = new Date();
     const overdue: Array<{description: string; amount: number; daysOverdue: number; projectName: string}> = [];
-    
+
     Object.values(expenses).forEach(expenseList => {
       expenseList.forEach(expense => {
         if (!(expense.is_paid || expense.paid)) {
@@ -101,7 +101,7 @@ export function Dashboard({
         }
       });
     });
-    
+
     return overdue.sort((a, b) => b.daysOverdue - a.daysOverdue);
   }, [expenses]);
 
