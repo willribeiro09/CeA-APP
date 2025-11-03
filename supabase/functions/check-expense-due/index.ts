@@ -119,8 +119,10 @@ serve(async (req) => {
         dueDate = originalDate
       }
 
-      const diffTime = dueDate.getTime() - today.getTime()
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      // Calcular diferença em DIAS por data-calendário (ignora horas/fusos)
+      const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+      const dueUTC = Date.UTC(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
+      const diffDays = Math.floor((dueUTC - todayUTC) / (1000 * 60 * 60 * 24))
 
       console.log(`[check-expense-due] Despesa: ${expense.description}, Data Original: ${expense.date}, Data Venc: ${dueDate.toISOString()}, Dias: ${diffDays}, Recorrente: ${isRecurring}`)
 
