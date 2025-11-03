@@ -2230,7 +2230,7 @@ export default function App() {
         />
 
         {/* Faixa azul global (um pouco abaixo do header, com bordas suaves) */}
-        <div className="fixed top-[100px] left-0 right-0 h-[120px] bg-[#073863] rounded-b-[1rem] z-0"></div>
+        <div className={`fixed top-[85px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[120px]' : 'h-[85px]'} bg-[#073863] rounded-b-[1rem] z-0`}></div>
         
         {/* Botão + flutuante no centro */}
         <button
@@ -2260,12 +2260,12 @@ export default function App() {
           )}
 
           {(activeCategory === 'Expenses') && (
-            <div className="sticky top-[200px] left-0 right-0 px-4 z-30 bg-gray-50">
+            <div className="sticky top-[190px] left-0 right-0 px-4 z-30 bg-[#073863]">
               <div className="relative max-w-[800px] mx-auto pb-2">
                 <button
                   onClick={isBackgroundSyncing ? () => {} : () => setIsDropdownOpen(!isDropdownOpen)}
                   disabled={isBackgroundSyncing}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
+                  className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
                 >
                     <span className="text-gray-700 font-medium">
                       {selectedList}
@@ -2310,10 +2310,10 @@ export default function App() {
           )}
           
           {(activeCategory === 'Projects') && (
-            <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
+            <div className="sticky top-[190px] left-0 right-0 px-2 z-30 bg-[#073863] mb-3">
               <div className="relative max-w-[800px] mx-auto pb-2">
                 <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between py-0">
                     <ClientSelector 
                       selectedClient={selectedClient}
                       onClientChange={isBackgroundSyncing ? () => {} : handleClientChange}
@@ -2340,13 +2340,13 @@ export default function App() {
           )}
           
           {(activeCategory === 'Stock') && (
-            <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50">
+            <div className="sticky top-[190px] left-0 right-0 px-2 z-30 bg-[#073863]">
               {/* Conteúdo do Stock */}
             </div>
           )}
           
           {(activeCategory === 'Employees') && (
-            <div className="sticky top-[170px] left-0 right-0 px-2 z-30 bg-gray-50 mb-3">
+            <div className="sticky top-[190px] left-0 right-0 px-2 z-30 bg-[#073863] mb-3">
               <div className="relative max-w-[800px] mx-auto pb-2">
                 <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
                   <WeekSelector 
@@ -2360,7 +2360,9 @@ export default function App() {
           )}
         </div>
         
-        <main className="px-4 pb-28">
+        <main className={`px-4 pb-28 ${
+          activeCategory !== 'Home' ? '-mt-[60px]' : ''
+        }`}>
           <div 
             className="max-w-[800px] mx-auto relative z-0 hide-scrollbar main-list-container" 
           >
