@@ -137,11 +137,28 @@ serve(async (req) => {
 
     console.log(`✅ Encontrados ${tokens.length} dispositivo(s)`);
 
+    // Deduplicar por device_id e fcm_token para evitar envios duplicados ao mesmo aparelho
+    const seenDeviceIds = new Set<string>();
+    const seenTokens = new Set<string>();
+    const uniqueTokens: Array<{ fcm_token: string; device_id: string }> = [];
+    for (const t of tokens as Array<{ fcm_token?: string; device_id?: string }>) {
+      const token = (t.fcm_token || '').trim();
+      const device = (t.device_id || '').trim();
+      if (!token || !device) continue;
+      if (seenTokens.has(token)) continue;
+      if (seenDeviceIds.has(device)) continue;
+      seenTokens.add(token);
+      seenDeviceIds.add(device);
+      uniqueTokens.push({ fcm_token: token, device_id: device });
+    }
+
+    console.log(`🔎 Após dedupe: ${uniqueTokens.length} dispositivo(s) único(s)`);
+
     // Enviar notificações usando Firebase Cloud Messaging API v1
     const results = [];
     const projectId = serviceAccount.project_id;
 
-    for (const tokenData of tokens) {
+    for (const tokenData of uniqueTokens) {
       const fcmToken = tokenData.fcm_token;
 
       const message = {
