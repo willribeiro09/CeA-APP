@@ -97,6 +97,12 @@ export const saveFCMTokenToDatabase = async (token: string): Promise<boolean> =>
     localStorage.setItem('cea_fcm_token', token);
     console.log('✅ Token FCM salvo localmente:', token);
     
+    // Verifica se Supabase está configurado
+    if (!supabase) {
+      console.log('Supabase não disponível no momento. Token salvo localmente como backup.');
+      return true; // Retorna true porque localStorage tem o backup
+    }
+    
     // Verifica se já existe um registro para este dispositivo
     const { data: existing, error: selectError } = await supabase
       .from('device_tokens')

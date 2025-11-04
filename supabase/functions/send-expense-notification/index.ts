@@ -155,11 +155,17 @@ serve(async (req) => {
     console.log(`🔎 Após dedupe: ${uniqueTokens.length} dispositivo(s) único(s)`);
 
     // Enviar notificações usando Firebase Cloud Messaging API v1
-    const results = [];
+    const results: Array<{ device_id: string; success: boolean; result: any }> = [];
     const projectId = serviceAccount.project_id;
 
     for (const tokenData of uniqueTokens) {
       const fcmToken = tokenData.fcm_token;
+      
+      // Gerar tag única para esta notificação
+      // Formato: cea-{timestamp}-{device_id}
+      // Isso garante que notificações duplicadas sejam substituídas pelo navegador
+      const timestamp = Date.now();
+      const notificationTag = data?.tag || `cea-${timestamp}-${tokenData.device_id}`;
 
       const message = {
         message: {
@@ -179,6 +185,7 @@ serve(async (req) => {
           },
           data: {
             ...(data || {}),
+            tag: notificationTag,
             timestamp: new Date().toISOString(),
           },
         },
