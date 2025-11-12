@@ -2406,8 +2406,8 @@ useEffect(() => {
           )}
 
           {(activeCategory === 'Expenses') && (
-            <div className="sticky top-[210px] left-0 right-0 px-4 z-30 bg-[#073863]">
-              <div className="relative max-w-[800px] mx-auto pb-2 bg-[#073863]">
+            <div className="sticky top-[210px] left-0 right-0 px-4 z-30 bg-transparent">
+              <div className="relative max-w-[800px] mx-auto pb-2 bg-transparent">
                 <button
                   onClick={isBackgroundSyncing ? () => {} : () => setIsDropdownOpen(!isDropdownOpen)}
                   disabled={isBackgroundSyncing}
@@ -2456,9 +2456,9 @@ useEffect(() => {
           )}
           
           {(activeCategory === 'Projects') && (
-            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-[#073863] mb-3">
-              <div className="relative max-w-[800px] mx-auto pb-2 bg-[#073863]">
-                <div className="w-full px-2 py-2 bg-[#073863] border border-transparent rounded-lg shadow-sm">
+            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent mb-3">
+              <div className="relative max-w-[800px] mx-auto pb-2 bg-transparent">
+                <div className="w-full px-2 py-2 bg-transparent border border-transparent rounded-lg shadow-sm">
                   <div className="flex items-center justify-between py-0 text-white">
                     <ClientSelector 
                       selectedClient={selectedClient}
@@ -2486,15 +2486,15 @@ useEffect(() => {
           )}
           
           {(activeCategory === 'Stock') && (
-            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-[#073863]">
+            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent">
               {/* Conteúdo do Stock */}
             </div>
           )}
           
           {(activeCategory === 'Employees') && (
-            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-[#073863] mb-3">
-              <div className="relative max-w-[800px] mx-auto pb-2 bg-[#073863]">
-                <div className="w-full px-2 py-2 bg-[#073863] border border-transparent rounded-lg shadow-sm flex items-center justify-between text-white">
+            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent mb-3">
+              <div className="relative max-w-[800px] mx-auto pb-2 bg-transparent">
+                <div className="w-full px-2 py-2 bg-transparent border border-transparent rounded-lg shadow-sm flex items-center justify-between text-white">
                   <WeekSelector 
                     selectedWeekStart={selectedWeekStart}
                     onWeekChange={isBackgroundSyncing ? () => {} : handleWeekChange}
