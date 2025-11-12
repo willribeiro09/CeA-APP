@@ -27,6 +27,15 @@ export function isPwaInstalled(): boolean {
 }
 
 /**
+ * Verifica se é um dispositivo iOS
+ * @returns boolean indicando se é iOS
+ */
+export function isIOSDevice(): boolean {
+  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+  return /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
+}
+
+/**
  * Obtém ou gera um ID único para o dispositivo
  * @returns string com ID único do dispositivo
  */

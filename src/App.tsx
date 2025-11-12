@@ -50,7 +50,7 @@ import {
   testWeekRanges,
   formatDateForDisplay 
 } from './lib/dateUtils';
-import { isMobileDevice, isPwaInstalled, getEnvironmentInfo } from './lib/deviceUtils';
+import { isMobileDevice, isPwaInstalled, isIOSDevice, getEnvironmentInfo } from './lib/deviceUtils';
 import { initializeNotifications, setupForegroundNotificationListener } from './lib/notificationService';
 import { notifyProjectStatusChange, notifyNewProject } from './lib/expenseNotifications';
 
@@ -295,10 +295,40 @@ useEffect(() => {
       }
     };
 
-    // Inicializar notificações após um pequeno delay para não interferir com carregamento inicial
-    const timer = setTimeout(setupNotifications, 2000);
-    
-    return () => clearTimeout(timer);
+    // Verificar se é iOS/PWA mobile - precisa de interação do usuário
+    const isIOS = isIOSDevice();
+    const isPWA = isPwaInstalled();
+    const isMobile = isMobileDevice();
+    const needsUserInteraction = isIOS || (isPWA && isMobile);
+
+    if (needsUserInteraction) {
+      // Para iOS/PWA mobile: aguardar primeira interação do usuário
+      console.log('[App] iOS/PWA detectado - aguardando interação do usuário para solicitar notificações');
+      
+      let hasRequested = false;
+      const requestOnInteraction = () => {
+        if (!hasRequested) {
+          hasRequested = true;
+          setupNotifications();
+          // Remover listeners após primeira interação
+          document.removeEventListener('touchstart', requestOnInteraction);
+          document.removeEventListener('click', requestOnInteraction);
+        }
+      };
+
+      // Adicionar listeners para primeira interação
+      document.addEventListener('touchstart', requestOnInteraction, { once: true, passive: true });
+      document.addEventListener('click', requestOnInteraction, { once: true, passive: true });
+
+      return () => {
+        document.removeEventListener('touchstart', requestOnInteraction);
+        document.removeEventListener('click', requestOnInteraction);
+      };
+    } else {
+      // Para desktop/navegador: comportamento automático após delay
+      const timer = setTimeout(setupNotifications, 2000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Listener para deep links - abrir popup quando notificação é clicada
