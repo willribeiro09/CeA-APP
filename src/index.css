@@ -183,6 +183,23 @@ body {
   }
 }
 
+@keyframes quick-add-option {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.quick-add-option {
+  opacity: 0;
+  transform: translateY(12px) scale(0.95);
+  animation: quick-add-option 0.24s ease-out forwards;
+}
+
 /* Estilos para impressão */
 @media print {
   @page {
@@ -219,5 +236,37 @@ body {
   /* Forçar quebra de página onde necessário */
   .page-break {
     page-break-after: always;
+  }
+}
+
+/* Animações para o popup de confirmação */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }

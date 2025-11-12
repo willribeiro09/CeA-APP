@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
 import { ExpenseItem } from './components/ExpenseItem';
 import { Navigation } from './components/Navigation';
@@ -9,7 +9,7 @@ import { AddItemDialog } from './components/AddItemDialog';
 import { EditItemDialog } from './components/EditItemDialog';
 import { ExpenseDetailDialog } from './components/ExpenseDetailDialog';
 import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems, SyncData, ProjectPhoto } from './types';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X, Home as HomeIcon, DollarSign, Users, Package } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
 import { basicSyncService, loadData, saveData } from './lib/basicSync';
@@ -34,6 +34,7 @@ import WorkDaysCalendar from './components/WorkDaysCalendar';
 import { ConflictNotification } from './components/ConflictNotification';
 import ProjectSummaryDialog from './components/ProjectSummaryDialog';
 import ImageEditor from './components/ImageEditor';
+import { ConfirmationDialog } from './components/ConfirmationDialog';
 import { PhotoService } from './lib/photoService';
 import { v4 as uuidv4 } from 'uuid';
 import { SyncOverlay, useSyncStatus } from './components/SyncOverlay';
@@ -101,6 +102,8 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isQuickAddMenuOpen, setIsQuickAddMenuOpen] = useState(false);
+  const [addDialogCategory, setAddDialogCategory] = useState<'Expenses' | 'Projects' | 'Stock' | 'Employees'>('Expenses');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
   const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
@@ -149,12 +152,14 @@ export default function App() {
   const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
   const [isUpdatingProject, setIsUpdatingProject] = useState(false);
   const [lastSyncUpdate, setLastSyncUpdate] = useState(0);
+  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const [confirmationCategory, setConfirmationCategory] = useState<'Expenses' | 'Projects' | 'Stock' | 'Employees'>('Expenses');
 
 
   // NOVO: Hook para controlar o status de sincronização
   const { isBlocked: isSyncBlocked, message: syncMessage, executeWhenUnblocked } = useSyncStatus();
 
-  useEffect(() => {
+useEffect(() => {
     const initializeData = async () => {
       // Inicializar tabela de sincronização se necessário
       if (isSupabaseConfigured()) {
@@ -389,6 +394,12 @@ export default function App() {
     
     setWeekTotalValue(total);
   }, [projects, selectedWeekStart, selectedWeekEnd, selectedMonthStart, selectedMonthEnd, selectedClient]);
+
+  useEffect(() => {
+    if (activeCategory !== 'Home' && isQuickAddMenuOpen) {
+      setIsQuickAddMenuOpen(false);
+    }
+  }, [activeCategory, isQuickAddMenuOpen]);
 
   // Função para salvar alterações
   const saveChanges = async (newData: StorageItems) => {
@@ -1031,7 +1042,9 @@ export default function App() {
       // Item básico sem timestamp complexo
       const newItem = { ...item, id: item.id };
       
-      if (activeCategory === 'Expenses') {
+      const categoryToUse = addDialogCategory || activeCategory;
+      
+      if (categoryToUse === 'Expenses') {
         const expense = newItem as Expense;
         expense.paid = expense.paid || false;
         expense.is_paid = expense.is_paid || false;
@@ -1059,7 +1072,11 @@ export default function App() {
 
           return newExpenses;
         });
-      } else if (activeCategory === 'Projects') {
+        
+        // Mostrar popup de confirmação
+        setConfirmationCategory('Expenses');
+        setIsConfirmationOpen(true);
+      } else if (categoryToUse === 'Projects') {
         // Garantir que o projeto esteja formatado corretamente
         const project = newItem as Project;
         
@@ -1122,7 +1139,11 @@ export default function App() {
             console.error('Erro ao enviar notificação de novo projeto:', error);
           });
         }
-      } else if (activeCategory === 'Stock') {
+        
+        // Mostrar popup de confirmação
+        setConfirmationCategory('Projects');
+        setIsConfirmationOpen(true);
+      } else if (categoryToUse === 'Stock') {
         const stockItem = newItem as StockItem;
         stockItem.id = uuidv4();
 
@@ -1140,7 +1161,11 @@ export default function App() {
 
           return newStockItems;
         });
-      } else if (activeCategory === 'Employees') {
+        
+        // Mostrar popup de confirmação
+        setConfirmationCategory('Stock');
+        setIsConfirmationOpen(true);
+      } else if (categoryToUse === 'Employees') {
         const employee = newItem as Employee;
 
         // Garantir campos essenciais
@@ -1198,6 +1223,10 @@ export default function App() {
 
           return newEmployees;
         });
+        
+        // Mostrar popup de confirmação
+        setConfirmationCategory('Employees');
+        setIsConfirmationOpen(true);
       }
     } catch (error) {
       console.error("Erro ao atualizar item:", error);
@@ -2189,6 +2218,66 @@ export default function App() {
     }
   };
 
+  const mainOffsetClass =
+    activeCategory === 'Home'
+      ? ''
+      : activeCategory === 'Expenses'
+      ? '-mt-[58px]'
+      : '-mt-[80px]';
+  const mainPaddingBottomClass =
+    activeCategory === 'Home' ? 'pb-28' : 'pb-32';
+
+  const showQuickAddMenu = isQuickAddMenuOpen ? activeCategory === 'Home' : false;
+  const needsWeekStart = addDialogCategory === 'Projects' || addDialogCategory === 'Employees';
+  const addDialogWeekStart = needsWeekStart ? selectedWeekStart : undefined;
+  const addDialogClient = addDialogCategory === 'Projects' ? selectedClient : undefined;
+
+  const quickAddOptions = useMemo(() => ([
+    {
+      label: 'Project',
+      category: 'Projects' as const,
+      Icon: HomeIcon
+    },
+    {
+      label: 'Expense',
+      category: 'Expenses' as const,
+      Icon: DollarSign
+    },
+    {
+      label: 'Employee',
+      category: 'Employees' as const,
+      Icon: Users
+    },
+    {
+      label: 'Stock',
+      category: 'Stock' as const,
+      Icon: Package
+    }
+  ]), []);
+
+  const openAddDialogForCategory = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
+    setAddDialogCategory(category);
+    setIsQuickAddMenuOpen(false);
+    setIsAddDialogOpen(true);
+  };
+
+  const handlePrimaryAddClick = () => {
+    if (isBackgroundSyncing) {
+      return;
+    }
+    if (activeCategory === 'Home') {
+      setIsQuickAddMenuOpen(!isQuickAddMenuOpen);
+      return;
+    }
+    if (activeCategory === 'Projects' || activeCategory === 'Expenses' || activeCategory === 'Stock' || activeCategory === 'Employees') {
+      openAddDialogForCategory(activeCategory);
+    }
+  };
+
+  const handleQuickAddSelect = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
+    openAddDialogForCategory(category);
+  };
+
   return (
     <>
       <div className="min-h-screen">
@@ -2230,11 +2319,11 @@ export default function App() {
         />
 
         {/* Faixa azul global (um pouco abaixo do header, com bordas suaves) */}
-        <div className={`fixed top-[85px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[120px]' : 'h-[85px]'} bg-[#073863] rounded-b-[1rem] z-0`}></div>
+        <div className={`fixed top-[75px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[120px]' : 'h-[85px]'} bg-[#073863] rounded-b-[1rem] z-0`}></div>
         
         {/* Botão + flutuante no centro */}
         <button
-          onClick={() => !isBackgroundSyncing && setIsAddDialogOpen(true)}
+          onClick={handlePrimaryAddClick}
           disabled={isBackgroundSyncing}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-16 h-16 bg-gradient-to-br from-[#fe7e26] to-[#e57121] rounded-full shadow-2xl border-4 border-white flex items-center justify-center active:scale-95 transition-all hover:shadow-3xl disabled:opacity-50"
           style={{ boxShadow: '0 10px 40px rgba(254, 126, 38, 0.4), 0 0 0 8px rgba(254, 126, 38, 0.1)' }}
@@ -2243,6 +2332,33 @@ export default function App() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
           </svg>
         </button>
+
+        {showQuickAddMenu ? (
+          <div className="fixed inset-0 z-40">
+            <button
+              type="button"
+              onClick={() => setIsQuickAddMenuOpen(false)}
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            />
+            <div className="absolute bottom-28 left-1/2 -translate-x-1/2 flex flex-col gap-4 items-center px-4">
+              {quickAddOptions.map((option, index) => {
+                const OptionIcon = option.Icon;
+                return (
+                  <button
+                    type="button"
+                    key={option.category}
+                    onClick={() => handleQuickAddSelect(option.category)}
+                    style={{ animationDelay: `${index * 70}ms` }}
+                    className={`quick-add-option w-full max-w-[280px] bg-[#073863] text-white px-6 py-3.5 rounded-full shadow-2xl border border-white/20 flex items-center justify-center gap-3 text-base font-semibold hover:bg-[#052a4a] transition-colors`}
+                  >
+                    <OptionIcon className="w-5 h-5" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         
         {/* Notificações de conflito */}
@@ -2260,12 +2376,12 @@ export default function App() {
           )}
 
           {(activeCategory === 'Expenses') && (
-            <div className="sticky top-[190px] left-0 right-0 px-4 z-30 bg-[#073863]">
-              <div className="relative max-w-[800px] mx-auto pb-2">
+            <div className="sticky top-[210px] left-0 right-0 px-4 z-30 bg-[#073863]">
+              <div className="relative max-w-[800px] mx-auto pb-2 bg-[#073863]">
                 <button
                   onClick={isBackgroundSyncing ? () => {} : () => setIsDropdownOpen(!isDropdownOpen)}
                   disabled={isBackgroundSyncing}
-                  className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between"
+                  className="w-full px-4 py-2 bg-white border border-transparent rounded-lg shadow-sm flex items-center justify-between"
                 >
                     <span className="text-gray-700 font-medium">
                       {selectedList}
@@ -2278,7 +2394,7 @@ export default function App() {
                 </button>
                 
                 {isDropdownOpen && !isBackgroundSyncing && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-35">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-transparent rounded-lg shadow-lg overflow-hidden z-35">
                     <button
                       onClick={() => handleListSelect('Carlos')}
                       className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
@@ -2310,10 +2426,10 @@ export default function App() {
           )}
           
           {(activeCategory === 'Projects') && (
-            <div className="sticky top-[190px] left-0 right-0 px-2 z-30 bg-[#073863] mb-3">
-              <div className="relative max-w-[800px] mx-auto pb-2">
-                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm">
-                  <div className="flex items-center justify-between py-0">
+            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-[#073863] mb-3">
+              <div className="relative max-w-[800px] mx-auto pb-2 bg-[#073863]">
+                <div className="w-full px-2 py-2 bg-[#073863] border border-transparent rounded-lg shadow-sm">
+                  <div className="flex items-center justify-between py-0 text-white">
                     <ClientSelector 
                       selectedClient={selectedClient}
                       onClientChange={isBackgroundSyncing ? () => {} : handleClientChange}
@@ -2340,15 +2456,15 @@ export default function App() {
           )}
           
           {(activeCategory === 'Stock') && (
-            <div className="sticky top-[190px] left-0 right-0 px-2 z-30 bg-[#073863]">
+            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-[#073863]">
               {/* Conteúdo do Stock */}
             </div>
           )}
           
           {(activeCategory === 'Employees') && (
-            <div className="sticky top-[190px] left-0 right-0 px-2 z-30 bg-[#073863] mb-3">
-              <div className="relative max-w-[800px] mx-auto pb-2">
-                <div className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-between">
+            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-[#073863] mb-3">
+              <div className="relative max-w-[800px] mx-auto pb-2 bg-[#073863]">
+                <div className="w-full px-2 py-2 bg-[#073863] border border-transparent rounded-lg shadow-sm flex items-center justify-between text-white">
                   <WeekSelector 
                     selectedWeekStart={selectedWeekStart}
                     onWeekChange={isBackgroundSyncing ? () => {} : handleWeekChange}
@@ -2360,9 +2476,7 @@ export default function App() {
           )}
         </div>
         
-        <main className={`px-4 pb-28 ${
-          activeCategory !== 'Home' ? '-mt-[60px]' : ''
-        }`}>
+        <main className={`px-4 ${mainPaddingBottomClass} ${mainOffsetClass}`}>
           <div 
             className="max-w-[800px] mx-auto relative z-0 hide-scrollbar main-list-container" 
           >
@@ -2787,21 +2901,33 @@ export default function App() {
       {activeCategory === 'Projects' && (
         <TotalValuePopup 
           total={weekTotalValue}
-          clientType={selectedClient}
         />
       )}
 
       <AddItemDialog
-        isOpen={isAddDialogOpen && !isBackgroundSyncing}
+        isOpen={isBackgroundSyncing ? false : isAddDialogOpen}
         onOpenChange={(open) => {
-          if (!isBackgroundSyncing) {
-            setIsAddDialogOpen(open);
+          if (isBackgroundSyncing) {
+            return;
+          }
+          setIsAddDialogOpen(open);
+          if (!open) {
+            setIsQuickAddMenuOpen(false);
           }
         }}
-        category={activeCategory}
+        category={addDialogCategory}
         onSubmit={handleAddItem}
-        selectedWeekStart={selectedWeekStart}
-        selectedClient={activeCategory === 'Projects' ? selectedClient : undefined}
+        selectedWeekStart={addDialogWeekStart}
+        selectedClient={addDialogClient}
+      />
+
+      <ConfirmationDialog
+        isOpen={isConfirmationOpen}
+        onOpenChange={setIsConfirmationOpen}
+        category={confirmationCategory}
+        onGoToMenu={() => {
+          setActiveCategory(confirmationCategory);
+        }}
       />
   
       <EditItemDialog
