@@ -157,6 +157,9 @@ export default defineConfig(({ mode }) => {
     },
     // Melhorar o desempenho do servidor de desenvolvimento
     server: {
+      port: 5174, // Porta diferente para evitar conflito com outras instâncias
+      strictPort: false, // Permite usar outra porta se 5174 estiver ocupada
+      open: true, // Abre o navegador automaticamente
       hmr: {
         overlay: false // Desativa o overlay de erro para melhor desempenho
       },

@@ -54,8 +54,8 @@ export function WeekSelector({ selectedWeekStart, onWeekChange, employeesData }:
         onClick={toggleDropdown}
         className="flex items-center space-x-1"
       >
-        <span className="text-gray-700 font-medium text-sm">Week:</span>
-        <div className="flex items-center px-2 py-1 bg-gradient-to-r from-white to-[#f9fcf7] border border-[#e0f0d8] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
+        <span className="text-white font-medium text-sm">Week:</span>
+        <div className="flex items-center px-2 py-1 bg-gradient-to-r from-white to-[#f9fcf7] border border-transparent rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
           <Calendar className="w-3 h-3 text-[#5ABB37] mr-1" />
           <span className="text-[#5ABB37] font-medium text-sm">
             {selectedWeek.label}

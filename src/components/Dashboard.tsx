@@ -1,11 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Expense, Project, StockItem, Employee } from '../types';
-import { differenceInDays, format } from 'date-fns';
+import { differenceInDays, format, addMonths, addDays, addWeeks } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { getDeviceId } from '../lib/deviceUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Package } from 'lucide-react';
+import { isRecurringExpense, getRecurrenceType } from '../lib/recurringUtils';
+import { buildCardExpensesFromCA } from '../lib/expenseCardUtils';
 
 interface DashboardProps {
   expenses: Record<string, Expense[]>;
@@ -80,29 +82,13 @@ export function Dashboard({
     };
   }, []);
   
-  // Lista de despesas atrasadas para slideshow
+  // Lista de despesas C&A: mostrar todas (nome e valor apenas)
   const overdueExpenses = useMemo(() => {
-    const now = new Date();
-    const overdue: Array<{description: string; amount: number; daysOverdue: number; projectName: string}> = [];
-
-    Object.values(expenses).forEach(expenseList => {
-      expenseList.forEach(expense => {
-        if (!(expense.is_paid || expense.paid)) {
-          const expenseDate = new Date(expense.date);
-          if (expenseDate < now) {
-            const daysOverdue = differenceInDays(now, expenseDate);
-            overdue.push({
-              description: expense.description || 'No description',
-              amount: expense.amount || 0,
-              daysOverdue,
-              projectName: expense.project || 'General'
-            });
-          }
-        }
-      });
-    });
-
-    return overdue.sort((a, b) => b.daysOverdue - a.daysOverdue);
+    const listCA = (expenses['C&A'] || []) as Expense[];
+    return listCA.map(e => ({
+      description: e.description || 'No description',
+      amount: e.amount || 0,
+    }));
   }, [expenses]);
 
   // Estatísticas de expenses (TODAS, sem filtro de data)
@@ -153,13 +139,42 @@ export function Dashboard({
     };
   }, [expenses]);
 
-  // Estatísticas de projetos apenas para clientes Private
+  // Estatísticas de projetos Private:
+  // - completed: apenas do mês atual
+  // - pending e in_progress: considerar todos (independente de mês)
   const privateProjectsStats = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const normalize = (d?: string | number | Date) => (d ? new Date(d) : undefined);
+
+    const inCurrentMonthRange = (start?: Date, end?: Date) => {
+      // Se tiver só start, considera o start; se tiver start e end, considera qualquer interseção no mês
+      if (start && !end) {
+        return start >= monthStart && start <= monthEnd;
+      }
+      if (start && end) {
+        // Interseção de intervalos [start, end] x [monthStart, monthEnd]
+        return start <= monthEnd && end >= monthStart;
+      }
+      return false;
+    };
+
     const privateProjects = projects.filter(p => p.clientType === 'Private');
+
+    // Completed do mês atual (intersecção de intervalo com mês)
+    const filteredForCompleted = privateProjects.filter(p => {
+      const start = normalize(p.startDate as any);
+      // usar endDate quando existir; caso contrário, lastModified como aproximação
+      const end = normalize((p as any).endDate) || normalize(p.lastModified as any);
+      return inCurrentMonthRange(start, end || start);
+    });
+
     const pending = privateProjects.filter(p => p.status === 'pending').length;
     const inProgress = privateProjects.filter(p => p.status === 'in_progress').length;
-    const completed = privateProjects.filter(p => p.status === 'completed').length;
-    const total = privateProjects.length;
+    const completed = filteredForCompleted.filter(p => p.status === 'completed').length;
+    const total = pending + inProgress + completed;
 
     const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
@@ -401,9 +416,7 @@ export function Dashboard({
                         <div className="text-lg font-extrabold text-red-600 mt-0.5">
                           ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>
-                        <div className="text-[10px] text-red-500 font-semibold mt-0.5">
-                          {expense.daysOverdue} days overdue
-                        </div>
+                        {/* Sem status/data */}
                       </div>
                     </div>
                   ))}
@@ -506,7 +519,7 @@ export function Dashboard({
       </div>
 
       {/* Recent - Feed de Histórico */}
-      <div className="fixed top-[446px] left-0 right-0 bottom-0 z-10 px-4">
+      <div className="fixed top-[436px] left-0 right-0 bottom-0 z-10 px-4">
         <div className="bg-gradient-to-br from-white to-gray-50 rounded-t-3xl rounded-b-none shadow-2xl shadow-[0_-18px_32px_-12px_rgba(0,0,0,0.25)] border border-gray-200 h-full flex flex-col overflow-hidden">
           <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
             <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
