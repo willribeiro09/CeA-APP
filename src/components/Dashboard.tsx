@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { getDeviceId } from '../lib/deviceUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Package } from 'lucide-react';
+import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes } from 'lucide-react';
 import { isRecurringExpense, getRecurrenceType } from '../lib/recurringUtils';
 import { buildCardExpensesFromCA } from '../lib/expenseCardUtils';
 
@@ -39,6 +39,8 @@ export function Dashboard({
   
   // Estados para slideshow dos cards (somente Expenses mantém slideshow)
   const [expenseSlideIndex, setExpenseSlideIndex] = useState(0);
+
+  const [recentTab, setRecentTab] = useState<'Recent' | 'Notes' | 'Docs' | 'Stock'>('Recent');
 
   // Carregar notificações
   const loadNotifications = async () => {
@@ -275,12 +277,12 @@ export function Dashboard({
       {/* Fundo azul global movido para App.tsx */}
       
       {/* Cards fixos */}
-      <div className="fixed top-[120px] left-0 right-0 z-10 px-4">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="fixed top-[110px] left-0 right-0 z-10 px-4">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
         {/* Card Projects - SLIDESHOW */}
         <div 
           onClick={() => onNavigate('Projects')}
-          className="relative bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[140px]"
+          className="relative bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
         >
           {/* Ícone de fundo sutil */}
           <div className="absolute -right-3 -bottom-3 opacity-5">
@@ -289,7 +291,7 @@ export function Dashboard({
           
           <div className="relative z-10 h-full flex flex-col">
             {/* Header fixo - ícone e título lado a lado */}
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow flex-shrink-0">
                 <Home className="w-4 h-4 text-white" />
               </div>
@@ -303,10 +305,10 @@ export function Dashboard({
             {/* Área informativa: gráfico pizza (Private only) */}
             <div className="flex-1 flex items-center">
               {privateProjectsDonut.total > 0 ? (
-                <div className="w-full flex items-center justify-between">
+                <div className="w-full flex items-center">
                   {/* Donut */}
-                  <div className="flex items-center justify-center">
-                    <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
+                  <div className="flex items-center justify-center mr-2">
+                    <svg width="60" height="60" viewBox="0 0 72 72" className="-rotate-90">
                       {(() => {
                         const radius = 28;
                         const cx = 36;
@@ -340,27 +342,27 @@ export function Dashboard({
                   </div>
 
                   {/* Legenda compacta */}
-                  <div className="flex-1 ml-3 grid grid-cols-1 gap-1 min-w-0">
+                  <div className="flex-1 ml-1 grid grid-cols-1 gap-1 min-w-0">
                     <div className="flex items-center justify-between text-[11px]">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#F59E0B' }} />
-                        <span className="text-gray-700 truncate">Pending</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#F59E0B' }} />
+                        <span className="text-gray-700 truncate text-[10px]">Pending</span>
                       </div>
-                      <span className="text-gray-900 font-semibold ml-2 flex-shrink-0">{privateProjectsStats.pending}</span>
+                      <span className="text-gray-900 font-semibold ml-1 flex-shrink-0">{privateProjectsStats.pending}</span>
                     </div>
                     <div className="flex items-center justify-between text-[11px]">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#2563EB' }} />
-                        <span className="text-gray-700 truncate">In Progress</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#2563EB' }} />
+                        <span className="text-gray-700 truncate text-[10px]">In Progress</span>
                       </div>
-                      <span className="text-gray-900 font-semibold ml-2 flex-shrink-0">{privateProjectsStats.inProgress}</span>
+                      <span className="text-gray-900 font-semibold ml-1 flex-shrink-0">{privateProjectsStats.inProgress}</span>
                     </div>
                     <div className="flex items-center justify-between text-[11px]">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#16A34A' }} />
-                        <span className="text-gray-700 truncate">Completed</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#16A34A' }} />
+                        <span className="text-gray-700 truncate text-[10px]">Completed</span>
                       </div>
-                      <span className="text-gray-900 font-semibold ml-2 flex-shrink-0">{privateProjectsStats.completed}</span>
+                      <span className="text-gray-900 font-semibold ml-1 flex-shrink-0">{privateProjectsStats.completed}</span>
                     </div>
                   </div>
                 </div>
@@ -376,7 +378,7 @@ export function Dashboard({
         {/* Card Expenses - SLIDESHOW */}
         <div 
           onClick={() => onNavigate('Expenses')}
-          className="relative bg-gradient-to-br from-red-50 via-red-50 to-red-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[140px]"
+          className="relative bg-gradient-to-br from-red-50 via-red-50 to-red-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
         >
           {/* Ícone de fundo sutil */}
           <div className="absolute -right-3 -bottom-3 opacity-5">
@@ -441,7 +443,7 @@ export function Dashboard({
         {/* Card Employees */}
         <div 
           onClick={() => onNavigate('Employees')}
-          className="relative bg-gradient-to-br from-purple-50 via-purple-50 to-purple-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[140px]"
+          className="relative bg-gradient-to-br from-purple-50 via-purple-50 to-purple-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
         >
           {/* Ícone de fundo sutil */}
           <div className="absolute -right-3 -bottom-3 opacity-5">
@@ -480,38 +482,33 @@ export function Dashboard({
           </div>
         </div>
 
-        {/* Card Stock */}
+        {/* Card Planner */}
         <div 
           onClick={() => onNavigate('Stock')}
-          className={`relative rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[140px] ${
-            lowStockCount > 0 
-              ? 'bg-gradient-to-br from-orange-50 via-orange-50 to-orange-100' 
-              : 'bg-gradient-to-br from-green-50 via-green-50 to-green-100'
-          }`}
+          className="relative rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px] bg-gradient-to-br from-blue-50 via-blue-50 to-indigo-100"
         >
-          {/* Ícone de fundo sutil */}
-          <div className={`absolute -right-3 -bottom-3 opacity-5 ${
-            lowStockCount > 0 ? 'text-orange-600' : 'text-green-600'
-          }`}>
-            <Package className="w-24 h-24" />
+          <div className="absolute -right-3 -bottom-3 opacity-5 text-blue-500">
+            <Calendar className="w-28 h-28" />
+          </div>
+          <div className="absolute top-1 right-3 text-[40px] text-gray-900" style={{ fontFamily: 'Arial, sans-serif', fontWeight: 400 }}>
+            {format(new Date(), 'd')}
           </div>
           
-          <div className="relative z-10">
-            {/* Ícone e título lado a lado */}
+          <div className="relative z-10 h-full flex flex-col">
             <div className="flex items-center gap-2 mb-2">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-lg ${
-                lowStockCount > 0 
-                  ? 'bg-gradient-to-br from-orange-500 to-orange-600' 
-                  : 'bg-gradient-to-br from-green-500 to-green-600'
-              }`}>
-                <Package className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-lg bg-gradient-to-br from-blue-500 to-indigo-500">
+                <Calendar className="w-5 h-5 text-white" />
               </div>
-              <div className="text-xs text-gray-600 font-medium">
-                {lowStockCount > 0 ? 'Low Stock items' : 'Stock OK'}
+              <div>
+                <div className="text-xs text-gray-800 font-semibold tracking-wide">Planner</div>
+                <div className="text-[12px] text-gray-700 font-medium">{format(new Date(), 'MMMM')}</div>
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-900 mt-1">
-              {lowStockCount}
+            <div className="flex-1 flex items-center">
+              <div className="rounded-lg p-2 w-full text-center border border-white/40 bg-white/20 backdrop-blur-[1px]">
+                <div className="text-[10px] uppercase text-gray-600 font-semibold tracking-wider">Upcoming</div>
+                <div className="text-xs text-gray-600 mt-1">No events</div>
+              </div>
             </div>
           </div>
         </div>
@@ -519,17 +516,37 @@ export function Dashboard({
       </div>
 
       {/* Recent - Feed de Histórico */}
-      <div className="fixed top-[436px] left-0 right-0 bottom-0 z-10 px-4">
-        <div className="bg-gradient-to-br from-white to-gray-50 rounded-t-3xl rounded-b-none shadow-2xl shadow-[0_-18px_32px_-12px_rgba(0,0,0,0.25)] border border-gray-200 h-full flex flex-col overflow-hidden">
-          <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
-            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <div className="w-2 h-6 bg-[#5ABB37] rounded-full"></div>
-              Recent:
-            </h3>
+      <div className="fixed top-[380px] left-0 right-0 bottom-0 z-[5] px-4">
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-t-3xl rounded-b-none shadow-xl shadow-[0_-12px_24px_-10px_rgba(0,0,0,0.18)] border border-gray-200 h-full flex flex-col overflow-hidden">
+          <div className="px-4 py-2 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              {[
+                { key: 'Recent', Icon: TrendingUp },
+                { key: 'Notes', Icon: StickyNote },
+                { key: 'Docs', Icon: FileText },
+                { key: 'Stock', Icon: Boxes },
+              ].map(({ key: tab, Icon }) => (
+                <button
+                  key={tab}
+                  onClick={() => setRecentTab(tab as 'Recent' | 'Notes' | 'Docs' | 'Stock')}
+                  className={`relative px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
+                    recentTab === tab
+                      ? 'text-[#073863]'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab}
+                  {recentTab === tab && (
+                    <span className="absolute inset-x-0 -bottom-2 h-[3px] bg-[#073863] rounded-full"></span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto hide-scrollbar">
-            {notifications.length > 0 ? (
+            {recentTab === 'Recent' && notifications.length > 0 ? (
               <div>
                 {notifications
                   .filter(n => {
@@ -645,10 +662,15 @@ export function Dashboard({
                     );
                   })}
               </div>
-            ) : (
+            ) : recentTab === 'Recent' ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
                 <TrendingUp className="w-12 h-12 mb-3 opacity-20" />
                 <p className="text-sm">Nenhuma atividade recente</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
+                <TrendingUp className="w-12 h-12 mb-3 opacity-20" />
+                <p className="text-sm">Nada por aqui ainda</p>
               </div>
             )}
           </div>
@@ -657,3 +679,4 @@ export function Dashboard({
     </div>
   );
 }
+

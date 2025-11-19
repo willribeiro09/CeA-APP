@@ -9,7 +9,7 @@ import { AddItemDialog } from './components/AddItemDialog';
 import { EditItemDialog } from './components/EditItemDialog';
 import { ExpenseDetailDialog } from './components/ExpenseDetailDialog';
 import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems, SyncData, ProjectPhoto } from './types';
-import { ChevronDown, X, Home as HomeIcon, DollarSign, Users, Package } from 'lucide-react';
+import { ChevronDown, X, Home as HomeIcon, DollarSign, Users, Package, Receipt, Notebook } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
 import { basicSyncService, loadData, saveData } from './lib/basicSync';
@@ -2264,21 +2264,37 @@ useEffect(() => {
 
   const quickAddOptions = useMemo(() => ([
     {
+      id: 'project',
       label: 'Project',
       category: 'Projects' as const,
       Icon: HomeIcon
     },
     {
+      id: 'expense',
       label: 'Expense',
       category: 'Expenses' as const,
       Icon: DollarSign
     },
     {
+      id: 'receipts',
+      label: 'Receipts',
+      category: 'Expenses' as const,
+      Icon: Receipt
+    },
+    {
+      id: 'note',
+      label: 'Note',
+      category: 'Expenses' as const,
+      Icon: Notebook
+    },
+    {
+      id: 'employee',
       label: 'Employee',
       category: 'Employees' as const,
       Icon: Users
     },
     {
+      id: 'stock',
       label: 'Stock',
       category: 'Stock' as const,
       Icon: Package
@@ -2349,7 +2365,7 @@ useEffect(() => {
         />
 
         {/* Faixa azul global (um pouco abaixo do header, com bordas suaves) */}
-        <div className={`fixed top-[75px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[120px]' : 'h-[85px]'} bg-[#073863] rounded-b-[1rem] z-0`}></div>
+        <div className={`fixed top-[60px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[120px]' : 'h-[85px]'} bg-[#073863] rounded-b-[1rem] z-0`}></div>
         
         {/* Botão + flutuante no centro */}
         <button
@@ -2376,10 +2392,10 @@ useEffect(() => {
                 return (
                   <button
                     type="button"
-                    key={option.category}
+                    key={option.id}
                     onClick={() => handleQuickAddSelect(option.category)}
                     style={{ animationDelay: `${index * 70}ms` }}
-                    className={`quick-add-option w-full max-w-[280px] bg-[#073863] text-white px-6 py-3.5 rounded-full shadow-2xl border border-white/20 flex items-center justify-center gap-3 text-base font-semibold hover:bg-[#052a4a] transition-colors`}
+                    className={`quick-add-option w-full max-w-[260px] bg-[#073863] text-white px-5 py-2.5 rounded-2xl shadow-2xl border border-white/20 flex items-center justify-center gap-3 text-sm font-semibold hover:bg-[#052a4a] transition-colors`}
                   >
                     <OptionIcon className="w-5 h-5" />
                     {option.label}
