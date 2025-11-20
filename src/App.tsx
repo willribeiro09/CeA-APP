@@ -2418,6 +2418,15 @@ useEffect(() => {
               stockItems={stockItems}
               employees={employees}
               onNavigate={setActiveCategory}
+              onItemClick={(item, type) => {
+                if (type === 'expense') {
+                  setExpenseToView(item);
+                  setIsExpenseDetailOpen(true);
+                } else if (type === 'project') {
+                  setSelectedProject(item);
+                  setIsProjectSummaryOpen(true);
+                }
+              }}
             />
           )}
 

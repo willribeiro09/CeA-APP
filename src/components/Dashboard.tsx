@@ -15,6 +15,7 @@ interface DashboardProps {
   stockItems: StockItem[];
   employees: Record<string, Employee[]>;
   onNavigate: (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => void;
+  onItemClick: (item: any, type: 'expense' | 'project' | 'stock' | 'employee') => void;
 }
 
 interface Notification {
@@ -31,7 +32,8 @@ export function Dashboard({
   projects, 
   stockItems, 
   employees,
-  onNavigate 
+  onNavigate,
+  onItemClick
 }: DashboardProps) {
   
   // Estado para notificações
@@ -274,6 +276,7 @@ export function Dashboard({
       amount?: number;
       photo?: string;
       location?: string;
+      data?: any;
     }> = [];
     
     const now = new Date();
@@ -312,7 +315,8 @@ export function Dashboard({
         date: new Date(n.created_at),
         icon, color, bg,
         amount: n.data?.value ? parseFloat(String(n.data.value).replace(/[^0-9.-]+/g,"")) : undefined,
-        photo: n.data?.photoUrl
+        photo: n.data?.photoUrl,
+        data: n.data // Passar dados da notificação se houver
       });
     });
 
@@ -331,7 +335,8 @@ export function Dashboard({
           bg: 'from-blue-50 to-blue-100',
           photo: p.photos && p.photos.length > 0 ? p.photos[0].url : undefined,
           location: p.location,
-          amount: p.value
+          amount: p.value,
+          data: p
         });
       }
     });
@@ -351,7 +356,8 @@ export function Dashboard({
                 date: workDate,
                 icon: Users,
                 color: 'text-purple-600',
-                bg: 'from-purple-50 to-purple-100'
+                bg: 'from-purple-50 to-purple-100',
+                data: e
               });
             }
           });
@@ -373,7 +379,8 @@ export function Dashboard({
              icon: DollarSign,
              color: ex.is_paid ? 'text-green-600' : 'text-red-600',
              bg: ex.is_paid ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100',
-             amount: ex.amount
+             amount: ex.amount,
+             data: ex
            });
          }
       });
@@ -687,6 +694,11 @@ export function Dashboard({
                   return (
                     <div 
                       key={activity.id}
+                      onClick={() => {
+                        if (activity.data && (activity.type === 'expense' || activity.type === 'project')) {
+                          onItemClick(activity.data, activity.type);
+                        }
+                      }}
                       className="relative px-3 py-2 hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100 flex items-center gap-3"
                     >
                       {/* Ícone menor ou Foto */}
