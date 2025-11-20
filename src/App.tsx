@@ -2365,7 +2365,7 @@ useEffect(() => {
         />
 
         {/* Faixa azul global (um pouco abaixo do header, com bordas suaves) */}
-        <div className={`fixed top-[60px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[120px]' : 'h-[85px]'} bg-[#073863] rounded-b-[1rem] z-0`}></div>
+        <div className="fixed top-[60px] left-0 right-0 h-[100px] bg-[#073863] rounded-b-[1rem] z-0"></div>
         
         {/* Botão + flutuante no centro */}
         <button

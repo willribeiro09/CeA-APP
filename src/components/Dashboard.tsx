@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { getDeviceId } from '../lib/deviceUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes } from 'lucide-react';
+import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin } from 'lucide-react';
 import { isRecurringExpense, getRecurrenceType } from '../lib/recurringUtils';
 import { buildCardExpensesFromCA } from '../lib/expenseCardUtils';
 
@@ -84,12 +84,13 @@ export function Dashboard({
     };
   }, []);
   
-  // Lista de despesas C&A: mostrar todas (nome e valor apenas)
+  // Lista de despesas C&A: mostrar todas (nome, valor e data de vencimento)
   const overdueExpenses = useMemo(() => {
     const listCA = (expenses['C&A'] || []) as Expense[];
     return listCA.map(e => ({
       description: e.description || 'No description',
       amount: e.amount || 0,
+      date: e.date || '',
     }));
   }, [expenses]);
 
@@ -259,6 +260,130 @@ export function Dashboard({
     }).length;
   }, [stockItems]);
 
+  // Agregar atividades recentes reais (Projetos, Funcionários, Despesas, Notificações)
+  const recentActivities = useMemo(() => {
+    const activities: Array<{
+      id: string;
+      type: 'notification' | 'project' | 'employee' | 'expense' | 'stock';
+      title: string;
+      description: string;
+      date: Date;
+      icon: any;
+      color: string;
+      bg: string;
+      amount?: number;
+      photo?: string;
+      location?: string;
+    }> = [];
+    
+    const now = new Date();
+
+    // 1. Notificações existentes
+    notifications.forEach(n => {
+      // Filtros existentes
+      const titleLower = n.title.toLowerCase();
+      if (titleLower.includes('atualizar funcionários') || 
+          titleLower.includes('update employee') ||
+          titleLower.includes('hora de atualizar') ||
+          titleLower.includes('time to update')) return;
+
+      const cleanTitle = n.title.replace(/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
+      const cleanBody = n.body.replace(/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
+
+      let icon = TrendingUp;
+      let color = 'text-gray-600';
+      let bg = 'from-gray-50 to-gray-100';
+
+      if (titleLower.includes('expense') || titleLower.includes('despesa') || titleLower.includes('venc')) {
+        icon = DollarSign; color = 'text-red-600'; bg = 'from-red-50 to-red-100';
+      } else if (titleLower.includes('project') || titleLower.includes('projeto')) {
+        icon = Home; color = 'text-blue-600'; bg = 'from-blue-50 to-blue-100';
+      } else if (titleLower.includes('employee') || titleLower.includes('funcionário')) {
+        icon = Users; color = 'text-purple-600'; bg = 'from-purple-50 to-purple-100';
+      } else if (titleLower.includes('stock') || titleLower.includes('estoque')) {
+        icon = Boxes; color = 'text-orange-600'; bg = 'from-orange-50 to-orange-100';
+      }
+
+      activities.push({
+        id: n.id,
+        type: 'notification',
+        title: cleanTitle,
+        description: cleanBody,
+        date: new Date(n.created_at),
+        icon, color, bg,
+        amount: n.data?.value ? parseFloat(String(n.data.value).replace(/[^0-9.-]+/g,"")) : undefined,
+        photo: n.data?.photoUrl
+      });
+    });
+
+    // 2. Projetos Recentes (Últimos 3 dias)
+    projects.forEach(p => {
+      const date = p.lastModified ? new Date(p.lastModified) : new Date(p.startDate);
+      if (differenceInDays(now, date) <= 3) {
+        activities.push({
+          id: `proj-${p.id}`,
+          type: 'project',
+          title: p.status === 'completed' ? 'Project Completed' : 'Project Updated',
+          description: `${p.name} - ${p.client}`,
+          date: date,
+          icon: Home,
+          color: 'text-blue-600',
+          bg: 'from-blue-50 to-blue-100',
+          photo: p.photos && p.photos.length > 0 ? p.photos[0].url : undefined,
+          location: p.location,
+          amount: p.value
+        });
+      }
+    });
+
+    // 3. Funcionários (Trabalharam recentemente - Últimos 2 dias)
+    Object.values(employees).forEach(list => {
+      list.forEach(e => {
+        if (e.workedDates) {
+          e.workedDates.forEach(d => {
+            const workDate = new Date(d + 'T12:00:00');
+            if (differenceInDays(now, workDate) <= 2) {
+               activities.push({
+                id: `emp-${e.id}-${d}`,
+                type: 'employee',
+                title: 'Employee Worked',
+                description: `${e.employeeName || e.name}`,
+                date: workDate,
+                icon: Users,
+                color: 'text-purple-600',
+                bg: 'from-purple-50 to-purple-100'
+              });
+            }
+          });
+        }
+      });
+    });
+
+    // 4. Despesas Recentes (Últimos 3 dias)
+    Object.values(expenses).forEach(list => {
+      list.forEach(ex => {
+         const date = ex.lastModified ? new Date(ex.lastModified) : new Date(ex.date);
+         if (differenceInDays(now, date) <= 3) {
+           activities.push({
+             id: `exp-${ex.id}`,
+             type: 'expense',
+             title: ex.is_paid ? 'Expense Paid' : 'New Expense',
+             description: ex.description,
+             date: date,
+             icon: DollarSign,
+             color: ex.is_paid ? 'text-green-600' : 'text-red-600',
+             bg: ex.is_paid ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100',
+             amount: ex.amount
+           });
+         }
+      });
+    });
+
+    // Remover duplicatas exatas de ID e ordenar
+    const unique = Array.from(new Map(activities.map(item => [item.id, item])).values());
+    return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 30);
+  }, [notifications, projects, employees, expenses]);
+
   // (Projetos não possuem mais slideshow no card)
 
   // Slideshow automático para despesas atrasadas
@@ -418,7 +543,11 @@ export function Dashboard({
                         <div className="text-lg font-extrabold text-red-600 mt-0.5">
                           ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>
-                        {/* Sem status/data */}
+                        {expense.date && (
+                          <div className="text-[10px] text-gray-600 mt-1">
+                            Due: {format(new Date(expense.date), 'MMM d', { locale: ptBR })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -485,9 +614,9 @@ export function Dashboard({
         {/* Card Planner */}
         <div 
           onClick={() => onNavigate('Stock')}
-          className="relative rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px] bg-gradient-to-br from-blue-50 via-blue-50 to-indigo-100"
+          className="relative rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px] bg-gradient-to-br from-green-50 via-green-50 to-green-100"
         >
-          <div className="absolute -right-3 -bottom-3 opacity-5 text-blue-500">
+          <div className="absolute -right-3 -bottom-3 opacity-5 text-green-500">
             <Calendar className="w-28 h-28" />
           </div>
           <div className="absolute top-1 right-3 text-[40px] text-gray-900" style={{ fontFamily: 'Arial, sans-serif', fontWeight: 400 }}>
@@ -496,12 +625,12 @@ export function Dashboard({
           
           <div className="relative z-10 h-full flex flex-col">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-lg bg-gradient-to-br from-blue-500 to-indigo-500">
-                <Calendar className="w-5 h-5 text-white" />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow bg-gradient-to-br from-green-500 to-green-600 flex-shrink-0">
+                <Calendar className="w-4 h-4 text-white" />
               </div>
               <div>
                 <div className="text-xs text-gray-800 font-semibold tracking-wide">Planner</div>
-                <div className="text-[12px] text-gray-700 font-medium">{format(new Date(), 'MMMM')}</div>
+                <div className="text-sm text-gray-900 font-bold">{format(new Date(), 'MMMM')}</div>
               </div>
             </div>
             <div className="flex-1 flex items-center">
@@ -546,131 +675,81 @@ export function Dashboard({
           </div>
           
           <div className="flex-1 overflow-y-auto hide-scrollbar">
-            {recentTab === 'Recent' && notifications.length > 0 ? (
+            {recentTab === 'Recent' && recentActivities.length > 0 ? (
               <div>
-                {notifications
-                  .filter(n => {
-                    const title = n.title.toLowerCase();
-                    return !title.includes('atualizar funcionários') && 
-                           !title.includes('update employee') &&
-                           !title.includes('hora de atualizar') &&
-                           !title.includes('time to update');
-                  })
-                  .map((notification) => {
-                    const timeAgo = formatDistanceToNow(new Date(notification.created_at), {
-                      addSuffix: true,
-                      locale: ptBR
-                    });
+                {recentActivities.map((activity) => {
+                  const timeAgo = formatDistanceToNow(activity.date, {
+                    addSuffix: true,
+                    locale: ptBR
+                  });
+                  const EventIcon = activity.icon;
 
-                    // Extrair dados da notificação
-                    const projectPhoto = notification.data?.photoUrl || null;
-                    const projectName = notification.data?.projectName || '';
-                    const value = notification.data?.value || '';
-                    const dueDate = notification.data?.dueDate || '';
-                    const daysOverdue = notification.data?.daysOverdue || '';
-
-                    // Remover TODOS os emojis do título e corpo
-                    const cleanTitle = notification.title.replace(/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
-                    const cleanBody = notification.body.replace(/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
-
-                    // Determinar tipo e ícone baseado no conteúdo
-                    const getEventIcon = () => {
-                      const title = cleanTitle.toLowerCase();
-                      const body = cleanBody.toLowerCase();
-                      
-                      if (title.includes('expense') || title.includes('despesa') || title.includes('venc') || title.includes('due') || title.includes('overdue')) {
-                        return { icon: DollarSign, color: 'text-red-600', bg: 'from-red-50 to-red-100' };
-                      } else if (title.includes('project') || title.includes('projeto')) {
-                        return { icon: Home, color: 'text-blue-600', bg: 'from-blue-50 to-blue-100' };
-                      } else if (title.includes('employee') || title.includes('funcionário') || title.includes('work')) {
-                        return { icon: Users, color: 'text-purple-600', bg: 'from-purple-50 to-purple-100' };
-                      } else if (title.includes('stock') || title.includes('estoque')) {
-                        return { icon: Package, color: 'text-orange-600', bg: 'from-orange-50 to-orange-100' };
-                      } else if (title.includes('complet') || title.includes('concluí')) {
-                        return { icon: CheckCircle, color: 'text-green-600', bg: 'from-green-50 to-green-100' };
-                      } else {
-                        return { icon: TrendingUp, color: 'text-gray-600', bg: 'from-gray-50 to-gray-100' };
-                      }
-                    };
-
-                    const { icon: EventIcon, color, bg } = getEventIcon();
-
-                    return (
-                      <div 
-                        key={notification.id}
-                        className="relative px-4 py-4 hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100"
-                      >
-                        <div className="flex gap-3">
-                          {/* Miniatura ou ícone indicador à esquerda */}
-                          <div className="flex-shrink-0">
-                            {projectPhoto ? (
-                              <img 
-                                src={projectPhoto} 
-                                alt="" 
-                                className="w-12 h-12 rounded-lg object-cover border border-gray-200"
-                              />
-                            ) : (
-                              <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${bg} flex items-center justify-center`}>
-                                <EventIcon className={`w-6 h-6 ${color}`} />
-                              </div>
-                            )}
+                  return (
+                    <div 
+                      key={activity.id}
+                      className="relative px-3 py-2 hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100 flex items-center gap-3"
+                    >
+                      {/* Ícone menor ou Foto */}
+                      <div className="flex-shrink-0">
+                        {activity.photo ? (
+                          <img 
+                            src={activity.photo} 
+                            alt="" 
+                            className="w-8 h-8 rounded-lg object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${activity.bg} flex items-center justify-center`}>
+                            <EventIcon className={`w-4 h-4 ${activity.color}`} />
                           </div>
-
-                          {/* Conteúdo */}
-                          <div className="flex-1 min-w-0">
-                            {/* Título */}
-                            <h4 className="text-sm font-semibold text-gray-900 leading-tight mb-1">
-                              {cleanTitle}
-                            </h4>
-
-                            {/* Descrição */}
-                            <p className="text-xs text-gray-600 leading-relaxed mb-2 line-clamp-2">
-                              {cleanBody}
-                            </p>
-
-                            {/* Detalhes adicionais */}
-                            <div className="flex flex-wrap items-center gap-3 text-xs">
-                              {projectName && (
-                                <span className="inline-flex items-center gap-1 text-gray-500">
-                                  <Home className="w-3 h-3" />
-                                  {projectName}
-                                </span>
-                              )}
-                              {value && (
-                                <span className="inline-flex items-center gap-1 text-green-600 font-medium">
-                                  <DollarSign className="w-3 h-3" />
-                                  {value}
-                                </span>
-                              )}
-                              {dueDate && (
-                                <span className="inline-flex items-center gap-1 text-orange-600">
-                                  <Clock className="w-3 h-3" />
-                                  {dueDate}
-                                </span>
-                              )}
-                              {daysOverdue && (
-                                <span className="inline-flex items-center gap-1 text-red-600 font-medium">
-                                  <AlertCircle className="w-3 h-3" />
-                                  {daysOverdue} dias atrasado
-                                </span>
-                              )}
-                              <span className="text-gray-400 ml-auto">{timeAgo}</span>
-                            </div>
-                          </div>
-                        </div>
+                        )}
                       </div>
-                    );
-                  })}
+
+                      {/* Conteúdo compacto */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-baseline">
+                          <h4 className="text-xs font-semibold text-gray-900 leading-none truncate mr-2">
+                            {activity.title}
+                          </h4>
+                          {activity.amount !== undefined ? (
+                             <span className={`text-[11px] font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'expense' && !activity.title.includes('Paid') ? 'text-red-600' : 'text-green-600'}`}>
+                               ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                             </span>
+                          ) : (
+                            <span className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0">{timeAgo}</span>
+                          )}
+                        </div>
+                        <div className="flex flex-col mt-0.5">
+                          <p className="text-[11px] text-gray-600 leading-tight truncate pr-2">
+                            {activity.description}
+                          </p>
+                          {activity.location && (
+                            <div className="flex items-center gap-1 mt-0.5 text-[10px] text-gray-500 truncate">
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{activity.location}</span>
+                            </div>
+                          )}
+                        </div>
+                        {activity.amount !== undefined && (
+                          <div className="flex justify-end mt-0.5">
+                            <span className="text-[9px] text-gray-400 whitespace-nowrap flex-shrink-0">{timeAgo}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : recentTab === 'Recent' ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
-                <TrendingUp className="w-12 h-12 mb-3 opacity-20" />
-                <p className="text-sm">Nenhuma atividade recente</p>
+              <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
+                  <TrendingUp className="w-6 h-6 text-gray-300" />
+                </div>
+                <p className="text-xs">No recent activity</p>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
-                <TrendingUp className="w-12 h-12 mb-3 opacity-20" />
-                <p className="text-sm">Nada por aqui ainda</p>
+              // Placeholder para outras abas
+              <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                <p className="text-xs">Content coming soon...</p>
               </div>
             )}
           </div>
