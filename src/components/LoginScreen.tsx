@@ -4,7 +4,11 @@ import { Input } from './ui/input';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import { AccessCodeDialog } from './AccessCodeDialog';
 
-export function LoginScreen() {
+interface LoginScreenProps {
+  onLoginSuccess?: () => void;
+}
+
+export function LoginScreen({ onLoginSuccess }: LoginScreenProps = {}) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -30,7 +34,11 @@ export function LoginScreen() {
 
   const handleAccessCodeSuccess = () => {
     console.log('Access granted!');
-    // Aqui você pode redirecionar para o app principal
+    setShowAccessCodeDialog(false);
+    // Chamar callback de sucesso
+    if (onLoginSuccess) {
+      onLoginSuccess();
+    }
   };
 
   return (

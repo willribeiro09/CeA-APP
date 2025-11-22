@@ -38,6 +38,7 @@ import { ConfirmationDialog } from './components/ConfirmationDialog';
 import { PhotoService } from './lib/photoService';
 import { v4 as uuidv4 } from 'uuid';
 import { SyncOverlay, useSyncStatus } from './components/SyncOverlay';
+import { LoginScreen } from './components/LoginScreen';
 
 import { 
   formatDateToISO, 
@@ -94,6 +95,8 @@ const findEmployeeInOtherWeeks = (employeeId: string, employeesData: Record<stri
 };
 
 export default function App() {
+  // NOTA: Login desabilitado temporariamente - definir como false para reativar
+  const [isLoggedIn, setIsLoggedIn] = useState(true); // true = pula o login
   const [expenses, setExpenses] = useState<Record<ListName, Expense[]>>(initialExpenses);
   const [projects, setProjects] = useState<Project[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
@@ -2323,6 +2326,11 @@ useEffect(() => {
   const handleQuickAddSelect = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
     openAddDialogForCategory(category);
   };
+
+  // Se não estiver logado, mostrar tela de login
+  if (!isLoggedIn) {
+    return <LoginScreen onLoginSuccess={() => setIsLoggedIn(true)} />;
+  }
 
   return (
     <>

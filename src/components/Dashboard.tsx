@@ -18,14 +18,15 @@ interface DashboardProps {
   onItemClick: (item: any, type: 'expense' | 'project' | 'stock' | 'employee') => void;
 }
 
-interface Notification {
-  id: string;
-  title: string;
-  body: string;
-  data: any;
-  is_read: boolean;
-  created_at: string;
-}
+// Interface de Notificação comentada - não usado mais
+// interface Notification {
+//   id: string;
+//   title: string;
+//   body: string;
+//   data: any;
+//   is_read: boolean;
+//   created_at: string;
+// }
 
 export function Dashboard({ 
   expenses, 
@@ -36,55 +37,55 @@ export function Dashboard({
   onItemClick
 }: DashboardProps) {
   
-  // Estado para notificações
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  // NOTIFICAÇÕES DESABILITADAS - Não aparecem mais na lista Recent (apenas ações reais dos usuários)
+  // const [notifications, setNotifications] = useState<Notification[]>([]);
   
   // Estados para slideshow dos cards (somente Expenses mantém slideshow)
   const [expenseSlideIndex, setExpenseSlideIndex] = useState(0);
 
-  const [recentTab, setRecentTab] = useState<'Recent' | 'Notes' | 'Docs' | 'Stock'>('Recent');
+  const [recentTab, setRecentTab] = useState<'Recent' | 'Board' | 'Receipts' | 'Stock'>('Recent');
 
-  // Carregar notificações
-  const loadNotifications = async () => {
-    const deviceId = getDeviceId();
-    
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('device_id', deviceId)
-      .order('created_at', { ascending: false })
-      .limit(10);
+  // CÓDIGO DE NOTIFICAÇÕES COMENTADO - Manter caso precise no futuro
+  // const loadNotifications = async () => {
+  //   const deviceId = getDeviceId();
+  //   
+  //   const { data, error } = await supabase
+  //     .from('notifications')
+  //     .select('*')
+  //     .eq('device_id', deviceId)
+  //     .order('created_at', { ascending: false })
+  //     .limit(10);
+  //
+  //   if (!error && data) {
+  //     setNotifications(data);
+  //   }
+  // };
 
-    if (!error && data) {
-      setNotifications(data);
-    }
-  };
-
-  useEffect(() => {
-    loadNotifications();
-
-    // Subscrever a mudanças em tempo real
-    const deviceId = getDeviceId();
-    const channel = supabase
-      .channel('notifications-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `device_id=eq.${deviceId}`
-        },
-        () => {
-          loadNotifications();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // useEffect(() => {
+  //   loadNotifications();
+  //
+  //   // Subscrever a mudanças em tempo real
+  //   const deviceId = getDeviceId();
+  //   const channel = supabase
+  //     .channel('notifications-channel')
+  //     .on(
+  //       'postgres_changes',
+  //       {
+  //         event: '*',
+  //         schema: 'public',
+  //         table: 'notifications',
+  //         filter: `device_id=eq.${deviceId}`
+  //       },
+  //       () => {
+  //         loadNotifications();
+  //       }
+  //     )
+  //     .subscribe();
+  //
+  //   return () => {
+  //     supabase.removeChannel(channel);
+  //   };
+  // }, []);
   
   // Lista de despesas C&A: mostrar todas (nome, valor e data de vencimento)
   const overdueExpenses = useMemo(() => {
@@ -281,54 +282,28 @@ export function Dashboard({
     
     const now = new Date();
 
-    // 1. Notificações existentes
-    notifications.forEach(n => {
-      // Filtros existentes
-      const titleLower = n.title.toLowerCase();
-      if (titleLower.includes('atualizar funcionários') || 
-          titleLower.includes('update employee') ||
-          titleLower.includes('hora de atualizar') ||
-          titleLower.includes('time to update')) return;
-
-      const cleanTitle = n.title.replace(/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
-      const cleanBody = n.body.replace(/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
-
-      let icon = TrendingUp;
-      let color = 'text-gray-600';
-      let bg = 'from-gray-50 to-gray-100';
-
-      if (titleLower.includes('expense') || titleLower.includes('despesa') || titleLower.includes('venc')) {
-        icon = DollarSign; color = 'text-red-600'; bg = 'from-red-50 to-red-100';
-      } else if (titleLower.includes('project') || titleLower.includes('projeto')) {
-        icon = Home; color = 'text-blue-600'; bg = 'from-blue-50 to-blue-100';
-      } else if (titleLower.includes('employee') || titleLower.includes('funcionário')) {
-        icon = Users; color = 'text-purple-600'; bg = 'from-purple-50 to-purple-100';
-      } else if (titleLower.includes('stock') || titleLower.includes('estoque')) {
-        icon = Boxes; color = 'text-orange-600'; bg = 'from-orange-50 to-orange-100';
-      }
-
-      activities.push({
-        id: n.id,
-        type: 'notification',
-        title: cleanTitle,
-        description: cleanBody,
-        date: new Date(n.created_at),
-        icon, color, bg,
-        amount: n.data?.value ? parseFloat(String(n.data.value).replace(/[^0-9.-]+/g,"")) : undefined,
-        photo: n.data?.photoUrl,
-        data: n.data // Passar dados da notificação se houver
-      });
-    });
-
-    // 2. Projetos Recentes (Últimos 3 dias)
+    // 1. Projetos Recentes (Últimos 7 dias)
     projects.forEach(p => {
       const date = p.lastModified ? new Date(p.lastModified) : new Date(p.startDate);
-      if (differenceInDays(now, date) <= 3) {
+      if (differenceInDays(now, date) <= 7) {
+        // Definir título baseado no status
+        let title = 'Project Updated';
+        if (p.status === 'completed') {
+          title = 'Project Completed';
+        } else if (p.status === 'in_progress') {
+          title = 'Project In Progress';
+        } else if (p.status === 'pending') {
+          title = 'New Project';
+        }
+        
+        // Descrição: mostrar apenas o cliente (sem duplicar)
+        const description = p.client || p.name;
+        
         activities.push({
           id: `proj-${p.id}`,
           type: 'project',
-          title: p.status === 'completed' ? 'Project Completed' : 'Project Updated',
-          description: `${p.name} - ${p.client}`,
+          title: title,
+          description: description,
           date: date,
           icon: Home,
           color: 'text-blue-600',
@@ -341,13 +316,13 @@ export function Dashboard({
       }
     });
 
-    // 3. Funcionários (Trabalharam recentemente - Últimos 2 dias)
+    // 2. Funcionários (Trabalharam recentemente - Últimos 5 dias)
     Object.values(employees).forEach(list => {
       list.forEach(e => {
         if (e.workedDates) {
           e.workedDates.forEach(d => {
             const workDate = new Date(d + 'T12:00:00');
-            if (differenceInDays(now, workDate) <= 2) {
+            if (differenceInDays(now, workDate) <= 5) {
                activities.push({
                 id: `emp-${e.id}-${d}`,
                 type: 'employee',
@@ -365,20 +340,29 @@ export function Dashboard({
       });
     });
 
-    // 4. Despesas Recentes (Últimos 3 dias)
+    // 3. Despesas Recentes (Últimos 7 dias)
     Object.values(expenses).forEach(list => {
       list.forEach(ex => {
          const date = ex.lastModified ? new Date(ex.lastModified) : new Date(ex.date);
-         if (differenceInDays(now, date) <= 3) {
+         // Mostrar despesas modificadas ou criadas nos últimos 7 dias
+         if (differenceInDays(now, date) <= 7) {
+           // Verificar se está paga: checar is_paid OU se tem parcelas pagas
+           const isPaid = ex.is_paid || 
+                         ex.paid || 
+                         (ex.installments && ex.installments.length > 0 && 
+                          ex.installments.some(inst => inst.isPaid));
+           
+           // Se está paga, mostrar como "Expense Paid" em verde
+           // Se não está paga, mostrar como "New Expense" em vermelho
            activities.push({
              id: `exp-${ex.id}`,
              type: 'expense',
-             title: ex.is_paid ? 'Expense Paid' : 'New Expense',
+             title: isPaid ? 'Expense Paid' : 'New Expense',
              description: ex.description,
              date: date,
-             icon: DollarSign,
-             color: ex.is_paid ? 'text-green-600' : 'text-red-600',
-             bg: ex.is_paid ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100',
+             icon: isPaid ? CheckCircle : DollarSign,
+             color: isPaid ? 'text-green-600' : 'text-red-600',
+             bg: isPaid ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100',
              amount: ex.amount,
              data: ex
            });
@@ -388,8 +372,8 @@ export function Dashboard({
 
     // Remover duplicatas exatas de ID e ordenar
     const unique = Array.from(new Map(activities.map(item => [item.id, item])).values());
-    return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 30);
-  }, [notifications, projects, employees, expenses]);
+    return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 50);
+  }, [projects, employees, expenses]);
 
   // (Projetos não possuem mais slideshow no card)
 
@@ -655,16 +639,16 @@ export function Dashboard({
       <div className="fixed top-[380px] left-0 right-0 bottom-0 z-[5] px-4">
         <div className="bg-gradient-to-br from-white to-gray-50 rounded-t-3xl rounded-b-none shadow-xl shadow-[0_-12px_24px_-10px_rgba(0,0,0,0.18)] border border-gray-200 h-full flex flex-col overflow-hidden">
           <div className="px-4 py-2 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               {[
                 { key: 'Recent', Icon: TrendingUp },
-                { key: 'Notes', Icon: StickyNote },
-                { key: 'Docs', Icon: FileText },
+                { key: 'Board', Icon: StickyNote },
+                { key: 'Receipts', Icon: FileText },
                 { key: 'Stock', Icon: Boxes },
               ].map(({ key: tab, Icon }) => (
                 <button
                   key={tab}
-                  onClick={() => setRecentTab(tab as 'Recent' | 'Notes' | 'Docs' | 'Stock')}
+                  onClick={() => setRecentTab(tab as 'Recent' | 'Board' | 'Receipts' | 'Stock')}
                   className={`relative px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
                     recentTab === tab
                       ? 'text-[#073863]'
@@ -758,8 +742,55 @@ export function Dashboard({
                 </div>
                 <p className="text-xs">No recent activity</p>
               </div>
+            ) : recentTab === 'Stock' ? (
+              // Lista de itens do inventário
+              stockItems.length > 0 ? (
+                <div>
+                  {stockItems.map((item) => (
+                    <div 
+                      key={item.id}
+                      onClick={() => onItemClick(item, 'stock')}
+                      className="relative px-3 py-2 hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100 flex items-center gap-3"
+                    >
+                      <div className="flex-shrink-0">
+                        {item.photo ? (
+                          <img 
+                            src={item.photo} 
+                            alt="" 
+                            className="w-8 h-8 rounded-lg object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center">
+                            <Boxes className="w-4 h-4 text-purple-600" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-baseline">
+                          <h4 className="text-xs font-semibold text-gray-900 leading-none truncate mr-2">
+                            {item.name}
+                          </h4>
+                          <span className="text-[11px] font-bold whitespace-nowrap flex-shrink-0 text-gray-600">
+                            Qty: {item.quantity}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-600 leading-tight truncate mt-0.5">
+                          {item.category}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
+                    <Boxes className="w-6 h-6 text-gray-300" />
+                  </div>
+                  <p className="text-xs">No items in inventory</p>
+                </div>
+              )
             ) : (
-              // Placeholder para outras abas
+              // Placeholder para Board e Receipts
               <div className="flex flex-col items-center justify-center h-32 text-gray-400">
                 <p className="text-xs">Content coming soon...</p>
               </div>

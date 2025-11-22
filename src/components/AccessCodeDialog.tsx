@@ -1,13 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from './ui/dialog';
+import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from './ui/button';
-import { Lock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Lock, AlertCircle, CheckCircle, X } from 'lucide-react';
 
 interface AccessCodeDialogProps {
   isOpen: boolean;
@@ -103,9 +97,16 @@ export function AccessCodeDialog({ isOpen, onClose, onSuccess }: AccessCodeDialo
   const isCodeComplete = code.every(digit => digit !== '');
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+    <Dialog.Root open={isOpen} onOpenChange={handleClose}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md z-50 focus:outline-none">
+          {/* Close button */}
+          <Dialog.Close className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <X className="w-5 h-5 text-gray-500" />
+          </Dialog.Close>
+
+          {/* Icon */}
           <div className="flex justify-center mb-4">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
               success ? 'bg-green-100' : error ? 'bg-red-100' : 'bg-blue-100'
@@ -119,85 +120,72 @@ export function AccessCodeDialog({ isOpen, onClose, onSuccess }: AccessCodeDialo
               )}
             </div>
           </div>
-          <DialogTitle className="text-center text-2xl">
+
+          {/* Title */}
+          <Dialog.Title className="text-center text-2xl font-bold mb-2">
             {success ? 'Access Granted!' : 'Enter Access Code'}
-          </DialogTitle>
-          <DialogDescription className="text-center">
+          </Dialog.Title>
+
+          {/* Description */}
+          <Dialog.Description className="text-center text-gray-600 mb-6">
             {success 
               ? 'Welcome! Redirecting...'
               : error 
                 ? 'Invalid code. Please try again.'
                 : 'Please enter your 5-digit access code to continue'
             }
-          </DialogDescription>
-        </DialogHeader>
+          </Dialog.Description>
 
-        <div className="flex justify-center gap-3 my-6">
-          {code.map((digit, index) => (
-            <input
-              key={index}
-              ref={(el) => (inputRefs.current[index] = el)}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              onPaste={handlePaste}
-              className={`w-14 h-14 text-center text-2xl font-bold border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
-                error
-                  ? 'border-red-500 focus:ring-red-500 bg-red-50'
-                  : success
-                  ? 'border-green-500 focus:ring-green-500 bg-green-50'
-                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-              }`}
+          {/* Code input fields */}
+          <div className="flex justify-center gap-3 my-6">
+            {code.map((digit, index) => (
+              <input
+                key={index}
+                ref={(el) => (inputRefs.current[index] = el)}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                onPaste={handlePaste}
+                className={`w-14 h-14 text-center text-2xl font-bold border-2 rounded-lg focus:outline-none focus:ring-2 transition-all ${
+                  error
+                    ? 'border-red-500 focus:ring-red-500 bg-red-50'
+                    : success
+                    ? 'border-green-500 focus:ring-green-500 bg-green-50'
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                }`}
+                disabled={success}
+              />
+            ))}
+          </div>
+
+          {/* Buttons */}
+          <div className="space-y-3">
+            <Button
+              onClick={handleSubmit}
+              disabled={!isCodeComplete || success}
+              className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium"
+            >
+              {success ? 'Verified ✓' : 'Verify Code'}
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              className="w-full h-12"
               disabled={success}
-            />
-          ))}
-        </div>
+            >
+              Cancel
+            </Button>
+          </div>
 
-        <div className="space-y-3">
-          <Button
-            onClick={handleSubmit}
-            disabled={!isCodeComplete || success}
-            className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium"
-          >
-            {success ? 'Verified ✓' : 'Verify Code'}
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            className="w-full h-12"
-            disabled={success}
-          >
-            Cancel
-          </Button>
-        </div>
-
-        <p className="text-xs text-center text-gray-500 mt-4">
-          Don't have an access code? Contact your administrator.
-        </p>
-      </DialogContent>
-    </Dialog>
+          <p className="text-xs text-center text-gray-500 mt-4">
+            Don't have an access code? Contact your administrator.
+          </p>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
