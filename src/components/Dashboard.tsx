@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Expense, Project, StockItem, Employee } from '../types';
-import { differenceInDays, format, addMonths, addDays, addWeeks } from 'date-fns';
+import { differenceInDays, format, addMonths, addDays, addWeeks, isSameDay } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { getDeviceId } from '../lib/deviceUtils';
 import { formatDistanceToNow } from 'date-fns';
@@ -16,6 +16,7 @@ interface DashboardProps {
   employees: Record<string, Employee[]>;
   onNavigate: (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => void;
   onItemClick: (item: any, type: 'expense' | 'project' | 'stock' | 'employee') => void;
+  onOpenPlanner?: () => void;
 }
 
 // Interface de Notificação comentada - não usado mais
@@ -34,7 +35,8 @@ export function Dashboard({
   stockItems, 
   employees,
   onNavigate,
-  onItemClick
+  onItemClick,
+  onOpenPlanner
 }: DashboardProps) {
   
   // NOTIFICAÇÕES DESABILITADAS - Não aparecem mais na lista Recent (apenas ações reais dos usuários)
@@ -43,7 +45,22 @@ export function Dashboard({
   // Estados para slideshow dos cards (somente Expenses mantém slideshow)
   const [expenseSlideIndex, setExpenseSlideIndex] = useState(0);
 
-  const [recentTab, setRecentTab] = useState<'Recent' | 'Board' | 'Receipts' | 'Stock'>('Recent');
+  const [recentTab, setRecentTab] = useState<'Recent' | 'Requests' | 'Receipts' | 'Stock'>('Recent');
+
+  // Calcular eventos de hoje para o Card Planner
+  const todayEventsCount = useMemo(() => {
+    const now = new Date();
+    let count = 0;
+    // Projetos começando hoje
+    count += projects.filter(p => p.startDate && isSameDay(new Date(p.startDate), now)).length;
+    // Despesas vencendo hoje
+    Object.values(expenses).forEach(list => {
+      list.forEach(ex => {
+        if (ex.date && isSameDay(new Date(ex.date), now)) count++;
+      });
+    });
+    return count;
+  }, [projects, expenses]);
 
   // CÓDIGO DE NOTIFICAÇÕES COMENTADO - Manter caso precise no futuro
   // const loadNotifications = async () => {
@@ -281,6 +298,49 @@ export function Dashboard({
     }> = [];
     
     const now = new Date();
+
+    // 0. EVENTOS DE HOJE (Alta Prioridade)
+    // Projetos começando hoje
+    projects.forEach(p => {
+      if (p.startDate && isSameDay(new Date(p.startDate), now)) {
+        activities.push({
+          id: `proj-today-${p.id}`,
+          type: 'project',
+          title: 'Project Starting Today',
+          description: p.client || p.name,
+          date: now,
+          icon: Calendar, // Ícone diferente para evento de calendário
+          color: 'text-blue-700',
+          bg: 'from-blue-100 to-blue-200', // Destaque maior
+          photo: p.photos && p.photos.length > 0 ? p.photos[0].url : undefined,
+          location: p.location,
+          amount: p.value,
+          data: p
+        });
+      }
+    });
+
+    // Despesas vencendo hoje
+    Object.values(expenses).forEach(list => {
+      list.forEach(ex => {
+        if (ex.date && isSameDay(new Date(ex.date), now)) {
+           const isPaid = ex.is_paid || ex.paid || (ex.installments && ex.installments.some(inst => inst.isPaid));
+           // Só mostrar se NÃO estiver paga, ou se estiver paga mostrar como evento do dia normal
+           activities.push({
+             id: `exp-today-${ex.id}`,
+             type: 'expense',
+             title: isPaid ? 'Paid Today' : 'Due Today!',
+             description: ex.description,
+             date: now,
+             icon: isPaid ? CheckCircle : AlertCircle, // Alerta se não pago
+             color: isPaid ? 'text-green-600' : 'text-orange-600',
+             bg: isPaid ? 'from-green-50 to-green-100' : 'from-orange-50 to-orange-100',
+             amount: ex.amount,
+             data: ex
+           });
+        }
+      });
+    });
 
     // 1. Projetos Recentes (Últimos 7 dias)
     projects.forEach(p => {
@@ -604,7 +664,7 @@ export function Dashboard({
 
         {/* Card Planner */}
         <div 
-          onClick={() => onNavigate('Stock')}
+          onClick={() => onOpenPlanner ? onOpenPlanner() : onNavigate('Stock')}
           className="relative rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px] bg-gradient-to-br from-green-50 via-green-50 to-green-100"
         >
           <div className="absolute -right-3 -bottom-3 opacity-5 text-green-500">
@@ -627,7 +687,13 @@ export function Dashboard({
             <div className="flex-1 flex items-center">
               <div className="rounded-lg p-2 w-full text-center border border-white/40 bg-white/20 backdrop-blur-[1px]">
                 <div className="text-[10px] uppercase text-gray-600 font-semibold tracking-wider">Upcoming</div>
-                <div className="text-xs text-gray-600 mt-1">No events</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {todayEventsCount > 0 ? (
+                    <span className="font-bold text-green-700">{todayEventsCount} events today</span>
+                  ) : (
+                    "No events today"
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -642,13 +708,13 @@ export function Dashboard({
             <div className="flex items-center justify-center gap-2">
               {[
                 { key: 'Recent', Icon: TrendingUp },
-                { key: 'Board', Icon: StickyNote },
+                { key: 'Requests', Icon: StickyNote },
                 { key: 'Receipts', Icon: FileText },
                 { key: 'Stock', Icon: Boxes },
               ].map(({ key: tab, Icon }) => (
                 <button
                   key={tab}
-                  onClick={() => setRecentTab(tab as 'Recent' | 'Board' | 'Receipts' | 'Stock')}
+                  onClick={() => setRecentTab(tab as 'Recent' | 'Requests' | 'Receipts' | 'Stock')}
                   className={`relative px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
                     recentTab === tab
                       ? 'text-[#073863]'
@@ -790,7 +856,7 @@ export function Dashboard({
                 </div>
               )
             ) : (
-              // Placeholder para Board e Receipts
+              // Placeholder para Requests e Receipts
               <div className="flex flex-col items-center justify-center h-32 text-gray-400">
                 <p className="text-xs">Content coming soon...</p>
               </div>

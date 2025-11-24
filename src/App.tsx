@@ -9,7 +9,7 @@ import { AddItemDialog } from './components/AddItemDialog';
 import { EditItemDialog } from './components/EditItemDialog';
 import { ExpenseDetailDialog } from './components/ExpenseDetailDialog';
 import { Expense, Item, Project, StockItem, Employee, EmployeeName, StorageItems, SyncData, ProjectPhoto } from './types';
-import { ChevronDown, X, Home as HomeIcon, DollarSign, Users, Package, Receipt, Notebook } from 'lucide-react';
+import { ChevronDown, X, Home as HomeIcon, DollarSign, Users, Package, Receipt, FileText, CheckSquare } from 'lucide-react';
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
 import { basicSyncService, loadData, saveData } from './lib/basicSync';
@@ -54,6 +54,7 @@ import {
 import { isMobileDevice, isPwaInstalled, isIOSDevice, getEnvironmentInfo } from './lib/deviceUtils';
 import { initializeNotifications, setupForegroundNotificationListener } from './lib/notificationService';
 import { notifyProjectStatusChange, notifyNewProject } from './lib/expenseNotifications';
+import { PlannerDialog } from './components/PlannerDialog';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -151,6 +152,7 @@ export default function App() {
   // Estados para resumo do projeto e editor de imagens
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isProjectSummaryOpen, setIsProjectSummaryOpen] = useState(false);
+  const [isPlannerOpen, setIsPlannerOpen] = useState(false); // NOVO: Estado do Planner
   const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
   const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
   const [isUpdatingProject, setIsUpdatingProject] = useState(false);
@@ -2279,22 +2281,22 @@ useEffect(() => {
       Icon: DollarSign
     },
     {
+      id: 'invoice',
+      label: 'Invoice',
+      category: 'Invoice' as const,
+      Icon: FileText
+    },
+    {
+      id: 'estimate',
+      label: 'Estimate',
+      category: 'Estimate' as const,
+      Icon: CheckSquare
+    },
+    {
       id: 'receipts',
       label: 'Receipts',
       category: 'Expenses' as const,
       Icon: Receipt
-    },
-    {
-      id: 'note',
-      label: 'Note',
-      category: 'Expenses' as const,
-      Icon: Notebook
-    },
-    {
-      id: 'employee',
-      label: 'Employee',
-      category: 'Employees' as const,
-      Icon: Users
     },
     {
       id: 'stock',
@@ -2323,7 +2325,10 @@ useEffect(() => {
     }
   };
 
-  const handleQuickAddSelect = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => {
+  const handleQuickAddSelect = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' | 'Invoice' | 'Estimate') => {
+    if (category === 'Invoice' || category === 'Estimate') {
+      return; // Sem ação por enquanto
+    }
     openAddDialogForCategory(category);
   };
 
@@ -2426,6 +2431,7 @@ useEffect(() => {
               stockItems={stockItems}
               employees={employees}
               onNavigate={setActiveCategory}
+              onOpenPlanner={() => setIsPlannerOpen(true)}
               onItemClick={(item, type) => {
                 if (type === 'expense') {
                   setExpenseToView(item);
@@ -2433,10 +2439,30 @@ useEffect(() => {
                 } else if (type === 'project') {
                   setSelectedProject(item);
                   setIsProjectSummaryOpen(true);
+                } else if (type === 'stock') { // Adicionado suporte a estoque
+                    setItemToEdit(item);
+                    setIsEditDialogOpen(true);
+                } else if (type === 'employee') {
+                     // Implementar visualização de funcionário se necessário
                 }
               }}
             />
           )}
+          
+          <PlannerDialog 
+            isOpen={isPlannerOpen}
+            onClose={() => setIsPlannerOpen(false)}
+            projects={projects}
+            expenses={expenses}
+            onProjectClick={(project) => {
+              setSelectedProject(project);
+              setIsProjectSummaryOpen(true);
+            }}
+            onExpenseClick={(expense) => {
+              setExpenseToView(expense);
+              setIsExpenseDetailOpen(true);
+            }}
+          />
 
           {(activeCategory === 'Expenses') && (
             <div className="sticky top-[210px] left-0 right-0 px-4 z-30 bg-transparent">
