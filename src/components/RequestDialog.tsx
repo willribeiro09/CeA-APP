@@ -14,6 +14,7 @@ async function sendTelegramNotification(requestData: {
   total_value: number;
   status: string;
   created_at: string;
+  isEdit?: boolean; // Indica se é uma edição
 }) {
   try {
     const response = await fetch(
@@ -37,12 +38,31 @@ async function sendTelegramNotification(requestData: {
   }
 }
 
+interface RequestData {
+  id: string;
+  type: 'invoice' | 'estimate';
+  customer_name: string;
+  customer_phone: string;
+  address: string;
+  work_items: Array<{
+    workType: string;
+    color: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>;
+  total_value: number;
+  status: string;
+  created_at: string;
+}
+
 interface RequestDialogProps {
   isOpen: boolean;
   onClose: () => void;
   type: 'invoice' | 'estimate';
   projects: Project[];
   onSuccess: () => void;
+  editingRequest?: RequestData | null; // Request para edição
 }
 
 interface WorkItem {
@@ -69,7 +89,7 @@ const WORK_TYPES = [
 
 const COLORS = ['White', 'Black', 'Bronze', 'Other'];
 
-export function RequestDialog({ isOpen, onClose, type, projects, onSuccess }: RequestDialogProps) {
+export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, editingRequest }: RequestDialogProps) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -191,26 +211,45 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess }: Re
       }));
 
       const requestPayload = {
-        type,
+        type: editingRequest ? editingRequest.type : type,
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
         address: address.trim(),
         work_items: workItemsData,
         total_value: totalValue,
-        status: 'Pending'
+        status: editingRequest ? editingRequest.status : 'Pending'
       };
 
-      const { error } = await supabase
-        .from('requests')
-        .insert(requestPayload);
+      if (editingRequest) {
+        // Update existing request
+        const { error } = await supabase
+          .from('requests')
+          .update(requestPayload)
+          .eq('id', editingRequest.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Enviar notificação ao Telegram (não bloqueia o fluxo)
-      sendTelegramNotification({
-        ...requestPayload,
-        created_at: new Date().toISOString()
-      });
+        // Enviar notificação ao Telegram quando editar (não bloqueia o fluxo)
+        sendTelegramNotification({
+          ...requestPayload,
+          created_at: editingRequest.created_at,
+          isEdit: true
+        });
+      } else {
+        // Insert new request
+        const { error } = await supabase
+          .from('requests')
+          .insert(requestPayload);
+
+        if (error) throw error;
+
+        // Enviar notificação ao Telegram para novos requests (não bloqueia o fluxo)
+        sendTelegramNotification({
+          ...requestPayload,
+          created_at: new Date().toISOString(),
+          isEdit: false
+        });
+      }
 
       // Reset form
       setCustomerName('');
@@ -235,9 +274,35 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess }: Re
     }
   };
 
-  // Reset form when dialog closes
+  // Preencher campos quando estiver editando ou resetar quando fechar
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen && editingRequest) {
+      // Modo edição: preencher com dados do request
+      setCustomerName(editingRequest.customer_name);
+      setCustomerPhone(editingRequest.customer_phone);
+      setAddress(editingRequest.address);
+      
+      // Converter work_items para o formato do componente
+      if (editingRequest.work_items && editingRequest.work_items.length > 0) {
+        const convertedItems: WorkItem[] = editingRequest.work_items.map((item, index) => {
+          const workType = item.workType || '';
+          const color = item.color || '';
+          
+          return {
+            id: (index + 1).toString(),
+            workType: WORK_TYPES.includes(workType) ? workType : 'Other',
+            customWorkType: WORK_TYPES.includes(workType) ? undefined : workType,
+            color: COLORS.includes(color) ? color : 'Other',
+            customColor: COLORS.includes(color) ? undefined : color,
+            quantity: item.quantity || 0,
+            unitPrice: item.unitPrice || 0,
+            total: item.total || 0
+          };
+        });
+        setWorkItems(convertedItems);
+      }
+    } else if (!isOpen) {
+      // Reset form quando fechar
       setCustomerName('');
       setCustomerPhone('');
       setAddress('');
@@ -250,7 +315,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess }: Re
         total: 0
       }]);
     }
-  }, [isOpen]);
+  }, [isOpen, editingRequest]);
 
   const isStep1Complete = customerName.trim() && customerPhone.trim() && address.trim();
 
@@ -262,7 +327,10 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess }: Re
           {/* Header */}
           <div className="bg-blue-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
             <h2 className="text-lg font-semibold text-white">
-              {type === 'invoice' ? 'Invoice' : 'Estimate'}
+              {editingRequest 
+                ? `Edit ${editingRequest.type === 'invoice' ? 'Invoice' : 'Estimate'}`
+                : (type === 'invoice' ? 'Invoice' : 'Estimate')
+              }
             </h2>
             <Dialog.Close asChild>
               <button className="p-1.5 rounded-full hover:bg-blue-700 transition-colors">
@@ -500,7 +568,10 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess }: Re
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit'}
+              {isSubmitting 
+                ? (editingRequest ? 'Updating...' : 'Submitting...') 
+                : (editingRequest ? 'Update' : 'Submit')
+              }
             </button>
           </div>
         </Dialog.Content>

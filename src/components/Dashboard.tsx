@@ -8,6 +8,7 @@ import { ptBR } from 'date-fns/locale';
 import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin, Receipt as ReceiptIcon } from 'lucide-react';
 import { isRecurringExpense, getRecurrenceType } from '../lib/recurringUtils';
 import { buildCardExpensesFromCA } from '../lib/expenseCardUtils';
+import { RequestSummaryDialog } from './RequestSummaryDialog';
 
 interface Request {
   id: string;
@@ -31,6 +32,7 @@ interface DashboardProps {
   onItemClick: (item: any, type: 'expense' | 'project' | 'stock' | 'employee') => void;
   onOpenPlanner?: () => void;
   refreshRequests?: number; // Timestamp para forçar refresh
+  onEditRequest?: (request: Request) => void; // Callback para editar request
 }
 
 // Interface de Notificação comentada - não usado mais
@@ -51,7 +53,8 @@ export function Dashboard({
   onNavigate,
   onItemClick,
   onOpenPlanner,
-  refreshRequests
+  refreshRequests,
+  onEditRequest
 }: DashboardProps) {
   
   // NOTIFICAÇÕES DESABILITADAS - Não aparecem mais na lista Recent (apenas ações reais dos usuários)
@@ -62,6 +65,8 @@ export function Dashboard({
 
   const [recentTab, setRecentTab] = useState<'Recent' | 'Requests' | 'Receipts' | 'Stock'>('Recent');
   const [requests, setRequests] = useState<Request[]>([]);
+  const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
+  const [isRequestSummaryOpen, setIsRequestSummaryOpen] = useState(false);
 
   // Calcular eventos de hoje para o Card Planner
   const todayEventsCount = useMemo(() => {
@@ -165,6 +170,31 @@ export function Dashboard({
       setRecentTab('Requests'); // Mudar para aba Requests automaticamente
     }
   }, [refreshRequests]);
+
+  // Função para editar request
+  const handleEditRequest = (request: Request) => {
+    if (onEditRequest) {
+      onEditRequest(request);
+    }
+  };
+
+  // Função para deletar request (marcar como sent)
+  const handleSentRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .delete()
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      // Recarregar lista
+      loadRequests();
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      alert('Failed to delete request. Please try again.');
+    }
+  };
   
   // Lista de despesas C&A: mostrar todas (nome, valor e data de vencimento)
   const overdueExpenses = useMemo(() => {
@@ -492,10 +522,10 @@ export function Dashboard({
       });
     });
 
-    // Remover duplicatas exatas de ID e ordenar
-    const unique = Array.from(new Map(activities.map(item => [item.id, item])).values());
-    return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 50);
-  }, [projects, employees, expenses]);
+  // Remover duplicatas exatas de ID e ordenar
+  const unique = Array.from(new Map(activities.map(item => [item.id, item])).values());
+  return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 50);
+}, [projects, employees, expenses]);
 
   // (Projetos não possuem mais slideshow no card)
 
@@ -656,11 +686,11 @@ export function Dashboard({
                         <div className="text-lg font-extrabold text-red-600 mt-0.5">
                           ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>
-                        {expense.date && (
-                          <div className="text-[10px] text-gray-600 mt-1">
-                            Due: {format(new Date(expense.date), 'MMM d', { locale: ptBR })}
-                          </div>
-                        )}
+                      {expense.date && (
+                        <div className="text-[10px] text-gray-600 mt-1">
+                          Due Day: {format(new Date(expense.date), 'd', { locale: ptBR })}
+                        </div>
+                      )}
                       </div>
                     </div>
                   ))}
@@ -732,7 +762,10 @@ export function Dashboard({
           <div className="absolute -right-3 -bottom-3 opacity-5 text-green-500">
             <Calendar className="w-28 h-28" />
           </div>
-          <div className="absolute top-1 right-3 text-[40px] text-gray-900" style={{ fontFamily: 'Arial, sans-serif', fontWeight: 400 }}>
+          <div
+            className="absolute right-3 text-[40px] text-gray-900"
+            style={{ fontFamily: 'Arial, sans-serif', fontWeight: 400, top: '-1px' }}
+          >
             {format(new Date(), 'd')}
           </div>
           
@@ -743,7 +776,7 @@ export function Dashboard({
               </div>
               <div>
                 <div className="text-xs text-gray-800 font-semibold tracking-wide">Planner</div>
-                <div className="text-sm text-gray-900 font-bold">{format(new Date(), 'MMMM')}</div>
+                <div className="text-sm text-gray-900 font-normal">{format(new Date(), 'MMMM')}</div>
               </div>
             </div>
             <div className="flex-1 flex items-center">
@@ -777,7 +810,7 @@ export function Dashboard({
                 <button
                   key={tab}
                   onClick={() => setRecentTab(tab as 'Recent' | 'Requests' | 'Receipts' | 'Stock')}
-                  className={`relative px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
+                  className={`relative px-3 py-1 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${
                     recentTab === tab
                       ? 'text-[#073863]'
                       : 'text-gray-500 hover:text-gray-800'
@@ -925,6 +958,10 @@ export function Dashboard({
                     return (
                       <div 
                         key={request.id}
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setIsRequestSummaryOpen(true);
+                        }}
                         className="relative px-3 py-2.5 hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100 flex items-center gap-3"
                       >
                         <div className="flex-shrink-0">
@@ -939,20 +976,12 @@ export function Dashboard({
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          {/* Tipo (Invoice/Estimate) */}
-                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                            request.type === 'invoice' 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {request.type === 'invoice' ? 'Invoice' : 'Estimate'}
-                          </span>
                           {/* Nome do cliente */}
-                          <h4 className="text-sm font-semibold text-gray-900 leading-tight mt-1 truncate">
+                          <h4 className="text-xs font-semibold text-gray-900 leading-tight truncate">
                             {request.customer_name}
                           </h4>
                           {/* Endereço */}
-                          <p className="text-xs text-gray-600 leading-tight truncate">
+                          <p className="text-xs text-gray-600 leading-tight truncate mt-0.5">
                             {request.address}
                           </p>
                         </div>
@@ -961,9 +990,16 @@ export function Dashboard({
                           <span className="text-sm font-bold text-green-600">
                             ${request.total_value.toFixed(2)}
                           </span>
-                          {/* Status */}
-                          <div className="mt-1">
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          {/* Tipo e Status lado a lado */}
+                          <div className="flex items-center gap-1 mt-1 justify-end">
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                              request.type === 'invoice' 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {request.type === 'invoice' ? 'Invoice' : 'Estimate'}
+                            </span>
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
                               request.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
                               request.status === 'Approved' ? 'bg-green-100 text-green-700' :
                               request.status === 'Completed' ? 'bg-blue-100 text-blue-700' :
@@ -997,6 +1033,18 @@ export function Dashboard({
           </div>
         </div>
       </div>
+
+      {/* Request Summary Dialog */}
+      <RequestSummaryDialog
+        isOpen={isRequestSummaryOpen}
+        onClose={() => {
+          setIsRequestSummaryOpen(false);
+          setSelectedRequest(null);
+        }}
+        request={selectedRequest}
+        onEdit={handleEditRequest}
+        onSent={handleSentRequest}
+      />
     </div>
   );
 }

@@ -156,6 +156,7 @@ export default function App() {
   const [isPlannerOpen, setIsPlannerOpen] = useState(false); // NOVO: Estado do Planner
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [requestType, setRequestType] = useState<'invoice' | 'estimate'>('invoice');
+  const [editingRequest, setEditingRequest] = useState<any>(null);
   const [refreshRequestsTimestamp, setRefreshRequestsTimestamp] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
   const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
@@ -2332,11 +2333,18 @@ useEffect(() => {
   const handleQuickAddSelect = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' | 'Invoice' | 'Estimate') => {
     if (category === 'Invoice' || category === 'Estimate') {
       setRequestType(category.toLowerCase() as 'invoice' | 'estimate');
+      setEditingRequest(null); // Reset editing request
       setIsRequestDialogOpen(true);
       setIsQuickAddMenuOpen(false);
       return;
     }
     openAddDialogForCategory(category);
+  };
+
+  const handleEditRequest = (request: any) => {
+    setEditingRequest(request);
+    setRequestType(request.type);
+    setIsRequestDialogOpen(true);
   };
 
   // Se não estiver logado, mostrar tela de login
@@ -2440,6 +2448,7 @@ useEffect(() => {
               onNavigate={setActiveCategory}
               onOpenPlanner={() => setIsPlannerOpen(true)}
               refreshRequests={refreshRequestsTimestamp}
+              onEditRequest={handleEditRequest}
               onItemClick={(item, type) => {
                 if (type === 'expense') {
                   setExpenseToView(item);
@@ -2474,12 +2483,17 @@ useEffect(() => {
 
           <RequestDialog
             isOpen={isRequestDialogOpen}
-            onClose={() => setIsRequestDialogOpen(false)}
+            onClose={() => {
+              setIsRequestDialogOpen(false);
+              setEditingRequest(null);
+            }}
             type={requestType}
             projects={projects}
+            editingRequest={editingRequest}
             onSuccess={() => {
               // Forçar refresh imediato da lista de requests
               setRefreshRequestsTimestamp(Date.now());
+              setEditingRequest(null);
             }}
           />
 
