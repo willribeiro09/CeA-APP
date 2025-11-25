@@ -55,6 +55,7 @@ import { isMobileDevice, isPwaInstalled, isIOSDevice, getEnvironmentInfo } from 
 import { initializeNotifications, setupForegroundNotificationListener } from './lib/notificationService';
 import { notifyProjectStatusChange, notifyNewProject } from './lib/expenseNotifications';
 import { PlannerDialog } from './components/PlannerDialog';
+import { RequestDialog } from './components/RequestDialog';
 
 type ListName = 'Carlos' | 'Diego' | 'C&A';
 
@@ -153,6 +154,9 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isProjectSummaryOpen, setIsProjectSummaryOpen] = useState(false);
   const [isPlannerOpen, setIsPlannerOpen] = useState(false); // NOVO: Estado do Planner
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [requestType, setRequestType] = useState<'invoice' | 'estimate'>('invoice');
+  const [refreshRequestsTimestamp, setRefreshRequestsTimestamp] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
   const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
   const [isUpdatingProject, setIsUpdatingProject] = useState(false);
@@ -2327,7 +2331,10 @@ useEffect(() => {
 
   const handleQuickAddSelect = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' | 'Invoice' | 'Estimate') => {
     if (category === 'Invoice' || category === 'Estimate') {
-      return; // Sem ação por enquanto
+      setRequestType(category.toLowerCase() as 'invoice' | 'estimate');
+      setIsRequestDialogOpen(true);
+      setIsQuickAddMenuOpen(false);
+      return;
     }
     openAddDialogForCategory(category);
   };
@@ -2432,6 +2439,7 @@ useEffect(() => {
               employees={employees}
               onNavigate={setActiveCategory}
               onOpenPlanner={() => setIsPlannerOpen(true)}
+              refreshRequests={refreshRequestsTimestamp}
               onItemClick={(item, type) => {
                 if (type === 'expense') {
                   setExpenseToView(item);
@@ -2461,6 +2469,17 @@ useEffect(() => {
             onExpenseClick={(expense) => {
               setExpenseToView(expense);
               setIsExpenseDetailOpen(true);
+            }}
+          />
+
+          <RequestDialog
+            isOpen={isRequestDialogOpen}
+            onClose={() => setIsRequestDialogOpen(false)}
+            type={requestType}
+            projects={projects}
+            onSuccess={() => {
+              // Forçar refresh imediato da lista de requests
+              setRefreshRequestsTimestamp(Date.now());
             }}
           />
 

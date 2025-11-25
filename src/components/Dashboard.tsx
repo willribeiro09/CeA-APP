@@ -5,9 +5,22 @@ import { supabase } from '../lib/supabase';
 import { getDeviceId } from '../lib/deviceUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin } from 'lucide-react';
+import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin, Receipt as ReceiptIcon } from 'lucide-react';
 import { isRecurringExpense, getRecurrenceType } from '../lib/recurringUtils';
 import { buildCardExpensesFromCA } from '../lib/expenseCardUtils';
+
+interface Request {
+  id: string;
+  type: 'invoice' | 'estimate';
+  customer_name: string;
+  customer_phone: string;
+  address: string;
+  work_items: any[];
+  total_value: number;
+  status: string;
+  created_at: string;
+  created_by?: string;
+}
 
 interface DashboardProps {
   expenses: Record<string, Expense[]>;
@@ -17,6 +30,7 @@ interface DashboardProps {
   onNavigate: (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => void;
   onItemClick: (item: any, type: 'expense' | 'project' | 'stock' | 'employee') => void;
   onOpenPlanner?: () => void;
+  refreshRequests?: number; // Timestamp para forçar refresh
 }
 
 // Interface de Notificação comentada - não usado mais
@@ -36,7 +50,8 @@ export function Dashboard({
   employees,
   onNavigate,
   onItemClick,
-  onOpenPlanner
+  onOpenPlanner,
+  refreshRequests
 }: DashboardProps) {
   
   // NOTIFICAÇÕES DESABILITADAS - Não aparecem mais na lista Recent (apenas ações reais dos usuários)
@@ -46,6 +61,7 @@ export function Dashboard({
   const [expenseSlideIndex, setExpenseSlideIndex] = useState(0);
 
   const [recentTab, setRecentTab] = useState<'Recent' | 'Requests' | 'Receipts' | 'Stock'>('Recent');
+  const [requests, setRequests] = useState<Request[]>([]);
 
   // Calcular eventos de hoje para o Card Planner
   const todayEventsCount = useMemo(() => {
@@ -103,6 +119,52 @@ export function Dashboard({
   //     supabase.removeChannel(channel);
   //   };
   // }, []);
+  
+  // Função para carregar requests
+  const loadRequests = async () => {
+    const { data, error } = await supabase
+      .from('requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!error && data) {
+      setRequests(data);
+    }
+  };
+
+  // Carregar requests do Supabase
+  useEffect(() => {
+    loadRequests();
+
+    // Subscrever a mudanças em tempo real
+    const channel = supabase
+      .channel('requests-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'requests'
+        },
+        () => {
+          loadRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Recarregar quando refreshRequests mudar
+  useEffect(() => {
+    if (refreshRequests) {
+      loadRequests();
+      setRecentTab('Requests'); // Mudar para aba Requests automaticamente
+    }
+  }, [refreshRequests]);
   
   // Lista de despesas C&A: mostrar todas (nome, valor e data de vencimento)
   const overdueExpenses = useMemo(() => {
@@ -855,10 +917,81 @@ export function Dashboard({
                   <p className="text-xs">No items in inventory</p>
                 </div>
               )
+            ) : recentTab === 'Requests' ? (
+              // Lista de Requests (Invoice e Estimate)
+              requests.length > 0 ? (
+                <div>
+                  {requests.map((request) => {
+                    return (
+                      <div 
+                        key={request.id}
+                        className="relative px-3 py-2.5 hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100 flex items-center gap-3"
+                      >
+                        <div className="flex-shrink-0">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                            request.type === 'invoice' 
+                              ? 'bg-gradient-to-br from-green-50 to-green-100' 
+                              : 'bg-gradient-to-br from-blue-50 to-blue-100'
+                          }`}>
+                            <FileText className={`w-5 h-5 ${
+                              request.type === 'invoice' ? 'text-green-600' : 'text-blue-600'
+                            }`} />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {/* Tipo (Invoice/Estimate) */}
+                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                            request.type === 'invoice' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {request.type === 'invoice' ? 'Invoice' : 'Estimate'}
+                          </span>
+                          {/* Nome do cliente */}
+                          <h4 className="text-sm font-semibold text-gray-900 leading-tight mt-1 truncate">
+                            {request.customer_name}
+                          </h4>
+                          {/* Endereço */}
+                          <p className="text-xs text-gray-600 leading-tight truncate">
+                            {request.address}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0 text-right">
+                          {/* Valor */}
+                          <span className="text-sm font-bold text-green-600">
+                            ${request.total_value.toFixed(2)}
+                          </span>
+                          {/* Status */}
+                          <div className="mt-1">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                              request.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                              request.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                              request.status === 'Completed' ? 'bg-blue-100 text-blue-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {request.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
+                    <FileText className="w-6 h-6 text-gray-300" />
+                  </div>
+                  <p className="text-xs">No requests yet</p>
+                </div>
+              )
             ) : (
-              // Placeholder para Requests e Receipts
+              // Placeholder para Receipts
               <div className="flex flex-col items-center justify-center h-32 text-gray-400">
-                <p className="text-xs">Content coming soon...</p>
+                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
+                  <ReceiptIcon className="w-6 h-6 text-gray-300" />
+                </div>
+                <p className="text-xs">Receipts coming soon...</p>
               </div>
             )}
           </div>
