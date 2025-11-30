@@ -41,7 +41,7 @@ export function RequestSummaryDialog({
   if (!request) return null;
 
   const handleSent = () => {
-    if (confirm('Are you sure you want to mark this request as sent and delete it?')) {
+    if (confirm('Are you sure you want to delete this request?')) {
       onSent(request.id);
       onClose();
     }
@@ -144,7 +144,7 @@ export function RequestSummaryDialog({
               className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
             >
               <Check className="w-4 h-4" />
-              Sent
+              Delete
             </button>
           </div>
         </Dialog.Content>

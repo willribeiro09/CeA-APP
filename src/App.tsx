@@ -435,11 +435,7 @@ useEffect(() => {
     setWeekTotalValue(total);
   }, [projects, selectedWeekStart, selectedWeekEnd, selectedMonthStart, selectedMonthEnd, selectedClient]);
 
-  useEffect(() => {
-    if (activeCategory !== 'Home' && isQuickAddMenuOpen) {
-      setIsQuickAddMenuOpen(false);
-    }
-  }, [activeCategory, isQuickAddMenuOpen]);
+  // Removido: menu agora funciona em todos os menus
 
   // Função para salvar alterações
   const saveChanges = async (newData: StorageItems) => {
@@ -2267,7 +2263,7 @@ useEffect(() => {
   const mainPaddingBottomClass =
     activeCategory === 'Home' ? 'pb-28' : 'pb-32';
 
-  const showQuickAddMenu = isQuickAddMenuOpen ? activeCategory === 'Home' : false;
+  const showQuickAddMenu = isQuickAddMenuOpen;
   const needsWeekStart = addDialogCategory === 'Projects' || addDialogCategory === 'Employees';
   const addDialogWeekStart = needsWeekStart ? selectedWeekStart : undefined;
   const addDialogClient = addDialogCategory === 'Projects' ? selectedClient : undefined;
@@ -2321,13 +2317,8 @@ useEffect(() => {
     if (isBackgroundSyncing) {
       return;
     }
-    if (activeCategory === 'Home') {
-      setIsQuickAddMenuOpen(!isQuickAddMenuOpen);
-      return;
-    }
-    if (activeCategory === 'Projects' || activeCategory === 'Expenses' || activeCategory === 'Stock' || activeCategory === 'Employees') {
-      openAddDialogForCategory(activeCategory);
-    }
+    // Sempre abre/fecha o menu, independente do menu atual
+    setIsQuickAddMenuOpen(!isQuickAddMenuOpen);
   };
 
   const handleQuickAddSelect = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' | 'Invoice' | 'Estimate') => {
@@ -2438,32 +2429,39 @@ useEffect(() => {
         {/* Notificações de conflito */}
         <ConflictNotification />
         
-        <div className="relative z-10 pt-[100px] pb-20">
+        <div className="relative z-10 pt-[100px] pb-20 pointer-events-none">
           {activeCategory === 'Home' && (
-            <Dashboard
-              expenses={expenses}
-              projects={projects}
-              stockItems={stockItems}
-              employees={employees}
-              onNavigate={setActiveCategory}
-              onOpenPlanner={() => setIsPlannerOpen(true)}
-              refreshRequests={refreshRequestsTimestamp}
-              onEditRequest={handleEditRequest}
-              onItemClick={(item, type) => {
-                if (type === 'expense') {
-                  setExpenseToView(item);
-                  setIsExpenseDetailOpen(true);
-                } else if (type === 'project') {
-                  setSelectedProject(item);
-                  setIsProjectSummaryOpen(true);
-                } else if (type === 'stock') { // Adicionado suporte a estoque
-                    setItemToEdit(item);
-                    setIsEditDialogOpen(true);
-                } else if (type === 'employee') {
-                     // Implementar visualização de funcionário se necessário
-                }
-              }}
-            />
+            <div className="pointer-events-auto">
+              <Dashboard
+                expenses={expenses}
+                projects={projects}
+                stockItems={stockItems}
+                employees={employees}
+                onNavigate={setActiveCategory}
+                onOpenPlanner={() => setIsPlannerOpen(true)}
+                refreshRequests={refreshRequestsTimestamp}
+                onEditRequest={handleEditRequest}
+                onOpenRequestDialog={(type) => {
+                  setRequestType(type);
+                  setEditingRequest(null);
+                  setIsRequestDialogOpen(true);
+                }}
+                onItemClick={(item, type) => {
+                  if (type === 'expense') {
+                    setExpenseToView(item);
+                    setIsExpenseDetailOpen(true);
+                  } else if (type === 'project') {
+                    setSelectedProject(item);
+                    setIsProjectSummaryOpen(true);
+                  } else if (type === 'stock') { // Adicionado suporte a estoque
+                      setItemToEdit(item);
+                      setIsEditDialogOpen(true);
+                  } else if (type === 'employee') {
+                       // Implementar visualização de funcionário se necessário
+                  }
+                }}
+              />
+            </div>
           )}
           
           <PlannerDialog 
@@ -2498,7 +2496,7 @@ useEffect(() => {
           />
 
           {(activeCategory === 'Expenses') && (
-            <div className="sticky top-[210px] left-0 right-0 px-4 z-30 bg-transparent">
+            <div className="sticky top-[210px] left-0 right-0 px-4 z-30 bg-transparent pointer-events-auto">
               <div className="relative max-w-[800px] mx-auto pb-2 bg-transparent">
                 <button
                   onClick={isBackgroundSyncing ? () => {} : () => setIsDropdownOpen(!isDropdownOpen)}
@@ -2548,7 +2546,7 @@ useEffect(() => {
           )}
           
           {(activeCategory === 'Projects') && (
-            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent mb-3">
+            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent mb-3 pointer-events-auto">
               <div className="relative max-w-[800px] mx-auto pb-2 bg-transparent">
                 <div className="w-full px-2 py-2 bg-transparent border border-transparent rounded-lg shadow-sm">
                   <div className="flex items-center justify-between py-0 text-white">
@@ -2578,13 +2576,13 @@ useEffect(() => {
           )}
           
           {(activeCategory === 'Stock') && (
-            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent">
+            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent pointer-events-auto">
               {/* Conteúdo do Stock */}
             </div>
           )}
           
           {(activeCategory === 'Employees') && (
-            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent mb-3">
+            <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent mb-3 pointer-events-auto">
               <div className="relative max-w-[800px] mx-auto pb-2 bg-transparent">
                 <div className="w-full px-2 py-2 bg-transparent border border-transparent rounded-lg shadow-sm flex items-center justify-between text-white">
                   <WeekSelector 

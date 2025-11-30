@@ -74,6 +74,7 @@ interface WorkItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  isConfirmed?: boolean; // Indica que o item foi confirmado e deve aparecer como compacto
 }
 
 const WORK_TYPES = [
@@ -100,7 +101,8 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
       color: 'White',
       quantity: 0,
       unitPrice: 0,
-      total: 0
+      total: 0,
+      isConfirmed: false
     }
   ]);
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
@@ -139,6 +141,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
   };
 
   const addWorkItem = () => {
+    // Criar um novo item editável
     setWorkItems([
       ...workItems,
       {
@@ -147,9 +150,42 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
         color: 'White',
         quantity: 0,
         unitPrice: 0,
-        total: 0
+        total: 0,
+        isConfirmed: false
       }
     ]);
+  };
+
+  const confirmWorkItem = () => {
+    // Encontrar o último item não confirmado (editável)
+    const unconfirmedItems = workItems.filter(item => !item.isConfirmed);
+    if (unconfirmedItems.length === 0) return;
+    
+    const lastUnconfirmedItem = unconfirmedItems[unconfirmedItems.length - 1];
+    
+    // Validar se o item está preenchido
+    if (!lastUnconfirmedItem.workType || lastUnconfirmedItem.quantity <= 0 || lastUnconfirmedItem.unitPrice <= 0) {
+      alert('Please fill in all required fields (Work Type, Quantity, and Unit Price)');
+      return;
+    }
+    
+    // Se o workType ou color for "Other", validar campos customizados
+    if (lastUnconfirmedItem.workType === 'Other' && !lastUnconfirmedItem.customWorkType?.trim()) {
+      alert('Please specify the custom work type');
+      return;
+    }
+    
+    if (lastUnconfirmedItem.color === 'Other' && !lastUnconfirmedItem.customColor?.trim()) {
+      alert('Please specify the custom color');
+      return;
+    }
+    
+    // Marcar o item como confirmado (não cria novo item)
+    setWorkItems(workItems.map(item => 
+      item.id === lastUnconfirmedItem.id 
+        ? { ...item, isConfirmed: true }
+        : item
+    ));
   };
 
   const removeWorkItem = (id: string) => {
@@ -261,7 +297,8 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
         color: 'White',
         quantity: 0,
         unitPrice: 0,
-        total: 0
+        total: 0,
+        isConfirmed: false
       }]);
 
       onSuccess();
@@ -296,7 +333,8 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
             customColor: COLORS.includes(color) ? undefined : color,
             quantity: item.quantity || 0,
             unitPrice: item.unitPrice || 0,
-            total: item.total || 0
+            total: item.total || 0,
+            isConfirmed: true // Itens editados já estão confirmados
           };
         });
         setWorkItems(convertedItems);
@@ -312,7 +350,8 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
         color: 'White',
         quantity: 0,
         unitPrice: 0,
-        total: 0
+        total: 0,
+        isPending: false
       }]);
     }
   }, [isOpen, editingRequest]);
@@ -325,15 +364,15 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
         <Dialog.Content className="fixed inset-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-2xl w-full h-full md:h-[90vh] bg-white md:rounded-2xl shadow-lg flex flex-col z-50 overflow-hidden">
           {/* Header */}
-          <div className="bg-blue-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
-            <h2 className="text-lg font-semibold text-white">
+          <div className="bg-[#073863] px-4 py-3 flex items-center justify-between flex-shrink-0">
+            <h2 className="text-xl font-semibold text-white">
               {editingRequest 
                 ? `Edit ${editingRequest.type === 'invoice' ? 'Invoice' : 'Estimate'}`
                 : (type === 'invoice' ? 'Invoice' : 'Estimate')
               }
             </h2>
             <Dialog.Close asChild>
-              <button className="p-1.5 rounded-full hover:bg-blue-700 transition-colors">
+              <button className="p-1.5 rounded-full hover:bg-[#052a4a] transition-colors">
                 <X className="w-5 h-5 text-white" />
               </button>
             </Dialog.Close>
@@ -418,12 +457,16 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
                 
                 <div className="space-y-2">
                   {workItems.map((item, index) => {
-                    const isLastItem = index === workItems.length - 1;
                     const displayWorkType = item.workType === 'Other' ? item.customWorkType || 'Other' : item.workType;
                     const displayColor = item.color === 'Other' ? item.customColor || 'Other' : item.color;
                     
-                    // Itens anteriores: mostrar resumo compacto
-                    if (!isLastItem) {
+                    // Encontrar o último item não confirmado
+                    const unconfirmedItems = workItems.filter(i => !i.isConfirmed);
+                    const lastUnconfirmedItem = unconfirmedItems.length > 0 ? unconfirmedItems[unconfirmedItems.length - 1] : null;
+                    const isEditableItem = lastUnconfirmedItem && item.id === lastUnconfirmedItem.id;
+                    
+                    // Itens confirmados ou não confirmados que não são o último: mostrar resumo compacto
+                    if (item.isConfirmed || !isEditableItem) {
                       return (
                         <div key={item.id} className="p-2 border border-gray-200 rounded-lg bg-white flex items-center justify-between">
                           <div className="flex-1 min-w-0">
@@ -441,7 +484,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
                       );
                     }
                     
-                    // Último item: mostrar formulário editável
+                    // Último item não confirmado (editável): mostrar formulário editável
                     return (
                       <div key={item.id} className="p-3 border border-gray-300 rounded-lg bg-gray-50">
                         <div className="flex items-center justify-between mb-2">
@@ -539,18 +582,28 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
                             />
                           </div>
                         </div>
+                        
+                        {/* OK, Next Button - aparece abaixo do item editável */}
+                        <button
+                          onClick={confirmWorkItem}
+                          className="w-full mt-3 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+                        >
+                          OK, Next
+                        </button>
                       </div>
                     );
                   })}
 
-                  {/* Add Work Item Button */}
-                  <button
-                    onClick={addWorkItem}
-                    className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add New Work Item
-                  </button>
+                  {/* Add Work Item Button - aparece apenas quando não há item editável (todos estão confirmados) */}
+                  {!workItems.some(item => !item.isConfirmed) && (
+                    <button
+                      onClick={addWorkItem}
+                      className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add New Work Item
+                    </button>
+                  )}
                 </div>
             </div>
           </div>
@@ -566,7 +619,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting 
                 ? (editingRequest ? 'Updating...' : 'Submitting...') 

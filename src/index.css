@@ -8,6 +8,11 @@
     height: 100%; /* Garantir que o html tenha altura completa */
     overflow: hidden; /* Impedir rolagem global da página */
     position: relative; /* Criar contexto de posicionamento */
+    touch-action: manipulation; /* Previne zoom com gestos de pinch */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   
   /* Garantir que a árvore raiz ocupe a tela inteira (experiência de app) */
@@ -97,6 +102,23 @@ input[type="time"],
 input[type="week"] {
   position: relative;
   z-index: 10;
+}
+
+/* Prevenir zoom em inputs em dispositivos móveis */
+input,
+textarea,
+select {
+  font-size: 16px !important; /* Tamanho mínimo para prevenir zoom automático no iOS */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Prevenir zoom em touch events */
+* {
+  touch-action: manipulation; /* Previne zoom com gestos de pinch */
+  -webkit-tap-highlight-color: transparent; /* Remove highlight ao tocar */
 }
 
 /* Estilos para botões flutuantes e espaçamento da lista */

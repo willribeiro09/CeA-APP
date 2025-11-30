@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin, DollarSign, CheckCircle, Clock, Plus, Home, AlertCircle } from 'lucide-react';
 import { 
@@ -55,6 +55,22 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventTime, setNewEventTime] = useState('09:00');
 
+  // Estados para swipe/arrastar
+  const [dragStart, setDragStart] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Função auxiliar para normalizar datas (evitar problemas de timezone)
+  const normalizeDate = (dateString: string): Date => {
+    // Se a string já inclui timezone, usar parseISO
+    if (dateString.includes('T') || dateString.includes('Z') || dateString.includes('+')) {
+      return parseISO(dateString);
+    }
+    // Se for apenas data (YYYY-MM-DD), criar como data local (não UTC)
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   // Unificar todos os eventos
   const events = useMemo(() => {
     const allEvents: CalendarEvent[] = [...customEvents];
@@ -64,7 +80,7 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
       if (project.startDate) {
         allEvents.push({
           id: `proj-${project.id}`,
-          date: new Date(project.startDate),
+          date: normalizeDate(project.startDate),
           type: 'project',
           title: project.client || project.name,
           description: project.name,
@@ -81,7 +97,7 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
         const isPaid = expense.is_paid || expense.paid || false;
         allEvents.push({
           id: `exp-${expense.id}`,
-          date: new Date(expense.date),
+          date: normalizeDate(expense.date),
           type: 'expense',
           title: expense.description,
           amount: expense.amount,
@@ -116,6 +132,103 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
 
   const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
+
+  // Handlers para swipe/arrastar
+  const handleDragStart = (clientX: number) => {
+    setDragStart(clientX);
+    setIsDragging(true);
+    setDragOffset(0);
+  };
+
+  const handleDragMove = (clientX: number) => {
+    if (dragStart === null) return;
+    const offset = clientX - dragStart;
+    setDragOffset(offset);
+  };
+
+  const handleDragEnd = () => {
+    if (dragStart === null) return;
+    
+    const threshold = 50; // Distância mínima para mudar de mês
+    const offset = dragOffset;
+    
+    if (Math.abs(offset) > threshold) {
+      if (offset > 0) {
+        // Arrastou para a direita -> mês anterior
+        handlePrevMonth();
+      } else {
+        // Arrastou para a esquerda -> próximo mês
+        handleNextMonth();
+      }
+    }
+    
+    // Reset
+    setDragStart(null);
+    setIsDragging(false);
+    setDragOffset(0);
+  };
+
+  // Touch handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    handleDragStart(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (dragStart === null) return;
+    const currentX = e.touches[0].clientX;
+    const offset = currentX - dragStart;
+    
+    // Se o arrasto for principalmente horizontal, prevenir scroll
+    if (Math.abs(offset) > 10) {
+      e.preventDefault();
+    }
+    
+    handleDragMove(currentX);
+  };
+
+  const handleTouchEnd = () => {
+    handleDragEnd();
+  };
+
+  // Mouse handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    handleDragStart(e.clientX);
+  };
+
+  // Adicionar listeners globais para mouse quando estiver arrastando
+  useEffect(() => {
+    if (!isDragging || dragStart === null) return;
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      const offset = e.clientX - dragStart;
+      setDragOffset(offset);
+    };
+
+    const handleGlobalMouseUp = () => {
+      const threshold = 50;
+      const offset = dragOffset;
+      
+      if (Math.abs(offset) > threshold) {
+        if (offset > 0) {
+          handlePrevMonth();
+        } else {
+          handleNextMonth();
+        }
+      }
+      
+      setDragStart(null);
+      setIsDragging(false);
+      setDragOffset(0);
+    };
+
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDragging, dragStart, dragOffset]);
 
   const hasEvents = (date: Date) => {
     const dayEvents = events.filter(e => isSameDay(e.date, date));
@@ -167,41 +280,42 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
           
           {/* Header Gradient */}
           <div className="bg-gradient-to-b from-gray-50 to-white pb-4">
-            <div className="px-6 pt-6 pb-2 flex items-center justify-between">
-              <Dialog.Close asChild>
-                <button className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600">
-                  <X className="w-6 h-6" />
-                </button>
-              </Dialog.Close>
-              <h2 className="text-lg font-semibold text-gray-900">Calendar</h2>
-              <button 
-                onClick={() => setIsAddEventOpen(true)}
-                className="p-2 -mr-2 hover:bg-blue-50 text-[#073863] rounded-full transition-colors"
-              >
-                <Plus className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Month Navigation */}
-            <div className="px-6 flex items-center justify-between mb-6">
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  {format(currentMonth, 'yyyy')}
-                </span>
-                <div className="flex items-baseline gap-2">
+            {/* Month Navigation and Add Event Button */}
+            <div className="px-6 pt-6 pb-2 flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    {format(currentMonth, 'yyyy')}
+                  </span>
+                  <div className="flex items-baseline gap-2">
                     <h2 className="text-3xl font-bold text-gray-900 capitalize tracking-tight">
-                    {format(currentMonth, 'MMMM', { locale: enUS })}
+                      {format(currentMonth, 'MMMM', { locale: enUS })}
                     </h2>
+                    {/* Seletor discreto de meses */}
+                    <div className="flex gap-0.5">
+                      <button 
+                        onClick={handlePrevMonth} 
+                        className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-600"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={handleNextMonth} 
+                        className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-600"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-1 bg-gray-100 rounded-full p-1">
-                <button onClick={handlePrevMonth} className="p-1.5 hover:bg-white rounded-full transition-all shadow-sm hover:shadow text-gray-600">
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button onClick={handleNextMonth} className="p-1.5 hover:bg-white rounded-full transition-all shadow-sm hover:shadow text-gray-600">
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
+              <button 
+                onClick={() => setIsAddEventOpen(true)}
+                className="px-4 py-2 bg-[#5abb36] text-white rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm font-semibold active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                Add Event
+              </button>
             </div>
 
             {/* Week Days */}
@@ -215,7 +329,19 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
           </div>
 
           {/* Calendar Grid & Events */}
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div 
+            className="flex-1 overflow-y-auto px-6 pb-6 select-none"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
+            style={{
+              transform: isDragging ? `translateX(${dragOffset}px)` : 'translateX(0)',
+              transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+              cursor: isDragging ? 'grabbing' : 'grab',
+              touchAction: 'pan-y' // Permitir scroll vertical, mas capturar swipe horizontal
+            }}
+          >
             <div className="grid grid-cols-7 gap-y-3 mb-8">
               {calendarDays.map((date, index) => {
                 if (!date) return <div key={`empty-${index}`} />;

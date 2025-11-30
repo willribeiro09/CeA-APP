@@ -5,10 +5,11 @@ import { supabase } from '../lib/supabase';
 import { getDeviceId } from '../lib/deviceUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin, Receipt as ReceiptIcon } from 'lucide-react';
+import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin, Receipt as ReceiptIcon, CheckSquare, Camera, Trash2 } from 'lucide-react';
 import { isRecurringExpense, getRecurrenceType } from '../lib/recurringUtils';
 import { buildCardExpensesFromCA } from '../lib/expenseCardUtils';
 import { RequestSummaryDialog } from './RequestSummaryDialog';
+import { ReceiptScanner } from './ReceiptScanner';
 
 interface Request {
   id: string;
@@ -23,6 +24,15 @@ interface Request {
   created_by?: string;
 }
 
+interface Receipt {
+  id: string;
+  description: string;
+  amount: number;
+  photo_url: string;
+  filename?: string;
+  created_at: string;
+}
+
 interface DashboardProps {
   expenses: Record<string, Expense[]>;
   projects: Project[];
@@ -33,6 +43,7 @@ interface DashboardProps {
   onOpenPlanner?: () => void;
   refreshRequests?: number; // Timestamp para forçar refresh
   onEditRequest?: (request: Request) => void; // Callback para editar request
+  onOpenRequestDialog?: (type: 'invoice' | 'estimate') => void; // Callback para abrir RequestDialog
 }
 
 // Interface de Notificação comentada - não usado mais
@@ -54,7 +65,8 @@ export function Dashboard({
   onItemClick,
   onOpenPlanner,
   refreshRequests,
-  onEditRequest
+  onEditRequest,
+  onOpenRequestDialog
 }: DashboardProps) {
   
   // NOTIFICAÇÕES DESABILITADAS - Não aparecem mais na lista Recent (apenas ações reais dos usuários)
@@ -67,6 +79,11 @@ export function Dashboard({
   const [requests, setRequests] = useState<Request[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [isRequestSummaryOpen, setIsRequestSummaryOpen] = useState(false);
+  
+  // Estado para Receipts
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [isReceiptScannerOpen, setIsReceiptScannerOpen] = useState(false);
+  const [refreshReceiptsTimestamp, setRefreshReceiptsTimestamp] = useState(0);
 
   // Calcular eventos de hoje para o Card Planner
   const todayEventsCount = useMemo(() => {
@@ -138,6 +155,45 @@ export function Dashboard({
     }
   };
 
+  // Função para carregar receipts
+  const loadReceipts = async () => {
+    const { data, error } = await supabase
+      .from('receipts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!error && data) {
+      setReceipts(data);
+    }
+  };
+
+  // Função para deletar receipt
+  const handleDeleteReceipt = async (receiptId: string, filename?: string) => {
+    if (!confirm('Are you sure you want to delete this receipt?')) return;
+    
+    try {
+      // Deletar arquivo do storage se existir
+      if (filename) {
+        await supabase.storage.from('receipts').remove([filename]);
+      }
+      
+      // Deletar do banco
+      const { error } = await supabase
+        .from('receipts')
+        .delete()
+        .eq('id', receiptId);
+
+      if (error) throw error;
+      
+      // Recarregar lista
+      loadReceipts();
+    } catch (error) {
+      console.error('Error deleting receipt:', error);
+      alert('Failed to delete receipt. Please try again.');
+    }
+  };
+
   // Carregar requests do Supabase
   useEffect(() => {
     loadRequests();
@@ -162,6 +218,38 @@ export function Dashboard({
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Carregar receipts do Supabase
+  useEffect(() => {
+    loadReceipts();
+
+    // Subscrever a mudanças em tempo real
+    const channel = supabase
+      .channel('receipts-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'receipts'
+        },
+        () => {
+          loadReceipts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Recarregar receipts quando refreshReceiptsTimestamp mudar
+  useEffect(() => {
+    if (refreshReceiptsTimestamp) {
+      loadReceipts();
+    }
+  }, [refreshReceiptsTimestamp]);
 
   // Recarregar quando refreshRequests mudar
   useEffect(() => {
@@ -436,8 +524,13 @@ export function Dashboard({
 
     // 1. Projetos Recentes (Últimos 7 dias)
     projects.forEach(p => {
-      const date = p.lastModified ? new Date(p.lastModified) : new Date(p.startDate);
-      if (differenceInDays(now, date) <= 7) {
+      const date = p.lastModified ? new Date(p.lastModified) : (p.startDate ? new Date(p.startDate) : now);
+      const daysDiff = differenceInDays(now, date);
+      
+      // Incluir projetos modificados nos últimos 7 dias, OU projetos completos modificados nos últimos 14 dias
+      const shouldInclude = daysDiff <= 7 || (p.status === 'completed' && daysDiff <= 14);
+      
+      if (shouldInclude) {
         // Definir título baseado no status
         let title = 'Project Updated';
         if (p.status === 'completed') {
@@ -458,8 +551,8 @@ export function Dashboard({
           description: description,
           date: date,
           icon: Home,
-          color: 'text-blue-600',
-          bg: 'from-blue-50 to-blue-100',
+          color: p.status === 'completed' ? 'text-green-600' : 'text-blue-600',
+          bg: p.status === 'completed' ? 'from-green-50 to-green-100' : 'from-blue-50 to-blue-100',
           photo: p.photos && p.photos.length > 0 ? p.photos[0].url : undefined,
           location: p.location,
           amount: p.value,
@@ -864,11 +957,11 @@ export function Dashboard({
                       {/* Conteúdo compacto */}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline">
-                          <h4 className="text-xs font-semibold text-gray-900 leading-none truncate mr-2">
+                          <h4 className="text-[13px] font-semibold text-gray-900 leading-none truncate mr-2">
                             {activity.title}
                           </h4>
                           {activity.amount !== undefined ? (
-                             <span className={`text-[11px] font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'expense' && !activity.title.includes('Paid') ? 'text-red-600' : 'text-green-600'}`}>
+                             <span className={`text-sm font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'expense' && !activity.title.includes('Paid') ? 'text-red-600' : 'text-green-600'}`}>
                                ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                              </span>
                           ) : (
@@ -1014,20 +1107,93 @@ export function Dashboard({
                   })}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-32 text-gray-400">
-                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
-                    <FileText className="w-6 h-6 text-gray-300" />
+                <div className="flex flex-col items-center justify-center min-h-[200px] gap-3 px-4">
+                  <p className="text-xs text-gray-500 mb-2">No requests yet</p>
+                  <div className="flex flex-col gap-2 w-full max-w-[200px]">
+                    <button
+                      onClick={() => onOpenRequestDialog?.('invoice')}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md hover:from-green-600 hover:to-green-700 transition-all flex items-center justify-center gap-2 font-semibold"
+                    >
+                      <FileText className="w-5 h-5" />
+                      Invoice
+                    </button>
+                    <button
+                      onClick={() => onOpenRequestDialog?.('estimate')}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-md hover:from-blue-600 hover:to-blue-700 transition-all flex items-center justify-center gap-2 font-semibold"
+                    >
+                      <CheckSquare className="w-5 h-5" />
+                      Estimate
+                    </button>
                   </div>
-                  <p className="text-xs">No requests yet</p>
                 </div>
               )
             ) : (
-              // Placeholder para Receipts
-              <div className="flex flex-col items-center justify-center h-32 text-gray-400">
-                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
-                  <ReceiptIcon className="w-6 h-6 text-gray-300" />
+              // Receipts tab
+              <div className="flex flex-col">
+                {/* Scan New Receipt Button */}
+                <div className="p-3 border-b border-gray-100">
+                  <button
+                    onClick={() => setIsReceiptScannerOpen(true)}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-[#5abb36] to-[#4a9e2e] text-white rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 font-semibold active:scale-[0.98]"
+                  >
+                    <Camera className="w-5 h-5" />
+                    Scan New Receipt
+                  </button>
                 </div>
-                <p className="text-xs">Receipts coming soon...</p>
+
+                {/* Receipts List */}
+                {receipts.length > 0 ? (
+                  <div className="max-h-[200px] overflow-y-auto">
+                    {receipts.map((receipt) => (
+                      <div 
+                        key={receipt.id}
+                        className="relative px-3 py-2.5 hover:bg-gray-50/50 transition-colors border-b border-gray-100 flex items-center gap-3"
+                      >
+                        {/* Thumbnail */}
+                        <div className="flex-shrink-0">
+                          <img 
+                            src={receipt.photo_url} 
+                            alt={receipt.description}
+                            className="w-12 h-12 rounded-lg object-cover border border-gray-200"
+                          />
+                        </div>
+                        
+                        {/* Description */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-gray-900 truncate">
+                            {receipt.description}
+                          </h4>
+                          <p className="text-xs text-gray-500">
+                            {format(new Date(receipt.created_at), 'MMM d, yyyy')}
+                          </p>
+                        </div>
+                        
+                        {/* Amount and Delete */}
+                        <div className="flex-shrink-0 flex items-center gap-2">
+                          <span className="text-sm font-bold text-green-600">
+                            ${receipt.amount.toFixed(2)}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteReceipt(receipt.id, receipt.filename);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
+                      <ReceiptIcon className="w-6 h-6 text-gray-300" />
+                    </div>
+                    <p className="text-xs">No receipts yet</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1044,6 +1210,15 @@ export function Dashboard({
         request={selectedRequest}
         onEdit={handleEditRequest}
         onSent={handleSentRequest}
+      />
+
+      {/* Receipt Scanner Dialog */}
+      <ReceiptScanner
+        isOpen={isReceiptScannerOpen}
+        onClose={() => setIsReceiptScannerOpen(false)}
+        onSuccess={() => {
+          setRefreshReceiptsTimestamp(Date.now());
+        }}
       />
     </div>
   );
