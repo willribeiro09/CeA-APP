@@ -281,41 +281,53 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
           {/* Header Gradient */}
           <div className="bg-gradient-to-b from-gray-50 to-white pb-4">
             {/* Month Navigation and Add Event Button */}
-            <div className="px-6 pt-6 pb-2 flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    {format(currentMonth, 'yyyy')}
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <h2 className="text-3xl font-bold text-gray-900 capitalize tracking-tight">
-                      {format(currentMonth, 'MMMM', { locale: enUS })}
-                    </h2>
-                    {/* Seletor discreto de meses */}
-                    <div className="flex gap-0.5">
+            <div className="px-6 pt-6 pb-2 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col">
+                    {/* Botão de fechar no lugar do ano */}
+                    <Dialog.Close asChild>
                       <button 
-                        onClick={handlePrevMonth} 
-                        className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-600"
+                        className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-600 transition-colors active:scale-95 mb-1"
                       >
-                        <ChevronLeft className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5" />
                       </button>
-                      <button 
-                        onClick={handleNextMonth} 
-                        className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-600"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
+                    </Dialog.Close>
+                    <div className="flex items-baseline gap-2">
+                      <h2 className="text-3xl font-bold text-gray-900 capitalize tracking-tight">
+                        {format(currentMonth, 'MMMM', { locale: enUS })}
+                      </h2>
+                      {/* Seletor discreto de meses */}
+                      <div className="flex gap-0.5">
+                        <button 
+                          onClick={handlePrevMonth} 
+                          className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-600"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={handleNextMonth} 
+                          className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-600"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
+                    {/* Ano abaixo do mês */}
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-1">
+                      {format(currentMonth, 'yyyy')}
+                    </span>
                   </div>
                 </div>
+                {/* Botão Add Event alinhado com o mês */}
+                <button 
+                  onClick={() => setIsAddEventOpen(true)}
+                  className="px-4 py-2 bg-[#5abb36] text-white rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm font-semibold active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Event
+                </button>
               </div>
-              <button 
-                onClick={() => setIsAddEventOpen(true)}
-                className="px-4 py-2 bg-[#5abb36] text-white rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm font-semibold active:scale-95"
-              >
-                <Plus className="w-4 h-4" />
-                Add Event
-              </button>
             </div>
 
             {/* Week Days */}

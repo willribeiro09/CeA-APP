@@ -10,6 +10,10 @@ import { isRecurringExpense, getRecurrenceType } from '../lib/recurringUtils';
 import { buildCardExpensesFromCA } from '../lib/expenseCardUtils';
 import { RequestSummaryDialog } from './RequestSummaryDialog';
 import { ReceiptScanner } from './ReceiptScanner';
+import PhotoViewer from './PhotoViewer';
+import ImageEditor from './ImageEditor';
+import { ProjectPhoto } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Request {
   id: string;
@@ -84,6 +88,11 @@ export function Dashboard({
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [isReceiptScannerOpen, setIsReceiptScannerOpen] = useState(false);
   const [refreshReceiptsTimestamp, setRefreshReceiptsTimestamp] = useState(0);
+  
+  // Estados para visualização/edição de fotos de receipts
+  const [selectedReceiptPhoto, setSelectedReceiptPhoto] = useState<ProjectPhoto | null>(null);
+  const [isReceiptPhotoViewerOpen, setIsReceiptPhotoViewerOpen] = useState(false);
+  const [isReceiptImageEditorOpen, setIsReceiptImageEditorOpen] = useState(false);
 
   // Calcular eventos de hoje para o Card Planner
   const todayEventsCount = useMemo(() => {
@@ -165,6 +174,110 @@ export function Dashboard({
 
     if (!error && data) {
       setReceipts(data);
+    }
+  };
+
+  // Função para converter Receipt em ProjectPhoto
+  const receiptToProjectPhoto = (receipt: Receipt): ProjectPhoto => {
+    return {
+      id: receipt.id,
+      projectId: '', // Não aplicável para receipts
+      filename: receipt.filename || 'receipt.jpg',
+      path: receipt.photo_url,
+      url: receipt.photo_url,
+      uploadedAt: receipt.created_at,
+      metadata: {
+        receiptId: receipt.id,
+        description: receipt.description,
+        amount: receipt.amount
+      }
+    };
+  };
+
+  // Handler para clicar em um receipt (abrir visualizador)
+  const handleReceiptClick = (receipt: Receipt) => {
+    const photo = receiptToProjectPhoto(receipt);
+    setSelectedReceiptPhoto(photo);
+    setIsReceiptPhotoViewerOpen(true);
+  };
+
+  // Handler para editar foto de receipt
+  const handleReceiptPhotoEdit = (photo: ProjectPhoto) => {
+    setSelectedReceiptPhoto(photo);
+    setIsReceiptPhotoViewerOpen(false);
+    setIsReceiptImageEditorOpen(true);
+  };
+
+  // Handler para deletar foto de receipt
+  const handleReceiptPhotoDelete = async (photo: ProjectPhoto) => {
+    const receiptId = photo.metadata?.receiptId;
+    const filename = photo.filename;
+    
+    if (receiptId) {
+      await handleDeleteReceipt(receiptId, filename);
+    }
+    setIsReceiptPhotoViewerOpen(false);
+    setSelectedReceiptPhoto(null);
+  };
+
+  // Handler para salvar foto editada de receipt
+  const handleSaveEditedReceiptPhoto = async (updatedPhoto: ProjectPhoto) => {
+    const receiptId = updatedPhoto.metadata?.receiptId;
+    
+    if (!receiptId) return;
+    
+    try {
+      // Se a URL é uma data URL (foto editada localmente), fazer upload
+      let photoUrl = updatedPhoto.url;
+      let filename = updatedPhoto.filename;
+      
+      if (updatedPhoto.url.startsWith('data:')) {
+        // Converter data URL para blob
+        const response = await fetch(updatedPhoto.url);
+        const blob = await response.blob();
+        
+        // Gerar novo filename
+        filename = `receipt_edited_${uuidv4()}.png`;
+        
+        // Upload para o storage
+        const { error: uploadError } = await supabase.storage
+          .from('receipts')
+          .upload(filename, blob, {
+            contentType: 'image/png',
+            cacheControl: '3600'
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Obter URL pública
+        const { data: urlData } = supabase.storage
+          .from('receipts')
+          .getPublicUrl(filename);
+
+        if (!urlData?.publicUrl) throw new Error('Failed to get public URL');
+        
+        photoUrl = urlData.publicUrl;
+      }
+      
+      // Atualizar no banco de dados
+      const { error } = await supabase
+        .from('receipts')
+        .update({ 
+          photo_url: photoUrl,
+          filename: filename || undefined
+        })
+        .eq('id', receiptId);
+
+      if (error) throw error;
+      
+      // Recarregar lista
+      loadReceipts();
+    } catch (error) {
+      console.error('Error updating receipt photo:', error);
+      alert('Failed to update receipt photo. Please try again.');
+    } finally {
+      setIsReceiptImageEditorOpen(false);
+      setSelectedReceiptPhoto(null);
     }
   };
 
@@ -1147,7 +1260,8 @@ export function Dashboard({
                     {receipts.map((receipt) => (
                       <div 
                         key={receipt.id}
-                        className="relative px-3 py-2.5 hover:bg-gray-50/50 transition-colors border-b border-gray-100 flex items-center gap-3"
+                        onClick={() => handleReceiptClick(receipt)}
+                        className="relative px-3 py-2.5 hover:bg-gray-50/50 transition-colors border-b border-gray-100 flex items-center gap-3 cursor-pointer"
                       >
                         {/* Thumbnail */}
                         <div className="flex-shrink-0">
@@ -1219,6 +1333,26 @@ export function Dashboard({
         onSuccess={() => {
           setRefreshReceiptsTimestamp(Date.now());
         }}
+      />
+
+      {/* Photo Viewer para Receipts */}
+      <PhotoViewer
+        photo={selectedReceiptPhoto}
+        open={isReceiptPhotoViewerOpen}
+        onOpenChange={setIsReceiptPhotoViewerOpen}
+        onEdit={handleReceiptPhotoEdit}
+        onDelete={handleReceiptPhotoDelete}
+      />
+
+      {/* Image Editor para Receipts */}
+      <ImageEditor
+        photo={selectedReceiptPhoto}
+        open={isReceiptImageEditorOpen}
+        onOpenChange={(open) => {
+          setIsReceiptImageEditorOpen(open);
+          if (!open) setSelectedReceiptPhoto(null);
+        }}
+        onSave={handleSaveEditedReceiptPhoto}
       />
     </div>
   );
