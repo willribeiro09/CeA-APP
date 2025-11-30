@@ -1073,11 +1073,7 @@ export function Dashboard({
                           <h4 className="text-[13px] font-semibold text-gray-900 leading-none truncate mr-2">
                             {activity.title}
                           </h4>
-                          {activity.amount !== undefined ? (
-                             <span className={`text-sm font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'expense' && !activity.title.includes('Paid') ? 'text-red-600' : 'text-green-600'}`}>
-                               ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                             </span>
-                          ) : (
+                          {activity.amount === undefined && (
                             <span className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0">{timeAgo}</span>
                           )}
                         </div>
@@ -1093,8 +1089,10 @@ export function Dashboard({
                           )}
                         </div>
                         {activity.amount !== undefined && (
-                          <div className="flex justify-end mt-0.5">
-                            <span className="text-[9px] text-gray-400 whitespace-nowrap flex-shrink-0">{timeAgo}</span>
+                          <div className="flex justify-center mt-1">
+                            <span className={`text-xl font-bold whitespace-nowrap ${activity.type === 'expense' && !activity.title.includes('Paid') ? 'text-red-600' : 'text-green-600'}`}>
+                              ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </span>
                           </div>
                         )}
                       </div>
