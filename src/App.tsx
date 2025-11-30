@@ -171,7 +171,7 @@ export default function App() {
   // NOVO: Hook para controlar o status de sincronização
   const { isBlocked: isSyncBlocked, message: syncMessage, executeWhenUnblocked } = useSyncStatus();
 
-useEffect(() => {
+  useEffect(() => {
     const initializeData = async () => {
       // Inicializar tabela de sincronização se necessário
       if (isSupabaseConfigured()) {
@@ -338,8 +338,8 @@ useEffect(() => {
       };
     } else {
       // Para desktop/navegador: comportamento automático após delay
-      const timer = setTimeout(setupNotifications, 2000);
-      return () => clearTimeout(timer);
+    const timer = setTimeout(setupNotifications, 2000);
+    return () => clearTimeout(timer);
     }
   }, []);
 
@@ -2260,10 +2260,10 @@ useEffect(() => {
     activeCategory === 'Home'
       ? ''
       : activeCategory === 'Expenses'
-      ? '-mt-[58px]'
-      : '-mt-[80px]';
+      ? '-mt-[72px]'
+      : '-mt-[94px]';
   const mainPaddingBottomClass =
-    activeCategory === 'Home' ? 'pb-28' : 'pb-32';
+    activeCategory === 'Home' ? 'pb-20' : 'pb-20';
 
   const showQuickAddMenu = isQuickAddMenuOpen;
   const needsWeekStart = addDialogCategory === 'Projects' || addDialogCategory === 'Employees';
@@ -2389,9 +2389,9 @@ useEffect(() => {
           onCategoryChange={isBackgroundSyncing ? () => {} : setActiveCategory}
           disabled={isBackgroundSyncing}
         />
-
+        
         {/* Faixa azul global (um pouco abaixo do header, com bordas suaves) */}
-        <div className="fixed top-[60px] left-0 right-0 h-[100px] bg-[#073863] rounded-b-[1rem] z-0"></div>
+        <div className={`fixed top-[60px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[100px]' : 'h-[87px]'} bg-[#073863] rounded-b-[1rem] z-0`}></div>
         
         {/* Botão + flutuante no centro */}
         <button
@@ -2523,7 +2523,7 @@ useEffect(() => {
                 <button
                   onClick={isBackgroundSyncing ? () => {} : () => setIsDropdownOpen(!isDropdownOpen)}
                   disabled={isBackgroundSyncing}
-                  className="w-full px-4 py-2 bg-white border border-transparent rounded-lg shadow-sm flex items-center justify-between"
+                  className="w-full px-4 py-1.5 bg-white border border-transparent rounded-lg shadow-sm flex items-center justify-between"
                 >
                     <span className="text-gray-700 font-medium">
                       {selectedList}
@@ -2637,7 +2637,7 @@ useEffect(() => {
               </div>
             )}
 
-            <ul className={`flex flex-col space-y-[8px] m-0 p-0 ${isBackgroundSyncing ? 'pointer-events-none' : ''}`}>
+            <ul className={`flex flex-col space-y-[8px] m-0 p-0 pb-2 ${isBackgroundSyncing ? 'pointer-events-none' : ''}`}>
               {activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || [])
                 .filter(isItemFromSelectedDate)
                 .map(expense => (
@@ -3052,7 +3052,7 @@ useEffect(() => {
           if (isBackgroundSyncing) {
             return;
           }
-          setIsAddDialogOpen(open);
+            setIsAddDialogOpen(open);
           if (!open) {
             setIsQuickAddMenuOpen(false);
           }

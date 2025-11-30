@@ -80,7 +80,7 @@
 .main-list-container {
   position: relative;
   overflow-y: auto;
-  height: calc(100vh - 250px);
+  height: calc(100vh - 200px);
   overscroll-behavior: contain;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -91,7 +91,7 @@
   backface-visibility: hidden; /* Melhora o desempenho */
   perspective: 1000px; /* Melhora o desempenho */
   /* Scroll padding para evitar que os botões flutuantes cubram o último item */
-  scroll-padding-bottom: 8rem; /* 128px - espaço suficiente para os botões */
+  scroll-padding-bottom: 0.5rem; /* 8px - espaço mínimo para o rodapé */
 }
 
 /* Prevenir movimento da lista quando inputs nativos são focados */
@@ -128,18 +128,18 @@ select {
 
 /* Garantir que o último item da lista seja visível */
 .list-bottom-spacing {
-  min-height: 8rem; /* 128px - espaço mínimo para os botões */
+  min-height: 1rem; /* 16px - espaço mínimo para o rodapé */
 }
 
 /* Scroll padding para dispositivos que não suportam scroll-padding-bottom */
 .scroll-pb-32 {
-  scroll-padding-bottom: 8rem; /* 128px */
+  scroll-padding-bottom: 1rem; /* 16px */
 }
 
 /* Fallback para navegadores mais antigos */
-@supports not (scroll-padding-bottom: 8rem) {
+@supports not (scroll-padding-bottom: 1rem) {
   .main-list-container {
-    padding-bottom: 8rem;
+    padding-bottom: 1rem;
   }
 }
 
@@ -290,5 +290,16 @@ body {
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/* Correção de safe-area para iOS - aplica apenas quando env() é suportado */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .navigation-bottom-bar {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .navigation-content {
+    min-height: calc(3.5rem + env(safe-area-inset-bottom));
   }
 }
