@@ -298,8 +298,4 @@ body {
   .navigation-bottom-bar {
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
-  .navigation-content {
-    min-height: calc(3.5rem + env(safe-area-inset-bottom));
-  }
 }
