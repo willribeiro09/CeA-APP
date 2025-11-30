@@ -146,6 +146,8 @@ export default function App() {
   const [selectedEmployeeName, setSelectedEmployeeName] = useState<EmployeeName>('Matheus');
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
   const [receiptEmployee, setReceiptEmployee] = useState<Employee | null>(null);
+  const [isReceiptScannerOpen, setIsReceiptScannerOpen] = useState(false);
+  const [forceReceiptsTab, setForceReceiptsTab] = useState(false);
   // Adicionar estado para deletedIds
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   // Estado para sincronização de retorno do segundo plano
@@ -2296,7 +2298,7 @@ useEffect(() => {
     {
       id: 'receipts',
       label: 'Receipts',
-      category: 'Expenses' as const,
+      category: 'Receipts' as const,
       Icon: Receipt
     },
     {
@@ -2321,11 +2323,16 @@ useEffect(() => {
     setIsQuickAddMenuOpen(!isQuickAddMenuOpen);
   };
 
-  const handleQuickAddSelect = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' | 'Invoice' | 'Estimate') => {
+  const handleQuickAddSelect = (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees' | 'Invoice' | 'Estimate' | 'Receipts') => {
     if (category === 'Invoice' || category === 'Estimate') {
       setRequestType(category.toLowerCase() as 'invoice' | 'estimate');
       setEditingRequest(null); // Reset editing request
       setIsRequestDialogOpen(true);
+      setIsQuickAddMenuOpen(false);
+      return;
+    }
+    if (category === 'Receipts') {
+      setIsReceiptScannerOpen(true);
       setIsQuickAddMenuOpen(false);
       return;
     }
@@ -2445,6 +2452,21 @@ useEffect(() => {
                   setRequestType(type);
                   setEditingRequest(null);
                   setIsRequestDialogOpen(true);
+                }}
+                externalReceiptScannerOpen={isReceiptScannerOpen}
+                onReceiptScannerOpenChange={setIsReceiptScannerOpen}
+                forceReceiptsTab={forceReceiptsTab}
+                onReceiptSaved={() => {
+                  // Se não estiver na Home, navegar para lá
+                  if (activeCategory !== 'Home') {
+                    setActiveCategory('Home');
+                  }
+                  // Forçar abertura da aba Receipts
+                  setForceReceiptsTab(true);
+                  // Resetar após um tempo para permitir nova abertura
+                  setTimeout(() => {
+                    setForceReceiptsTab(false);
+                  }, 100);
                 }}
                 onItemClick={(item, type) => {
                   if (type === 'expense') {

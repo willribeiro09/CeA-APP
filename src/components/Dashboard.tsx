@@ -48,6 +48,10 @@ interface DashboardProps {
   refreshRequests?: number; // Timestamp para forçar refresh
   onEditRequest?: (request: Request) => void; // Callback para editar request
   onOpenRequestDialog?: (type: 'invoice' | 'estimate') => void; // Callback para abrir RequestDialog
+  externalReceiptScannerOpen?: boolean; // Controla o scanner externamente
+  onReceiptScannerOpenChange?: (open: boolean) => void; // Callback quando o scanner abre/fecha
+  onReceiptSaved?: () => void; // Callback quando um receipt é salvo
+  forceReceiptsTab?: boolean; // Força a abertura da aba Receipts
 }
 
 // Interface de Notificação comentada - não usado mais
@@ -70,7 +74,11 @@ export function Dashboard({
   onOpenPlanner,
   refreshRequests,
   onEditRequest,
-  onOpenRequestDialog
+  onOpenRequestDialog,
+  externalReceiptScannerOpen,
+  onReceiptScannerOpenChange,
+  onReceiptSaved,
+  forceReceiptsTab
 }: DashboardProps) {
   
   // NOTIFICAÇÕES DESABILITADAS - Não aparecem mais na lista Recent (apenas ações reais dos usuários)
@@ -80,14 +88,35 @@ export function Dashboard({
   const [expenseSlideIndex, setExpenseSlideIndex] = useState(0);
 
   const [recentTab, setRecentTab] = useState<'Recent' | 'Requests' | 'Receipts' | 'Stock'>('Recent');
+  
+  // Forçar abertura da aba Receipts quando necessário
+  useEffect(() => {
+    if (forceReceiptsTab) {
+      setRecentTab('Receipts');
+    }
+  }, [forceReceiptsTab]);
+  
   const [requests, setRequests] = useState<Request[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [isRequestSummaryOpen, setIsRequestSummaryOpen] = useState(false);
   
   // Estado para Receipts
   const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [isReceiptScannerOpen, setIsReceiptScannerOpen] = useState(false);
+  const [internalReceiptScannerOpen, setInternalReceiptScannerOpen] = useState(false);
   const [refreshReceiptsTimestamp, setRefreshReceiptsTimestamp] = useState(0);
+  
+  // Sincronizar estado externo com interno
+  const isReceiptScannerOpen = externalReceiptScannerOpen !== undefined 
+    ? externalReceiptScannerOpen 
+    : internalReceiptScannerOpen;
+  
+  const setIsReceiptScannerOpen = (open: boolean) => {
+    if (externalReceiptScannerOpen !== undefined) {
+      onReceiptScannerOpenChange?.(open);
+    } else {
+      setInternalReceiptScannerOpen(open);
+    }
+  };
   
   // Estados para visualização/edição de fotos de receipts
   const [selectedReceiptPhoto, setSelectedReceiptPhoto] = useState<ProjectPhoto | null>(null);
@@ -889,7 +918,7 @@ export function Dashboard({
                         <div className="text-sm font-semibold text-gray-900 truncate max-w-[95%] mx-auto">
                           {expense.description}
                         </div>
-                        <div className="text-lg font-extrabold text-red-600 mt-0.5">
+                        <div className="text-lg font-extrabold text-gray-600 mt-0.5">
                           ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>
                       {expense.date && (
@@ -1073,7 +1102,11 @@ export function Dashboard({
                           <h4 className="text-[13px] font-semibold text-gray-900 leading-none truncate mr-2">
                             {activity.title}
                           </h4>
-                          {activity.amount === undefined && (
+                          {activity.amount !== undefined ? (
+                             <span className={`text-sm font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'expense' && !activity.title.includes('Paid') ? 'text-red-600' : 'text-green-600'}`}>
+                               ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                             </span>
+                          ) : (
                             <span className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0">{timeAgo}</span>
                           )}
                         </div>
@@ -1088,13 +1121,6 @@ export function Dashboard({
                             </div>
                           )}
                         </div>
-                        {activity.amount !== undefined && (
-                          <div className="flex justify-center mt-1">
-                            <span className={`text-xl font-bold whitespace-nowrap ${activity.type === 'expense' && !activity.title.includes('Paid') ? 'text-red-600' : 'text-green-600'}`}>
-                              ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
@@ -1330,6 +1356,7 @@ export function Dashboard({
         onClose={() => setIsReceiptScannerOpen(false)}
         onSuccess={() => {
           setRefreshReceiptsTimestamp(Date.now());
+          onReceiptSaved?.();
         }}
       />
 

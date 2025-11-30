@@ -204,7 +204,7 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess }: ReceiptScannerPro
                   </div>
                   <div className="absolute top-12 left-0 right-0 text-center">
                     <p className="text-white text-sm font-medium bg-black/30 px-4 py-2 rounded-full inline-block">
-                      Position receipt within frame
+                      Espaço para salvar recibos do dia a dia! Como gasolina, material e outras despesas rápidas.
                     </p>
                   </div>
                 </div>
