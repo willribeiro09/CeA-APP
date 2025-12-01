@@ -998,7 +998,7 @@ export function Dashboard({
             <Calendar className="w-28 h-28" />
           </div>
           <div
-            className="absolute right-3 text-[40px] text-gray-900"
+            className="absolute right-1 text-[40px] text-gray-900"
             style={{ fontFamily: 'Arial, sans-serif', fontWeight: 400, top: '-1px' }}
           >
             {format(new Date(), 'd')}
