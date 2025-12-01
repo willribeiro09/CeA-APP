@@ -14,6 +14,7 @@ async function sendTelegramNotification(requestData: {
   total_value: number;
   status: string;
   created_at: string;
+  send_from?: string[]; // Array com os nomes selecionados
   isEdit?: boolean; // Indica se é uma edição
 }) {
   try {
@@ -54,6 +55,7 @@ interface RequestData {
   total_value: number;
   status: string;
   created_at: string;
+  send_from?: string[]; // Array com os nomes selecionados
 }
 
 interface RequestDialogProps {
@@ -107,6 +109,11 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
   ]);
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sendFrom, setSendFrom] = useState<{ carlos: boolean; diego: boolean; ciaPhone: boolean }>({
+    carlos: false,
+    diego: false,
+    ciaPhone: false
+  });
 
   // Get unique clients from projects
   const clientsList = useMemo(() => {
@@ -129,9 +136,11 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
     return clientsList.filter(c => c.name.toLowerCase().includes(search));
   }, [customerName, clientsList]);
 
-  // Calculate total value
+  // Calculate total value (only confirmed items)
   const totalValue = useMemo(() => {
-    return workItems.reduce((sum, item) => sum + item.total, 0);
+    return workItems
+      .filter(item => item.isConfirmed)
+      .reduce((sum, item) => sum + item.total, 0);
   }, [workItems]);
 
   const handleCustomerSelect = (client: { name: string; phone: string }) => {
@@ -225,27 +234,60 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
       return;
     }
     
-    // Check if all work items are valid
-    const invalidItem = workItems.find(item => 
-      item.quantity <= 0 || item.unitPrice <= 0
-    );
+    // Check if at least one "Send From" option is selected
+    const selectedSendFrom = [];
+    if (sendFrom.carlos) selectedSendFrom.push('Carlos');
+    if (sendFrom.diego) selectedSendFrom.push('Diego');
+    if (sendFrom.ciaPhone) selectedSendFrom.push('Cia Phone');
+    
+    if (selectedSendFrom.length === 0) {
+      alert('Please select at least one "Send From" option');
+      return;
+    }
+    
+    // Filter only confirmed work items
+    const confirmedWorkItems = workItems.filter(item => item.isConfirmed);
+    
+    // Check if there's at least one confirmed work item
+    if (confirmedWorkItems.length === 0) {
+      alert('Please add and confirm at least one work item');
+      return;
+    }
+    
+    // Check if all confirmed work items are valid
+    const invalidItem = confirmedWorkItems.find(item => {
+      // Check quantity and unit price
+      if (item.quantity <= 0 || item.unitPrice <= 0) {
+        return true;
+      }
+      // Check if "Other" work type has custom value
+      if (item.workType === 'Other' && !item.customWorkType?.trim()) {
+        return true;
+      }
+      // Check if "Other" color has custom value
+      if (item.color === 'Other' && !item.customColor?.trim()) {
+        return true;
+      }
+      return false;
+    });
     if (invalidItem) {
-      alert('All work items must have quantity and unit price greater than 0');
+      alert('All work items must have valid quantity, unit price, and custom values (if "Other" is selected)');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Prepare work items data
-      const workItemsData = workItems.map(item => ({
-        workType: item.workType === 'Other' ? item.customWorkType : item.workType,
-        color: item.color === 'Other' ? item.customColor : item.color,
+      // Prepare work items data (only confirmed items)
+      const workItemsData = confirmedWorkItems.map(item => ({
+        workType: item.workType === 'Other' ? (item.customWorkType || 'Other') : item.workType,
+        color: item.color === 'Other' ? (item.customColor || 'Other') : item.color,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         total: item.total
       }));
 
+      // Payload para Supabase (com send_from)
       const requestPayload = {
         type: editingRequest ? editingRequest.type : type,
         customer_name: customerName.trim(),
@@ -253,7 +295,13 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
         address: address.trim(),
         work_items: workItemsData,
         total_value: totalValue,
-        status: editingRequest ? editingRequest.status : 'Pending'
+        status: editingRequest ? editingRequest.status : 'Pending',
+        send_from: selectedSendFrom // Array de nomes selecionados
+      };
+
+      // Payload para Telegram (mesmo que Supabase)
+      const telegramPayload = {
+        ...requestPayload
       };
 
       if (editingRequest) {
@@ -267,7 +315,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
 
         // Enviar notificação ao Telegram quando editar (não bloqueia o fluxo)
         sendTelegramNotification({
-          ...requestPayload,
+          ...telegramPayload,
           created_at: editingRequest.created_at,
           isEdit: true
         });
@@ -281,7 +329,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
 
         // Enviar notificação ao Telegram para novos requests (não bloqueia o fluxo)
         sendTelegramNotification({
-          ...requestPayload,
+          ...telegramPayload,
           created_at: new Date().toISOString(),
           isEdit: false
         });
@@ -291,6 +339,11 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
       setCustomerName('');
       setCustomerPhone('');
       setAddress('');
+      setSendFrom({
+        carlos: false,
+        diego: false,
+        ciaPhone: false
+      });
       setWorkItems([{
         id: '1',
         workType: '5-Inch Gutter',
@@ -319,6 +372,21 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
       setCustomerPhone(editingRequest.customer_phone);
       setAddress(editingRequest.address);
       
+      // Preencher Send From se existir
+      if (editingRequest.send_from && Array.isArray(editingRequest.send_from)) {
+        setSendFrom({
+          carlos: editingRequest.send_from.includes('Carlos'),
+          diego: editingRequest.send_from.includes('Diego'),
+          ciaPhone: editingRequest.send_from.includes('Cia Phone')
+        });
+      } else {
+        setSendFrom({
+          carlos: false,
+          diego: false,
+          ciaPhone: false
+        });
+      }
+      
       // Converter work_items para o formato do componente
       if (editingRequest.work_items && editingRequest.work_items.length > 0) {
         const convertedItems: WorkItem[] = editingRequest.work_items.map((item, index) => {
@@ -344,6 +412,11 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
       setCustomerName('');
       setCustomerPhone('');
       setAddress('');
+      setSendFrom({
+        carlos: false,
+        diego: false,
+        ciaPhone: false
+      });
       setWorkItems([{
         id: '1',
         workType: '5-Inch Gutter',
@@ -351,7 +424,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
         quantity: 0,
         unitPrice: 0,
         total: 0,
-        isPending: false
+        isConfirmed: false
       }]);
     }
   }, [isOpen, editingRequest]);
@@ -605,6 +678,42 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
                     </button>
                   )}
                 </div>
+            </div>
+          </div>
+
+          {/* Send From Section - Fixed above footer */}
+          <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex-shrink-0">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Send From: <span className="text-red-500">*</span>
+            </label>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendFrom.carlos}
+                  onChange={(e) => setSendFrom({ ...sendFrom, carlos: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Carlos</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendFrom.diego}
+                  onChange={(e) => setSendFrom({ ...sendFrom, diego: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Diego</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendFrom.ciaPhone}
+                  onChange={(e) => setSendFrom({ ...sendFrom, ciaPhone: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Cia Phone</span>
+              </label>
             </div>
           </div>
 

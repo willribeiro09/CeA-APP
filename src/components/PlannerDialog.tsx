@@ -133,7 +133,7 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
   const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
 
-  // Handlers para swipe/arrastar
+  // Handlers para swipe/arrastar - versão mais fluida
   const handleDragStart = (clientX: number) => {
     setDragStart(clientX);
     setIsDragging(true);
@@ -143,17 +143,21 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
   const handleDragMove = (clientX: number) => {
     if (dragStart === null) return;
     const offset = clientX - dragStart;
-    setDragOffset(offset);
+    // Limitar o offset para dar feedback visual sem exagerar
+    const maxOffset = 100;
+    const limitedOffset = Math.max(-maxOffset, Math.min(maxOffset, offset));
+    setDragOffset(limitedOffset);
   };
 
   const handleDragEnd = () => {
     if (dragStart === null) return;
     
-    const threshold = 50; // Distância mínima para mudar de mês
-    const offset = dragOffset;
+    const threshold = 30; // Threshold reduzido para ser mais responsivo
+    const velocity = Math.abs(dragOffset) / 10; // Considerar velocidade do movimento
+    const effectiveThreshold = threshold - velocity; // Threshold dinâmico baseado na velocidade
     
-    if (Math.abs(offset) > threshold) {
-      if (offset > 0) {
+    if (Math.abs(dragOffset) > Math.max(20, effectiveThreshold)) {
+      if (dragOffset > 0) {
         // Arrastou para a direita -> mês anterior
         handlePrevMonth();
       } else {
@@ -162,24 +166,27 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
       }
     }
     
-    // Reset
+    // Reset com animação suave
     setDragStart(null);
     setIsDragging(false);
     setDragOffset(0);
   };
 
-  // Touch handlers
+  // Touch handlers - versão mais fluida
   const handleTouchStart = (e: React.TouchEvent) => {
-    handleDragStart(e.touches[0].clientX);
+    const touch = e.touches[0];
+    handleDragStart(touch.clientX);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (dragStart === null) return;
-    const currentX = e.touches[0].clientX;
+    const touch = e.touches[0];
+    const currentX = touch.clientX;
     const offset = currentX - dragStart;
     
     // Se o arrasto for principalmente horizontal, prevenir scroll
-    if (Math.abs(offset) > 10) {
+    // Threshold menor para detectar movimento horizontal mais cedo
+    if (Math.abs(offset) > 5) {
       e.preventDefault();
     }
     
@@ -201,15 +208,19 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
 
     const handleGlobalMouseMove = (e: MouseEvent) => {
       const offset = e.clientX - dragStart;
-      setDragOffset(offset);
+      // Limitar o offset para dar feedback visual sem exagerar
+      const maxOffset = 100;
+      const limitedOffset = Math.max(-maxOffset, Math.min(maxOffset, offset));
+      setDragOffset(limitedOffset);
     };
 
     const handleGlobalMouseUp = () => {
-      const threshold = 50;
-      const offset = dragOffset;
+      const threshold = 30; // Threshold reduzido para ser mais responsivo
+      const velocity = Math.abs(dragOffset) / 10; // Considerar velocidade do movimento
+      const effectiveThreshold = threshold - velocity; // Threshold dinâmico baseado na velocidade
       
-      if (Math.abs(offset) > threshold) {
-        if (offset > 0) {
+      if (Math.abs(dragOffset) > Math.max(20, effectiveThreshold)) {
+        if (dragOffset > 0) {
           handlePrevMonth();
         } else {
           handleNextMonth();
@@ -341,20 +352,24 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
           </div>
 
           {/* Calendar Grid & Events */}
-          <div 
-            className="flex-1 overflow-y-auto px-6 pb-6 select-none"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onMouseDown={handleMouseDown}
-            style={{
-              transform: isDragging ? `translateX(${dragOffset}px)` : 'translateX(0)',
-              transition: isDragging ? 'none' : 'transform 0.3s ease-out',
-              cursor: isDragging ? 'grabbing' : 'grab',
-              touchAction: 'pan-y' // Permitir scroll vertical, mas capturar swipe horizontal
-            }}
-          >
-            <div className="grid grid-cols-7 gap-y-3 mb-8">
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
+            {/* Calendar Grid - Aceita swipe horizontal */}
+            <div 
+              className="select-none mb-8"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onMouseDown={handleMouseDown}
+              style={{
+                transform: isDragging ? `translateX(${dragOffset}px)` : 'translateX(0)',
+                transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                touchAction: 'pan-y', // Permitir scroll vertical, mas capturar swipe horizontal
+                willChange: 'transform', // Otimização para performance
+                opacity: isDragging ? 0.95 : 1 // Feedback visual sutil durante o arrasto
+              }}
+            >
+              <div className="grid grid-cols-7 gap-y-3">
               {calendarDays.map((date, index) => {
                 if (!date) return <div key={`empty-${index}`} />;
                 
@@ -384,6 +399,7 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
                   </div>
                 );
               })}
+              </div>
             </div>
 
             {/* Selected Date Header */}
@@ -401,7 +417,7 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
                 </div>
             </div>
 
-            {/* Events List */}
+            {/* Events List - Não aceita swipe horizontal, apenas scroll vertical */}
             <div className="space-y-3 pb-10">
               {selectedDayEvents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-300">

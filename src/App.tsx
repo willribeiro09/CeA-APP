@@ -2306,6 +2306,12 @@ export default function App() {
       label: 'Stock',
       category: 'Stock' as const,
       Icon: Package
+    },
+    {
+      id: 'employee',
+      label: 'Employee',
+      category: 'Employees' as const,
+      Icon: Users
     }
   ]), []);
 
