@@ -144,24 +144,28 @@ serve(async (req) => {
     for (const tokenData of tokens) {
       const fcmToken = tokenData.fcm_token;
 
+      // Gerar tag única para evitar notificações duplicadas
+      // O navegador substitui notificações com a mesma tag
+      const timestamp = Date.now();
+      const notificationTag = data?.tag || `cea-${timestamp}-${tokenData.device_id || 'unknown'}`;
+
       const message = {
         message: {
           token: fcmToken,
-          notification: {
-            title: title || '🔔 CeA APP',
-            body: body || 'Você tem uma nova notificação',
-          },
+          // NÃO enviar campo "notification" - isso evita notificação automática do Firebase
+          // Enviar SOMENTE "data" para controle total no Service Worker
           webpush: {
-            notification: {
-              icon: '/cealogo.png',
-              badge: '/cealogo.png',
-            },
             fcm_options: {
               link: '/',
             },
           },
           data: {
             ...(data || {}),
+            // Campos para o Service Worker montar a notificação
+            title: title || '🔔 CeA APP',
+            body: body || 'Você tem uma nova notificação',
+            icon: '/cealogo.png',
+            tag: notificationTag,
             timestamp: new Date().toISOString(),
           },
         },

@@ -25,27 +25,32 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[Firebase SW] Notificação recebida em background:', payload);
   
-  // Extrair dados da notificação
-  const notificationTitle = payload.notification?.title || 'CeA APP';
+  // IMPORTANTE: Agora lemos SOMENTE de payload.data
+  // O backend não envia mais payload.notification para evitar duplicação
+  const data = payload.data || {};
+  
+  // Extrair dados da notificação do campo "data"
+  const notificationTitle = data.title || 'CeA APP';
   const notificationOptions = {
-    body: payload.notification?.body || 'Nova notificação',
-    icon: payload.notification?.icon || '/cealogo.png',
-    tag: payload.data?.tag || 'cea-notification',
-    data: payload.data || {},
+    body: data.body || 'Nova notificação',
+    icon: data.icon || '/cealogo.png',
+    // Tag única garante que notificações duplicadas sejam substituídas
+    tag: data.tag || 'cea-notification',
+    data: data,
     requireInteraction: false,
     vibrate: [200, 100, 200],
     actions: []
   };
 
   // Adicionar ações customizadas se houver
-  if (payload.data?.action) {
+  if (data.action) {
     notificationOptions.actions.push({
       action: 'open',
       title: 'Abrir'
     });
   }
 
-  // Mostrar a notificação
+  // Mostrar a notificação (único lugar que chama showNotification)
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 

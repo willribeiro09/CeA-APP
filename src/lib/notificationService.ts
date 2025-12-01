@@ -228,12 +228,21 @@ export const setupForegroundNotificationListener = (
     }
 
     // Mostra notificação nativa se tiver permissão
-    if (Notification.permission === 'granted' && payload.notification) {
-      const { title, body, icon } = payload.notification;
+    // Prioriza payload.data (novo formato) com fallback para payload.notification (compatibilidade)
+    if (Notification.permission === 'granted') {
+      const data = payload.data || {};
+      const notification = payload.notification || {};
       
-      new Notification(title || 'CeA APP', {
-        body: body || '',
-        icon: icon || '/cealogo.png',
+      // Prioriza data (novo formato sem duplicação) sobre notification
+      const title = data.title || notification.title || 'CeA APP';
+      const body = data.body || notification.body || '';
+      const icon = data.icon || notification.icon || '/cealogo.png';
+      const tag = data.tag || 'cea-foreground';
+      
+      new Notification(title, {
+        body,
+        icon,
+        tag, // Tag evita duplicação mesmo no foreground
         data: payload.data
       });
     }
