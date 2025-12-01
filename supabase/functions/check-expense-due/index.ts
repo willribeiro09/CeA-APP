@@ -6,6 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * Normaliza uma data para meia-noite UTC (ignora timezone e horário de verão)
+ * Retorna o timestamp em ms correspondente a 00:00:00 UTC do dia
+ */
+function toUTCMidnight(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+}
+
+/**
+ * Calcula a diferença em dias entre duas datas, usando UTC puro
+ * Retorna número inteiro de dias (positivo = futuro, negativo = passado, 0 = hoje)
+ */
+function diffDaysUTC(fromDate: Date, toDate: Date): number {
+  const fromUTC = toUTCMidnight(fromDate)
+  const toUTC = toUTCMidnight(toDate)
+  const diffMs = toUTC - fromUTC
+  // Usar Math.floor para garantir dias completos
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24))
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -61,56 +81,72 @@ serve(async (req) => {
 
     console.log(`[check-expense-due] Total de despesas encontradas: ${allExpenses.length}`)
 
-    // Verificar vencimentos
+    // Data de hoje (para logs e cálculos)
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const todayUTC = toUTCMidnight(today)
+    console.log(`[check-expense-due] Hoje (UTC midnight): ${new Date(todayUTC).toISOString()}`)
 
     let notificationsSent = 0
+    let skippedPaid = 0
     const notificationsLog: any[] = []
 
     for (const expense of allExpenses) {
-      // Detectar tipo de recorrência pela descrição
       const description = expense.description || ''
+      
+      // ========================================
+      // CORREÇÃO 1: Verificar se está paga ANTES de qualquer processamento
+      // ========================================
+      const isPaid = expense.is_paid === true || expense.paid === true
+      
+      if (isPaid) {
+        console.log(`[SKIP-PAID] Despesa "${description}" está marcada como PAGA. Pulando notificação.`)
+        skippedPaid++
+        continue // Pula completamente esta despesa
+      }
+
+      // Detectar tipo de recorrência pela descrição
       const isMonthly = description.endsWith('*M')
       const isBiweekly = description.endsWith('*B')
       const isWeekly = description.endsWith('*W')
       const isRecurring = isMonthly || isBiweekly || isWeekly
 
-      // Obter a data base (usar 'date' em vez de 'due_date')
+      // Obter a data base
       if (!expense.date) {
-        console.log(`[check-expense-due] Despesa sem data: ${expense.description}`)
+        console.log(`[check-expense-due] Despesa sem data: ${description}`)
         continue
       }
 
       const originalDate = new Date(expense.date)
-      originalDate.setHours(0, 0, 0, 0)
 
       let dueDate: Date
 
       if (isRecurring) {
         // Para despesas recorrentes, calcular a próxima data de vencimento
-        const currentMonth = today.getMonth()
-        const currentYear = today.getFullYear()
+        // Usar UTC para evitar problemas de timezone
+        const currentMonth = today.getUTCMonth()
+        const currentYear = today.getUTCFullYear()
+        const originalDay = originalDate.getUTCDate()
         
         if (isMonthly) {
-          // Calcular data do mês atual
-          dueDate = new Date(currentYear, currentMonth, originalDate.getDate())
-          dueDate.setHours(0, 0, 0, 0)
+          // Calcular data do mês atual (em UTC)
+          dueDate = new Date(Date.UTC(currentYear, currentMonth, originalDay))
           
           // Se já passou neste mês, avançar para o próximo mês
-          if (dueDate < today) {
-            dueDate = new Date(currentYear, currentMonth + 1, originalDate.getDate())
-            dueDate.setHours(0, 0, 0, 0)
+          if (toUTCMidnight(dueDate) < todayUTC) {
+            dueDate = new Date(Date.UTC(currentYear, currentMonth + 1, originalDay))
           }
         } else if (isBiweekly || isWeekly) {
           // Para biweekly e weekly, calcular a próxima ocorrência
-          dueDate = new Date(originalDate)
+          dueDate = new Date(Date.UTC(
+            originalDate.getUTCFullYear(),
+            originalDate.getUTCMonth(),
+            originalDate.getUTCDate()
+          ))
           const daysToAdd = isBiweekly ? 14 : 7
           
-          while (dueDate < today) {
-            dueDate.setDate(dueDate.getDate() + daysToAdd)
+          while (toUTCMidnight(dueDate) < todayUTC) {
+            dueDate.setUTCDate(dueDate.getUTCDate() + daysToAdd)
           }
-          dueDate.setHours(0, 0, 0, 0)
         } else {
           dueDate = originalDate
         }
@@ -119,14 +155,23 @@ serve(async (req) => {
         dueDate = originalDate
       }
 
-      const diffTime = dueDate.getTime() - today.getTime()
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-      console.log(`[check-expense-due] Despesa: ${expense.description}, Data Original: ${expense.date}, Data Venc: ${dueDate.toISOString()}, Dias: ${diffDays}, Recorrente: ${isRecurring}`)
+      // ========================================
+      // CORREÇÃO 2: Calcular diffDays usando UTC puro
+      // ========================================
+      const diffDays = diffDaysUTC(today, dueDate)
+      
+      // Log detalhado para debug
+      console.log(`[check-expense-due] Despesa: "${description}"`)
+      console.log(`  - Data Original: ${expense.date}`)
+      console.log(`  - Data Venc (UTC): ${dueDate.toISOString()}`)
+      console.log(`  - Hoje (UTC): ${new Date(todayUTC).toISOString()}`)
+      console.log(`  - diffDays: ${diffDays}`)
+      console.log(`  - Recorrente: ${isRecurring ? (isMonthly ? 'Mensal' : isBiweekly ? 'Quinzenal' : 'Semanal') : 'Não'}`)
+      console.log(`  - is_paid: ${expense.is_paid}, paid: ${expense.paid}`)
 
       // Notificar se vence em 3 dias
       if (diffDays === 3) {
-        console.log(`🔔 Despesa vence em 3 dias: ${expense.description}`)
+        console.log(`🔔 Despesa vence em 3 dias: ${description}`)
         const notificationResult = await sendNotification(
           expense,
           expense.listName,
@@ -134,7 +179,7 @@ serve(async (req) => {
           expense.amount || 0
         )
         notificationsLog.push({
-          expense: expense.description,
+          expense: description,
           dueDate: dueDate.toISOString(),
           type: '3_days',
           success: notificationResult
@@ -144,7 +189,7 @@ serve(async (req) => {
 
       // Notificar se vence hoje
       if (diffDays === 0) {
-        console.log(`🔔 Despesa vence HOJE: ${expense.description}`)
+        console.log(`🔔 Despesa vence HOJE: ${description}`)
         const notificationResult = await sendNotification(
           expense,
           expense.listName,
@@ -152,7 +197,7 @@ serve(async (req) => {
           expense.amount || 0
         )
         notificationsLog.push({
-          expense: expense.description,
+          expense: description,
           dueDate: dueDate.toISOString(),
           type: 'today',
           success: notificationResult
@@ -161,6 +206,9 @@ serve(async (req) => {
       }
     }
 
+    console.log(`[check-expense-due] === RESUMO ===`)
+    console.log(`[check-expense-due] Total de despesas: ${allExpenses.length}`)
+    console.log(`[check-expense-due] Despesas puladas (pagas): ${skippedPaid}`)
     console.log(`[check-expense-due] Notificações enviadas: ${notificationsSent}`)
     console.log('[check-expense-due] Log de notificações:', JSON.stringify(notificationsLog, null, 2))
 
@@ -169,6 +217,7 @@ serve(async (req) => {
         message: 'Verificação concluída',
         notificationsSent,
         expensesChecked: allExpenses.length,
+        skippedPaid,
         log: notificationsLog
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -228,5 +277,3 @@ async function sendNotification(
     return false
   }
 }
-
-
