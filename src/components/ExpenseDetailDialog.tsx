@@ -342,7 +342,7 @@ export function ExpenseDetailDialog({
       
       if (diffDays < 0) {
         hasOverdue = true;
-      } else if (diffDays <= 5) {
+      } else if (diffDays <= 3) {
         hasNearDue = true;
       }
     });
@@ -589,7 +589,7 @@ export function ExpenseDetailDialog({
                   
                   if (diffDays < 0) {
                     return 'bg-red-100 text-red-800 border border-red-300';
-                  } else if (diffDays <= 5) {
+                  } else if (diffDays <= 3) {
                     return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
                   }
                   
@@ -619,7 +619,7 @@ export function ExpenseDetailDialog({
                               
                               if (diffDays < 0) {
                                 return 'border-red-400 bg-white hover:border-red-500';
-                              } else if (diffDays <= 5) {
+                              } else if (diffDays <= 3) {
                                 return 'border-yellow-400 bg-white hover:border-yellow-500';
                               }
                               

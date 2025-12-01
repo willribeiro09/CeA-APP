@@ -159,110 +159,112 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit, onViewDet
     return (paidInstallments / totalInstallments) * 100;
   }, [installments]);
 
-  // Get next due date from relevant installments (current + overdue)
+  // Próxima data de vencimento baseada diretamente na data original + recorrência
   const nextDueDate = useMemo(() => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const today = new Date();
-    
-    const relevantInstallments = installments.filter(inst => {
-      const instDate = new Date(inst.dueDate);
-      
-      // Include current month installments
-      if (instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear) {
-        return true;
-      }
-      
-      // Include overdue installments from previous months that are unpaid
-      if (instDate < today && !inst.isPaid) {
-        return true;
-      }
-      
-      return false;
-    });
-    
-    const unpaidInstallments = relevantInstallments
-      .filter(inst => !inst.isPaid)
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-    
-    return unpaidInstallments.length > 0 ? unpaidInstallments[0].dueDate : null;
-  }, [installments]);
+    const recurrenceType = getRecurrenceType(expense);
+    const hasDate = !!expense.date;
+    if (!hasDate) {
+      return null;
+    }
 
-  // Get status based on due dates and payment status
-  const getExpenseStatus = () => {
+    const originalDate = new Date(expense.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Despesa não recorrente: usa a própria data
+    if (recurrenceType === 'none') {
+      return originalDate.toISOString();
+    }
+
+    let nextDate = new Date(originalDate);
+    nextDate.setHours(0, 0, 0, 0);
+
+    const isBeforeToday = nextDate.getTime() < today.getTime();
+
+    while (isBeforeToday) {
+      if (recurrenceType === 'monthly') {
+        nextDate = addMonths(nextDate, 1);
+      } else if (recurrenceType === 'biweekly') {
+        nextDate = addDays(nextDate, 14);
+      } else if (recurrenceType === 'weekly') {
+        nextDate = addWeeks(nextDate, 7);
+      } else {
+        break;
+      }
+      nextDate.setHours(0, 0, 0, 0);
+      if (nextDate.getTime() >= today.getTime()) {
+        break;
+      }
+    }
+
+    return nextDate.toISOString();
+  }, [expense]);
+
+  // Get status based on due dates and payment status (inclui mês atual + atrasados)
+  const getExpenseStatusVisual = () => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time for accurate comparison
-    
-    // Get all relevant installments (current month + overdue from previous months)
+    today.setHours(0, 0, 0, 0);
+
     const relevantInstallments = installments.filter(inst => {
       const instDate = new Date(inst.dueDate);
-      
-      // Include current month installments
+
       if (instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear) {
         return true;
       }
-      
-      // Include overdue installments from previous months that are unpaid
+
       if (instDate < today && !inst.isPaid) {
         return true;
       }
-      
+
       return false;
     });
-    
+
     const paidInstallments = relevantInstallments.filter(inst => inst.isPaid);
     const unpaidInstallments = relevantInstallments.filter(inst => !inst.isPaid);
-    
-    
-    // If all relevant installments are paid, return green
+
     if (relevantInstallments.length > 0 && paidInstallments.length === relevantInstallments.length) {
       return { type: 'paid', color: 'bg-green-50' };
     }
-    
-    // If no relevant installments, return white
+
     if (relevantInstallments.length === 0) {
       return { type: 'none', color: 'bg-white' };
     }
-    
-    // Check unpaid installments for overdue or near due
+
     let hasOverdue = false;
     let hasNearDue = false;
-    
+
     unpaidInstallments.forEach(inst => {
       const dueDate = new Date(inst.dueDate);
       dueDate.setHours(0, 0, 0, 0);
-      
+
       const diffTime = dueDate.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays < 0) {
         hasOverdue = true;
       } else if (diffDays <= 5) {
         hasNearDue = true;
       }
     });
-    
-    // Priority: overdue > near due > partial paid > normal
+
     if (hasOverdue) {
       return { type: 'overdue', color: 'bg-red-50' };
     }
-    
+
     if (hasNearDue) {
       return { type: 'near_due', color: 'bg-yellow-50' };
     }
-    
-    // If some are paid but not all
+
     if (paidInstallments.length > 0) {
       return { type: 'partial', color: 'bg-yellow-50' };
     }
-    
-    // Default for unpaid but not near due
+
     return { type: 'normal', color: 'bg-white' };
   };
 
-  const expenseStatus = useMemo(() => getExpenseStatus(), [installments]);
+  const expenseStatus = useMemo(() => getExpenseStatusVisual(), [installments]);
 
   // Get background color based on expense status
   const getBackgroundColor = () => {
@@ -318,14 +320,39 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit, onViewDet
                 return instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear;
               });
               
-              const isCurrentMonthPaid = currentMonthInstallments.length > 0 && 
+              const isCurrentMonthPaid = currentMonthInstallments.length > 0 &&
                 currentMonthInstallments.every(inst => inst.isPaid);
               
               if (isCurrentMonthPaid) {
                 return (
-                  <div className="flex items-center gap-1 mt-1">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <p className="text-sm text-green-600 font-medium">Paid</p>
+                  <div className="mt-1 space-y-1">
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <p className="text-sm text-green-600 font-medium">Paid</p>
+                    </div>
+                    {nextDueDate ? (
+                      <p className="text-sm text-gray-600">
+                        {(() => {
+                          const dueDate = new Date(nextDueDate);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          dueDate.setHours(0, 0, 0, 0);
+                          
+                          const diffTime = dueDate.getTime() - today.getTime();
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          
+          if (diffDays < 0) {
+            return `Due on: ${format(dueDate, 'MMM d')}`;
+          } else if (diffDays <= 3) {
+                            if (diffDays === 0) return 'Due today';
+                            if (diffDays === 1) return 'Due in 1 day';
+                            return `Due in ${diffDays} days`;
+                          } else {
+                            return `Due on: ${format(dueDate, 'MMM d')}`;
+                          }
+                        })()}
+                      </p>
+                    ) : null}
                   </div>
                 );
               }
@@ -343,7 +370,7 @@ export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit, onViewDet
                     
                     if (diffDays < 0) {
                       return `Due on: ${format(dueDate, 'MMM d')}`;
-                    } else if (diffDays <= 5) {
+                    } else if (diffDays <= 3) {
                       if (diffDays === 0) return 'Due today';
                       if (diffDays === 1) return 'Due in 1 day';
                       return `Due in ${diffDays} days`;
