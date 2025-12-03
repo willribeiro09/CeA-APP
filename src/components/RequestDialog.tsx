@@ -234,14 +234,14 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
       return;
     }
     
-    // Check if at least one "Send PDF To" option is selected
+    // Check if at least one "Send From" option is selected
     const selectedSendFrom = [];
     if (sendFrom.carlos) selectedSendFrom.push('Carlos');
     if (sendFrom.diego) selectedSendFrom.push('Diego');
     if (sendFrom.ciaPhone) selectedSendFrom.push('Cia Phone');
     
     if (selectedSendFrom.length === 0) {
-      alert('Please select at least one "Send PDF To" option');
+      alert('Please select at least one "Send From" option');
       return;
     }
     
@@ -372,7 +372,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
       setCustomerPhone(editingRequest.customer_phone);
       setAddress(editingRequest.address);
       
-      // Preencher Send PDF To se existir
+      // Preencher Send From se existir
       if (editingRequest.send_from && Array.isArray(editingRequest.send_from)) {
         setSendFrom({
           carlos: editingRequest.send_from.includes('Carlos'),
@@ -681,10 +681,10 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
             </div>
           </div>
 
-          {/* Send PDF To Section - Fixed above footer */}
+          {/* Send From Section - Fixed above footer */}
           <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex-shrink-0">
             <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Send PDF To: <span className="text-red-500">*</span>
+              Send From: <span className="text-red-500">*</span>
             </label>
             <div className="flex flex-wrap gap-4">
               <label className="flex items-center gap-2 cursor-pointer">

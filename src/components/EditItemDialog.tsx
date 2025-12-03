@@ -114,6 +114,7 @@ export function EditItemDialog({ isOpen, onOpenChange, item, onSubmit, selectedW
           id: projectId, // PRESERVAR O ID ORIGINAL É CRUCIAL!
           name: projectClient, // Usando client como name
           client: projectClient,
+          clientType: projectItem.clientType, // IMPORTANTE: Preservar o clientType original
           location: projectLocation,
           projectNumber: projectNumber,
           value: projectValue,

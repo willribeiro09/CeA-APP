@@ -122,11 +122,12 @@ export function AddItemDialog({ isOpen, onOpenChange, category, onSubmit, select
       const projectValue = data.value ? normalizeMonetaryValue(data.value as string) : 0;
       
       // Criar o objeto do projeto com todos os campos obrigatórios
+      // IMPORTANTE: clientType deve sempre usar o selectedClient atual, não o nome do projeto
       itemData = {
         id: uuidv4(),
         name: data.client as string,
         client: data.client as string,
-        clientType: selectedClient || 'Power', // Definir o tipo de cliente
+        clientType: selectedClient, // Sempre usar o selectedClient atual (Private ou Power)
         projectNumber: data.projectNumber as string || '',
         location: data.location as string || '',
         startDate: startDate ? formatDateToISO(startDate) : formatDateToISO(selectedWeekStart),

@@ -190,11 +190,33 @@ export default function App() {
         setExpenses(localData.expenses || {});
         
         // Carregar projetos e sincronizar fotos
-        const projects = (localData.projects || []).map(project => ({
+        let projects = (localData.projects || []).map(project => ({
           ...project,
           // Configurar projetos existentes como Power se não tiverem clientType
           clientType: project.clientType || 'Power'
         }));
+        
+        // CORREÇÃO: Mover projeto "Power" que está na sessão Private para Power
+        const powerProjectIndex = projects.findIndex(p => 
+          p.name === 'Power' && p.clientType === 'Private'
+        );
+        if (powerProjectIndex !== -1) {
+          projects[powerProjectIndex] = {
+            ...projects[powerProjectIndex],
+            clientType: 'Power'
+          };
+          // Salvar a correção
+          saveChanges(createStorageData({
+            expenses: localData.expenses || {},
+            projects: projects,
+            stock: localData.stock || [],
+            employees: localData.employees || {},
+            deletedIds: localData.deletedIds || [],
+            willBaseRate: localData.willBaseRate,
+            willBonus: localData.willBonus
+          }));
+        }
+        
         setProjects(projects);
         
         // Sincronizar fotos para cada projeto em background
@@ -1126,7 +1148,11 @@ export default function App() {
         // Garantir que campos obrigatórios existam
         if (!project.client) project.client = "Cliente";
         if (!project.name) project.name = project.client;
-        if (!project.clientType) project.clientType = selectedClient; // Definir o tipo de cliente
+        // IMPORTANTE: clientType deve sempre usar o selectedClient atual, não o nome do projeto
+        // Se já existe um clientType, manter; caso contrário, usar o selectedClient atual
+        if (!project.clientType) {
+          project.clientType = selectedClient; // Definir o tipo de cliente baseado no selectedClient atual
+        }
         if (!project.startDate) {
           project.startDate = selectedWeekStart.toISOString();
         }
