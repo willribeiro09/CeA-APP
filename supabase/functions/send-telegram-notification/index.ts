@@ -22,6 +22,16 @@ interface RequestData {
   isEdit?: boolean;
 }
 
+interface AppOpenedData {
+  type: 'app_opened';
+  timestamp: string;
+  platform?: string;
+  browser?: string;
+  screenSize?: string;
+  language?: string;
+  userAgent?: string;
+}
+
 function formatRequestMessage(data: RequestData): string {
   const typeLabel = data.type === 'invoice' ? '📄 Invoice' : '📋 Estimate';
   const date = new Date(data.created_at).toLocaleString('en-US', {
@@ -55,6 +65,21 @@ function formatRequestMessage(data: RequestData): string {
     `*Status:* ${data.status}\n\n` +
     `*Work Items:*\n${workItemsText}\n\n` +
     `💰 *Total Value:* $${data.total_value.toFixed(2)}`;
+}
+
+function formatAppOpenedMessage(data: AppOpenedData): string {
+  const date = new Date(data.timestamp).toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+
+  return `📱 *App Opened*\n\n` +
+    `*Time:* ${date}\n` +
+    `*Platform:* ${data.platform || 'Unknown'}\n` +
+    `*Browser:* ${data.browser || 'Unknown'}\n` +
+    `*Screen:* ${data.screenSize || 'Unknown'}\n` +
+    `*Language:* ${data.language || 'Unknown'}\n\n` +
+    `_User Agent:_\n\`${data.userAgent || 'Unknown'}\``;
 }
 
 async function sendTelegramMessage(text: string): Promise<boolean> {
@@ -113,8 +138,17 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const requestData: RequestData = await req.json();
-    const message = formatRequestMessage(requestData);
+    const data = await req.json();
+    
+    let message: string;
+    
+    // Verificar tipo de notificação
+    if (data.type === 'app_opened') {
+      message = formatAppOpenedMessage(data as AppOpenedData);
+    } else {
+      message = formatRequestMessage(data as RequestData);
+    }
+    
     const success = await sendTelegramMessage(message);
 
     return new Response(

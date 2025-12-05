@@ -96,6 +96,55 @@ const findEmployeeInOtherWeeks = (employeeId: string, employeesData: Record<stri
   return null;
 };
 
+// Função para enviar notificação de app aberto via Telegram
+async function sendAppOpenedNotification() {
+  try {
+    // Extrair informações do dispositivo
+    const userAgent = navigator.userAgent;
+    let platform = 'Unknown';
+    let browser = 'Unknown';
+    
+    // Detectar plataforma
+    if (userAgent.includes('iPhone')) platform = 'iPhone';
+    else if (userAgent.includes('iPad')) platform = 'iPad';
+    else if (userAgent.includes('Android')) platform = 'Android';
+    else if (userAgent.includes('Windows')) platform = 'Windows';
+    else if (userAgent.includes('Mac')) platform = 'Mac';
+    else if (userAgent.includes('Linux')) platform = 'Linux';
+    
+    // Detectar navegador
+    if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) browser = 'Safari';
+    else if (userAgent.includes('Chrome')) browser = 'Chrome';
+    else if (userAgent.includes('Firefox')) browser = 'Firefox';
+    else if (userAgent.includes('Edge')) browser = 'Edge';
+    
+    const deviceInfo = {
+      type: 'app_opened',
+      timestamp: new Date().toISOString(),
+      platform: platform,
+      browser: browser,
+      screenSize: `${screen.width}x${screen.height}`,
+      language: navigator.language,
+      userAgent: userAgent
+    };
+
+    await fetch(
+      'https://mnucrulwdurskwofsgwp.supabase.co/functions/v1/send-telegram-notification',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1udWNydWx3ZHVyc2t3b2ZzZ3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExNzg3ODksImV4cCI6MjA1Njc1NDc4OX0.39iA0f1vEH2K8ygEobuv6O_FR8Fm8H2UXHzPkAZmm60',
+        },
+        body: JSON.stringify(deviceInfo),
+      }
+    );
+  } catch (error) {
+    // Silenciosamente falhar - não bloquear o app
+    console.error('Failed to send app opened notification:', error);
+  }
+}
+
 export default function App() {
   // NOTA: Login desabilitado temporariamente - definir como false para reativar
   const [isLoggedIn, setIsLoggedIn] = useState(true); // true = pula o login
@@ -2100,6 +2149,11 @@ export default function App() {
   useEffect(() => {
     
   }, []); // [] garante execução única
+
+  // Enviar notificação de app aberto via Telegram
+  useEffect(() => {
+    sendAppOpenedNotification();
+  }, []); // Executa apenas uma vez na abertura
 
   // Garantir que, ao abrir o app, estejamos sempre na current week (Projects)
   useEffect(() => {
