@@ -719,6 +719,7 @@ export function Dashboard({
                 icon: Users,
                 color: 'text-purple-600',
                 bg: 'from-purple-50 to-purple-100',
+                amount: e.dailyRate || 0,
                 data: e
               });
             }
@@ -1103,7 +1104,7 @@ export function Dashboard({
                             {activity.title}
                           </h4>
                           {activity.amount !== undefined ? (
-                             <span className={`text-sm font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'expense' && !activity.title.includes('Paid') ? 'text-red-600' : 'text-green-600'}`}>
+                             <span className={`text-sm font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'employee' || (activity.type === 'expense' && !activity.title.includes('Paid')) ? 'text-red-600' : 'text-green-600'}`}>
                                ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                              </span>
                           ) : (
