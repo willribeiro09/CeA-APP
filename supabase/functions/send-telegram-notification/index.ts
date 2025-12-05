@@ -39,7 +39,7 @@ function formatRequestMessage(data: RequestData): string {
   // Formatar send_from
   let sendFromText = '';
   if (data.send_from && Array.isArray(data.send_from) && data.send_from.length > 0) {
-    sendFromText = `\n*Send From:* ${data.send_from.join(', ')}`;
+    sendFromText = `\n*Send PDF to:* ${data.send_from.join(', ')}`;
   }
 
   const isEdit = data.isEdit === true;
