@@ -23,7 +23,7 @@ interface RequestData {
 }
 
 interface AppOpenedData {
-  type: 'app_opened';
+  type: 'app_opened' | 'app_resumed';
   timestamp: string;
   platform?: string;
   browser?: string;
@@ -73,7 +73,12 @@ function formatAppOpenedMessage(data: AppOpenedData): string {
     timeStyle: 'short'
   });
 
-  return `📱 *App Opened*\n\n` +
+  // Emoji e título diferentes para cada tipo
+  const isResumed = data.type === 'app_resumed';
+  const emoji = isResumed ? '🔄' : '📱';
+  const title = isResumed ? 'App Resumed' : 'App Opened';
+
+  return `${emoji} *${title}*\n\n` +
     `*Time:* ${date}\n` +
     `*Platform:* ${data.platform || 'Unknown'}\n` +
     `*Browser:* ${data.browser || 'Unknown'}\n` +
@@ -143,7 +148,7 @@ Deno.serve(async (req: Request) => {
     let message: string;
     
     // Verificar tipo de notificação
-    if (data.type === 'app_opened') {
+    if (data.type === 'app_opened' || data.type === 'app_resumed') {
       message = formatAppOpenedMessage(data as AppOpenedData);
     } else {
       message = formatRequestMessage(data as RequestData);

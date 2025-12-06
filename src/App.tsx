@@ -97,7 +97,8 @@ const findEmployeeInOtherWeeks = (employeeId: string, employeesData: Record<stri
 };
 
 // Função para enviar notificação de app aberto via Telegram
-async function sendAppOpenedNotification() {
+// eventType: 'app_opened' = abertura inicial, 'app_resumed' = volta do segundo plano
+async function sendAppOpenedNotification(eventType: 'app_opened' | 'app_resumed' = 'app_opened') {
   try {
     // Extrair informações do dispositivo
     const userAgent = navigator.userAgent;
@@ -119,7 +120,7 @@ async function sendAppOpenedNotification() {
     else if (userAgent.includes('Edge')) browser = 'Edge';
     
     const deviceInfo = {
-      type: 'app_opened',
+      type: eventType,
       timestamp: new Date().toISOString(),
       platform: platform,
       browser: browser,
@@ -1004,11 +1005,12 @@ export default function App() {
         });
 
         // Enviar notificação de mudança de status APÓS atualizar o estado
-        if (shouldNotifyStatusChange && statusNotificationData) {
+        if (shouldNotifyStatusChange && statusNotificationData !== null) {
+          const data = statusNotificationData as { project: Project; oldStatus: string; newStatus: string };
           notifyProjectStatusChange(
-            statusNotificationData.project,
-            statusNotificationData.oldStatus,
-            statusNotificationData.newStatus
+            data.project,
+            data.oldStatus,
+            data.newStatus
           ).catch(error => {
             console.error('Erro ao enviar notificação de mudança de status:', error);
           });
@@ -2152,7 +2154,32 @@ export default function App() {
 
   // Enviar notificação de app aberto via Telegram
   useEffect(() => {
-    sendAppOpenedNotification();
+    // Notificação de abertura inicial
+    sendAppOpenedNotification('app_opened');
+    
+    // Variável para evitar notificações duplicadas
+    let lastResumeTime = Date.now();
+    const MIN_RESUME_INTERVAL = 5000; // 5 segundos mínimo entre notificações de volta
+    
+    // Listener para detectar volta do segundo plano
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const now = Date.now();
+        // Só notifica se passou pelo menos 5 segundos desde a última
+        if (now - lastResumeTime > MIN_RESUME_INTERVAL) {
+          lastResumeTime = now;
+          sendAppOpenedNotification('app_resumed');
+        }
+      }
+    };
+    
+    // Adicionar listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []); // Executa apenas uma vez na abertura
 
   // Garantir que, ao abrir o app, estejamos sempre na current week (Projects)
