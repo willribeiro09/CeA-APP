@@ -728,11 +728,12 @@ export function Dashboard({
       });
     });
 
-    // 3. Despesas Recentes (Últimos 7 dias)
+    // 3. Despesas Recentes (Últimos 7 dias) - Apenas despesas pagas
     Object.values(expenses).forEach(list => {
       list.forEach(ex => {
-         const date = ex.lastModified ? new Date(ex.lastModified) : new Date(ex.date);
-         // Mostrar despesas modificadas ou criadas nos últimos 7 dias
+         // Usar a data original da despesa, não lastModified (que pode ser atualizado ao salvar)
+         const date = new Date(ex.date);
+         // Mostrar despesas criadas nos últimos 7 dias
          if (differenceInDays(now, date) <= 7) {
            // Verificar se está paga: checar is_paid OU se tem parcelas pagas
            const isPaid = ex.is_paid || 
@@ -740,20 +741,21 @@ export function Dashboard({
                          (ex.installments && ex.installments.length > 0 && 
                           ex.installments.some(inst => inst.isPaid));
            
-           // Se está paga, mostrar como "Expense Paid" em verde
-           // Se não está paga, mostrar como "New Expense" em vermelho
-           activities.push({
-             id: `exp-${ex.id}`,
-             type: 'expense',
-             title: isPaid ? 'Expense Paid' : 'New Expense',
-             description: ex.description,
-             date: date,
-             icon: isPaid ? CheckCircle : DollarSign,
-             color: isPaid ? 'text-green-600' : 'text-red-600',
-             bg: isPaid ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100',
-             amount: ex.amount,
-             data: ex
-           });
+           // Mostrar apenas despesas pagas na lista Recent
+           if (isPaid) {
+             activities.push({
+               id: `exp-${ex.id}`,
+               type: 'expense',
+               title: 'Expense Paid',
+               description: ex.description,
+               date: date,
+               icon: CheckCircle,
+               color: 'text-green-600',
+               bg: 'from-green-50 to-green-100',
+               amount: ex.amount,
+               data: ex
+             });
+           }
          }
       });
     });
