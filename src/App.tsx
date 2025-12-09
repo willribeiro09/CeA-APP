@@ -2371,6 +2371,10 @@ export default function App() {
       : '-mt-[94px]';
   const mainPaddingBottomClass =
     activeCategory === 'Home' ? 'pb-20' : 'pb-20';
+  const listBottomPaddingClass =
+    activeCategory === 'Expenses' || activeCategory === 'Projects'
+      ? 'pb-16'
+      : 'pb-2';
 
   const showQuickAddMenu = isQuickAddMenuOpen;
   const needsWeekStart = addDialogCategory === 'Projects' || addDialogCategory === 'Employees';
@@ -2750,7 +2754,7 @@ export default function App() {
               </div>
             )}
 
-            <ul className={`flex flex-col space-y-[8px] m-0 p-0 pb-2 ${isBackgroundSyncing ? 'pointer-events-none' : ''}`}>
+            <ul className={`flex flex-col space-y-[8px] m-0 p-0 ${listBottomPaddingClass} ${isBackgroundSyncing ? 'pointer-events-none' : ''}`}>
               {activeCategory === 'Expenses' && sortExpensesByDueDate(expenses[selectedList] || [])
                 .filter(isItemFromSelectedDate)
                 .map(expense => (
