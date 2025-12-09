@@ -1687,26 +1687,39 @@ export default function App() {
       return 'not_due' as const;
     };
 
-    // Pega a data de vencimento relevante para ordenação (considera parcelas)
+    // Pega a data de vencimento relevante para ordenação (considera mês atual e atrasados)
     const getComparableDueDate = (expense: Expense): Date | null => {
-      // Se tiver parcelas, usar a próxima não paga (inclui vencidas) ou a do mês
       if (expense.installments && expense.installments.length > 0) {
-        const unpaidSorted = [...expense.installments]
-          .filter(inst => !inst.isPaid)
-          .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-        if (unpaidSorted.length > 0) return new Date(unpaidSorted[0].dueDate);
-
-        // Se todas pagas, usar a última do mês atual, senão a mais recente
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();
-        const monthInst = expense.installments.filter(inst => {
-          const d = new Date(inst.dueDate);
-          return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        });
-        const base = (monthInst.length > 0 ? monthInst : expense.installments)
+
+        const unpaid = expense.installments
+          .filter(inst => !inst.isPaid)
           .map(inst => new Date(inst.dueDate))
           .sort((a, b) => a.getTime() - b.getTime());
-        return base.length > 0 ? base[0] : null;
+
+        // Primeiro: vencidas (qualquer mês), pega a mais antiga
+        const overdue = unpaid.filter(d => d < today);
+        if (overdue.length > 0) return overdue[0];
+
+        // Depois: não pagas do mês atual, pega a mais próxima
+        const currentMonthUnpaid = unpaid.filter(d => d.getMonth() === currentMonth && d.getFullYear() === currentYear);
+        if (currentMonthUnpaid.length > 0) return currentMonthUnpaid[0];
+
+        // Por fim: próxima não paga futura
+        if (unpaid.length > 0) return unpaid[0];
+
+        // Todas pagas: usar a primeira parcela do mês atual, senão a mais antiga para manter posição estável
+        const monthPaid = expense.installments
+          .map(inst => new Date(inst.dueDate))
+          .filter(d => d.getMonth() === currentMonth && d.getFullYear() === currentYear)
+          .sort((a, b) => a.getTime() - b.getTime());
+        if (monthPaid.length > 0) return monthPaid[0];
+
+        const allDates = expense.installments
+          .map(inst => new Date(inst.dueDate))
+          .sort((a, b) => a.getTime() - b.getTime());
+        return allDates.length > 0 ? allDates[0] : null;
       }
 
       // Sem parcelas: usar expense.date
