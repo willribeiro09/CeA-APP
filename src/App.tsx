@@ -1713,11 +1713,12 @@ export default function App() {
       return expense.date ? new Date(expense.date) : null;
     };
 
+    // Ordem: vencidos primeiro, depois próximos do vencimento, depois futuros, por último pagos
     const statusOrder = {
-      paid: 1,
-      overdue: 2,
-      due_soon: 3,
-      not_due: 4
+      overdue: 1,
+      due_soon: 2,
+      not_due: 3,
+      paid: 4
     } as const;
 
     const sortedList = [...expenseList].sort((a, b) => {
