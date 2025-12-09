@@ -1269,7 +1269,7 @@ export function Dashboard({
               )
             ) : (
               // Receipts tab
-              <div className="flex flex-col">
+              <div className="flex flex-col h-full overflow-hidden">
                 {/* Scan New Receipt Button */}
                 <div className="p-3 border-b border-gray-100">
                   <button
@@ -1282,59 +1282,61 @@ export function Dashboard({
                 </div>
 
                 {/* Receipts List */}
-                {receipts.length > 0 ? (
-                  <div>
-                    {receipts.map((receipt) => (
-                      <div 
-                        key={receipt.id}
-                        onClick={() => handleReceiptClick(receipt)}
-                        className="relative px-3 py-2.5 hover:bg-gray-50/50 transition-colors border-b border-gray-100 flex items-center gap-3 cursor-pointer"
-                      >
-                        {/* Thumbnail */}
-                        <div className="flex-shrink-0">
-                          <img 
-                            src={receipt.photo_url} 
-                            alt={receipt.description}
-                            className="w-12 h-12 rounded-lg object-cover border border-gray-200"
-                          />
+                <div className="flex-1 overflow-y-auto hide-scrollbar pb-16">
+                  {receipts.length > 0 ? (
+                    <div>
+                      {receipts.map((receipt) => (
+                        <div 
+                          key={receipt.id}
+                          onClick={() => handleReceiptClick(receipt)}
+                          className="relative px-3 py-2.5 hover:bg-gray-50/50 transition-colors border-b border-gray-100 flex items-center gap-3 cursor-pointer"
+                        >
+                          {/* Thumbnail */}
+                          <div className="flex-shrink-0">
+                            <img 
+                              src={receipt.photo_url} 
+                              alt={receipt.description}
+                              className="w-12 h-12 rounded-lg object-cover border border-gray-200"
+                            />
+                          </div>
+                          
+                          {/* Description */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-semibold text-gray-900 truncate">
+                              {receipt.description}
+                            </h4>
+                            <p className="text-xs text-gray-500">
+                              {format(new Date(receipt.created_at), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                          
+                          {/* Amount and Delete */}
+                          <div className="flex-shrink-0 flex items-center gap-2">
+                            <span className="text-sm font-bold text-green-600">
+                              ${receipt.amount.toFixed(2)}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteReceipt(receipt.id, receipt.filename);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        
-                        {/* Description */}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-gray-900 truncate">
-                            {receipt.description}
-                          </h4>
-                          <p className="text-xs text-gray-500">
-                            {format(new Date(receipt.created_at), 'MMM d, yyyy')}
-                          </p>
-                        </div>
-                        
-                        {/* Amount and Delete */}
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                          <span className="text-sm font-bold text-green-600">
-                            ${receipt.amount.toFixed(2)}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteReceipt(receipt.id, receipt.filename);
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
-                      <ReceiptIcon className="w-6 h-6 text-gray-300" />
+                      ))}
                     </div>
-                    <p className="text-xs">No receipts yet</p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                      <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
+                        <ReceiptIcon className="w-6 h-6 text-gray-300" />
+                      </div>
+                      <p className="text-xs">No receipts yet</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
