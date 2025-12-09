@@ -1283,7 +1283,7 @@ export function Dashboard({
 
                 {/* Receipts List */}
                 {receipts.length > 0 ? (
-                  <div className="max-h-[200px] overflow-y-auto">
+                  <div>
                     {receipts.map((receipt) => (
                       <div 
                         key={receipt.id}
