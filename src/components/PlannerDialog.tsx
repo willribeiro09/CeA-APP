@@ -91,23 +91,6 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
       }
     });
 
-    // Despesas
-    Object.values(expenses).flat().forEach(expense => {
-      if (expense.date) {
-        const isPaid = expense.is_paid || expense.paid || false;
-        allEvents.push({
-          id: `exp-${expense.id}`,
-          date: normalizeDate(expense.date),
-          type: 'expense',
-          title: expense.description,
-          amount: expense.amount,
-          isPaid: isPaid,
-          time: 'Due',
-          data: expense
-        });
-      }
-    });
-
     return allEvents.sort((a, b) => {
       // Ordenar por tipo (Custom > Project > Expense) ou horário se disponível
       return 0;
@@ -245,13 +228,10 @@ export function PlannerDialog({ isOpen, onClose, projects, expenses, onProjectCl
     const dayEvents = events.filter(e => isSameDay(e.date, date));
     if (dayEvents.length === 0) return null;
     
-    const hasExpense = dayEvents.some(e => e.type === 'expense');
     const hasProject = dayEvents.some(e => e.type === 'project');
     const hasCustom = dayEvents.some(e => e.type === 'custom');
     
     if (hasCustom) return 'bg-[#073863]';
-    if (hasExpense && hasProject) return 'bg-purple-500';
-    if (hasExpense) return 'bg-red-500';
     return 'bg-blue-500';
   };
 
