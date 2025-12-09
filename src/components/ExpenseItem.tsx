@@ -15,72 +15,83 @@ interface ExpenseItemProps {
 }
 
 export function ExpenseItem({ expense, onTogglePaid, onDelete, onEdit, onViewDetails }: ExpenseItemProps) {
-  // Generate installments if they don't exist
+  // Generate installments with correct filtering logic
   const installments = useMemo(() => {
-    if (expense.installments && expense.installments.length > 0) {
-      return expense.installments;
-    }
-    
     const recurrenceType = getRecurrenceType(expense);
-    if (recurrenceType === 'none') {
-      return [{
-        id: uuidv4(),
-        dueDate: expense.date,
-        amount: expense.amount,
-        isPaid: expense.is_paid || expense.paid || false,
-        paidDate: expense.is_paid || expense.paid ? expense.date : undefined
-      }];
-    }
-    
-    // For recurring expenses, calculate dates based on the original user-set date
     const today = new Date();
-    const originalDate = new Date(expense.date);
+    today.setHours(0, 0, 0, 0);
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
+    const originalDate = new Date(expense.date);
+    
     const installmentsArray: ExpenseInstallment[] = [];
     
-    // Calculate the current month's installment
-    const currentMonthDate = new Date(currentYear, currentMonth, originalDate.getDate());
+    // 1. Add REAL installments from database with correct filtering
+    if (expense.installments && expense.installments.length > 0) {
+      expense.installments.forEach(inst => {
+        const instDate = new Date(inst.dueDate);
+        instDate.setHours(0, 0, 0, 0);
+        
+        // Current month: add ALL (paid and unpaid)
+        if (instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear) {
+          installmentsArray.push(inst);
+        }
+        // Previous months: add ONLY unpaid (overdue)
+        else if (instDate < today && !inst.isPaid) {
+          installmentsArray.push(inst);
+        }
+      });
+    }
     
-    // Always add current month installment for recurring expenses
-    const currentMonthInstallment: ExpenseInstallment = {
-      id: uuidv4(),
-      dueDate: currentMonthDate.toISOString(),
-      amount: expense.amount,
-      isPaid: expense.is_paid || expense.paid || false,
-      paidDate: (expense.is_paid || expense.paid) ? expense.date : undefined
-    };
-    installmentsArray.push(currentMonthInstallment);
-    
-    // Check for overdue installments
-    let checkDate = new Date(originalDate);
-    while (checkDate < today) {
-      const checkMonth = checkDate.getMonth();
-      const checkYear = checkDate.getFullYear();
+    // 2. For recurring expenses: check if current month installment exists, if not create virtual
+    if (recurrenceType !== 'none') {
+      const hasCurrentMonth = installmentsArray.some(inst => {
+        const d = new Date(inst.dueDate);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
       
-      // If this date was in a previous month, add as overdue (independente do status global)
-      if (checkYear < currentYear || (checkYear === currentYear && checkMonth < currentMonth)) {
-        const overdueInstallment: ExpenseInstallment = {
+      if (!hasCurrentMonth) {
+        // Create virtual installment for current month
+        const currentMonthDate = new Date(currentYear, currentMonth, originalDate.getDate());
+        installmentsArray.push({
           id: uuidv4(),
-          dueDate: checkDate.toISOString(),
+          dueDate: currentMonthDate.toISOString(),
+          amount: expense.amount,
+          isPaid: false, // Virtual always starts unpaid
+          paidDate: undefined
+        });
+      }
+    }
+    
+    // 3. For non-recurring expenses without installments: use expense.date
+    if (recurrenceType === 'none' && installmentsArray.length === 0) {
+      const expenseDate = new Date(expense.date);
+      expenseDate.setHours(0, 0, 0, 0);
+      
+      // Only show if it's current month or overdue
+      if (expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear) {
+        installmentsArray.push({
+          id: uuidv4(),
+          dueDate: expense.date,
+          amount: expense.amount,
+          isPaid: expense.is_paid || expense.paid || false,
+          paidDate: (expense.is_paid || expense.paid) ? expense.date : undefined
+        });
+      } else if (expenseDate < today && !(expense.is_paid || expense.paid)) {
+        installmentsArray.push({
+          id: uuidv4(),
+          dueDate: expense.date,
           amount: expense.amount,
           isPaid: false,
           paidDate: undefined
-        };
-        installmentsArray.unshift(overdueInstallment);
-      }
-      
-      // Move to next occurrence
-      if (recurrenceType === 'monthly') {
-        checkDate = addMonths(checkDate, 1);
-      } else if (recurrenceType === 'biweekly') {
-        checkDate = addDays(checkDate, 14);
-      } else if (recurrenceType === 'weekly') {
-        checkDate = addWeeks(checkDate, 1);
+        });
       }
     }
     
-    return installmentsArray;
+    // Sort by due date
+    return installmentsArray.sort((a, b) => 
+      new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+    );
   }, [expense]);
 
   // Calculate payment status including overdue installments

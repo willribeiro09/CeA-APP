@@ -1648,7 +1648,7 @@ export default function App() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Verifica se a despesa está totalmente paga no mês atual
+    // Verifica se a despesa está totalmente paga no mês atual E não tem parcelas antigas atrasadas
     const isFullyPaidThisMonth = (expense: Expense) => {
       if (!expense.installments || expense.installments.length === 0) {
         return expense.is_paid || expense.paid || false;
@@ -1657,20 +1657,27 @@ export default function App() {
       const currentMonth = today.getMonth();
       const currentYear = today.getFullYear();
 
+      // PRIMEIRO: Verificar se tem parcelas atrasadas não pagas (de qualquer mês)
+      const hasOverdueUnpaid = expense.installments.some(inst => {
+        const d = new Date(inst.dueDate);
+        d.setHours(0, 0, 0, 0);
+        return d < today && !inst.isPaid;
+      });
+
+      // Se tem parcelas atrasadas não pagas, NÃO está totalmente paga
+      if (hasOverdueUnpaid) return false;
+
       const currentMonthInstallments = expense.installments.filter(inst => {
         const d = new Date(inst.dueDate);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
       });
 
+      // Se não tem parcelas do mês atual, só está paga se não tem atrasadas (já verificado acima)
       if (currentMonthInstallments.length === 0) {
-        // Sem parcela do mês: considerar vencidas não pagas
-        const overdueUnpaid = expense.installments.some(inst => {
-          const d = new Date(inst.dueDate);
-          return d < today && !inst.isPaid;
-        });
-        return !overdueUnpaid;
+        return true;
       }
 
+      // Se tem parcelas do mês atual, verificar se todas estão pagas
       return currentMonthInstallments.every(inst => inst.isPaid);
     };
 
@@ -1726,12 +1733,12 @@ export default function App() {
       return expense.date ? new Date(expense.date) : null;
     };
 
-    // Ordem: vencidos primeiro, depois próximos do vencimento, depois futuros, por último pagos
+    // Ordem: pagos primeiro, depois vencidos/atrasados, depois próximos de vencer (amarelos), por último futuros
     const statusOrder = {
-      overdue: 1,
-      due_soon: 2,
-      not_due: 3,
-      paid: 4
+      paid: 1,
+      overdue: 2,
+      due_soon: 3,
+      not_due: 4
     } as const;
 
     const sortedList = [...expenseList].sort((a, b) => {
