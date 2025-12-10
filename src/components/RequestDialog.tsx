@@ -229,6 +229,21 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
       return;
     }
     
+    // Preparar dados que serão usados independente do tipo
+    const selectedSendFrom = [];
+    if (sendFrom.carlos) selectedSendFrom.push('Carlos');
+    if (sendFrom.diego) selectedSendFrom.push('Diego');
+    if (sendFrom.ciaPhone) selectedSendFrom.push('Cia Phone');
+    
+    // Check if at least one "Send PDF to" option is selected (obrigatório para ambos)
+    if (selectedSendFrom.length === 0) {
+      alert('Please select at least one "Send PDF to" option');
+      return;
+    }
+    
+    // Filter only confirmed work items
+    const confirmedWorkItems = workItems.filter(item => item.isConfirmed);
+    
     // Para estimate, manter validações completas
     if (requestType === 'estimate') {
       if (!customerPhone.trim()) {
@@ -239,53 +254,39 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
         alert('Address is required');
         return;
       }
-    }
-    
-    // Check if at least one "Send PDF to" option is selected
-    const selectedSendFrom = [];
-    if (sendFrom.carlos) selectedSendFrom.push('Carlos');
-    if (sendFrom.diego) selectedSendFrom.push('Diego');
-    if (sendFrom.ciaPhone) selectedSendFrom.push('Cia Phone');
-    
-    if (selectedSendFrom.length === 0) {
-      alert('Please select at least one "Send PDF to" option');
-      return;
-    }
-    
-    // Filter only confirmed work items
-    const confirmedWorkItems = workItems.filter(item => item.isConfirmed);
-    
-    // Check if there's at least one confirmed work item
-    if (confirmedWorkItems.length === 0) {
-      alert('Please add and confirm at least one work item');
-      return;
-    }
-    
-    // Check if all confirmed work items are valid
-    const invalidItem = confirmedWorkItems.find(item => {
-      // Check quantity and unit price
-      if (item.quantity <= 0 || item.unitPrice <= 0) {
-        return true;
+      
+      // Check if there's at least one confirmed work item (apenas para estimate)
+      if (confirmedWorkItems.length === 0) {
+        alert('Please add and confirm at least one work item');
+        return;
       }
-      // Check if "Other" work type has custom value
-      if (item.workType === 'Other' && !item.customWorkType?.trim()) {
-        return true;
+      
+      // Check if all confirmed work items are valid (apenas para estimate)
+      const invalidItem = confirmedWorkItems.find(item => {
+        // Check quantity and unit price
+        if (item.quantity <= 0 || item.unitPrice <= 0) {
+          return true;
+        }
+        // Check if "Other" work type has custom value
+        if (item.workType === 'Other' && !item.customWorkType?.trim()) {
+          return true;
+        }
+        // Check if "Other" color has custom value
+        if (item.color === 'Other' && !item.customColor?.trim()) {
+          return true;
+        }
+        return false;
+      });
+      if (invalidItem) {
+        alert('All work items must have valid quantity, unit price, and custom values (if "Other" is selected)');
+        return;
       }
-      // Check if "Other" color has custom value
-      if (item.color === 'Other' && !item.customColor?.trim()) {
-        return true;
-      }
-      return false;
-    });
-    if (invalidItem) {
-      alert('All work items must have valid quantity, unit price, and custom values (if "Other" is selected)');
-      return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Prepare work items data (only confirmed items)
+      // Prepare work items data (only confirmed items, pode ser array vazio para invoice)
       const workItemsData = confirmedWorkItems.map(item => ({
         workType: item.workType === 'Other' ? (item.customWorkType || 'Other') : item.workType,
         color: item.color === 'Other' ? (item.customColor || 'Other') : item.color,
