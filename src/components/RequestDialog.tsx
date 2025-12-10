@@ -220,18 +220,25 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
   };
 
   const handleSubmit = async () => {
-    // Validation
+    // Determinar o tipo do request (edição ou novo)
+    const requestType = editingRequest ? editingRequest.type : type;
+    
+    // Validation - apenas nome obrigatório para invoice
     if (!customerName.trim()) {
       alert('Customer name is required');
       return;
     }
-    if (!customerPhone.trim()) {
-      alert('Customer phone is required');
-      return;
-    }
-    if (!address.trim()) {
-      alert('Address is required');
-      return;
+    
+    // Para estimate, manter validações completas
+    if (requestType === 'estimate') {
+      if (!customerPhone.trim()) {
+        alert('Customer phone is required');
+        return;
+      }
+      if (!address.trim()) {
+        alert('Address is required');
+        return;
+      }
     }
     
     // Check if at least one "Send PDF to" option is selected
@@ -497,7 +504,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
                 {/* Phone */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Phone <span className="text-red-500">*</span>
+                    Phone {editingRequest ? (editingRequest.type === 'estimate' ? <span className="text-red-500">*</span> : null) : (type === 'estimate' ? <span className="text-red-500">*</span> : null)}
                   </label>
                   <input
                     type="tel"
@@ -511,7 +518,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
                 {/* Address */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Address <span className="text-red-500">*</span>
+                    Address {editingRequest ? (editingRequest.type === 'estimate' ? <span className="text-red-500">*</span> : null) : (type === 'estimate' ? <span className="text-red-500">*</span> : null)}
                   </label>
                   <input
                     type="text"
