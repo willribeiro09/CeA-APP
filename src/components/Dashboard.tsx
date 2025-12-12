@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { getDeviceId } from '../lib/deviceUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin, Receipt as ReceiptIcon, CheckSquare, Camera, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin, Receipt as ReceiptIcon, CheckSquare, Camera, Upload, Trash2 } from 'lucide-react';
 import { isRecurringExpense, getRecurrenceType } from '../lib/recurringUtils';
 import { buildCardExpensesFromCA } from '../lib/expenseCardUtils';
 import { RequestSummaryDialog } from './RequestSummaryDialog';
@@ -104,6 +104,8 @@ export function Dashboard({
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [internalReceiptScannerOpen, setInternalReceiptScannerOpen] = useState(false);
   const [refreshReceiptsTimestamp, setRefreshReceiptsTimestamp] = useState(0);
+  const [showReceiptOptions, setShowReceiptOptions] = useState(false);
+  const [receiptScannerMode, setReceiptScannerMode] = useState<'camera' | 'upload'>('camera');
   
   // Sincronizar estado externo com interno
   const isReceiptScannerOpen = externalReceiptScannerOpen !== undefined 
@@ -1270,15 +1272,58 @@ export function Dashboard({
             ) : (
               // Receipts tab
               <div className="flex flex-col h-full overflow-hidden">
-                {/* Scan New Receipt Button */}
-                <div className="p-3 border-b border-gray-100">
+                {/* Scan/Upload Receipt Button */}
+                <div className="p-3 border-b border-gray-100 relative">
                   <button
-                    onClick={() => setIsReceiptScannerOpen(true)}
+                    onClick={() => setShowReceiptOptions(!showReceiptOptions)}
                     className="w-full px-4 py-3 bg-gradient-to-r from-[#5abb36] to-[#4a9e2e] text-white rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 font-semibold active:scale-[0.98]"
                   >
                     <Camera className="w-5 h-5" />
-                    Scan New Receipt
+                    <Upload className="w-5 h-5" />
+                    Scan/Upload Receipt
                   </button>
+
+                  {/* Popup de opções */}
+                  {showReceiptOptions && (
+                    <>
+                      {/* Overlay para fechar ao clicar fora */}
+                      <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setShowReceiptOptions(false)}
+                      />
+                      {/* Menu popup */}
+                      <div className="absolute top-full left-3 right-3 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
+                        <button
+                          onClick={() => {
+                            setReceiptScannerMode('camera');
+                            setIsReceiptScannerOpen(true);
+                            setShowReceiptOptions(false);
+                          }}
+                          className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                        >
+                          <Camera className="w-5 h-5 text-[#073863]" />
+                          <div className="text-left">
+                            <div className="font-medium text-gray-800">Take Photo</div>
+                            <div className="text-xs text-gray-500">Use camera to scan</div>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setReceiptScannerMode('upload');
+                            setIsReceiptScannerOpen(true);
+                            setShowReceiptOptions(false);
+                          }}
+                          className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+                        >
+                          <Upload className="w-5 h-5 text-[#5abb36]" />
+                          <div className="text-left">
+                            <div className="font-medium text-gray-800">Upload Photo</div>
+                            <div className="text-xs text-gray-500">Select from device</div>
+                          </div>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Receipts List */}
@@ -1363,6 +1408,7 @@ export function Dashboard({
           setRefreshReceiptsTimestamp(Date.now());
           onReceiptSaved?.();
         }}
+        initialMode={receiptScannerMode}
       />
 
       {/* Photo Viewer para Receipts */}

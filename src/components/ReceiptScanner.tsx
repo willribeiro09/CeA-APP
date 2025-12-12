@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, Camera, Check, RotateCcw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -8,10 +8,11 @@ interface ReceiptScannerProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialMode?: 'camera' | 'upload';
 }
 
-export function ReceiptScanner({ isOpen, onClose, onSuccess }: ReceiptScannerProps) {
-  const [mode, setMode] = useState<'camera' | 'preview' | 'form'>('camera');
+export function ReceiptScanner({ isOpen, onClose, onSuccess, initialMode = 'camera' }: ReceiptScannerProps) {
+  const [mode, setMode] = useState<'camera' | 'form'>('camera');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [description, setDescription] = useState('');
@@ -22,6 +23,7 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess }: ReceiptScannerPro
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Iniciar câmera
   const startCamera = useCallback(async () => {
@@ -83,6 +85,51 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess }: ReceiptScannerPro
 
   // Resetar e tirar nova foto
   const retakePhoto = useCallback(() => {
+    setCapturedImage(null);
+    setCapturedBlob(null);
+    setMode('camera');
+    startCamera();
+  }, [startCamera]);
+
+  // Lidar com upload de arquivo
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Verificar se é uma imagem
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Verificar tamanho (máximo 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image size must be less than 10MB');
+      return;
+    }
+
+    setError(null);
+    setCapturedBlob(file);
+
+    // Criar preview da imagem
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCapturedImage(e.target?.result as string);
+      setMode('form');
+    };
+    reader.readAsDataURL(file);
+    
+    // Limpar input para permitir selecionar o mesmo arquivo novamente
+    event.target.value = '';
+  }, []);
+
+  // Abrir seletor de arquivo
+  const openFileSelector = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  // Voltar para câmera
+  const backToCamera = useCallback(() => {
     setCapturedImage(null);
     setCapturedBlob(null);
     setMode('camera');
@@ -152,8 +199,27 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess }: ReceiptScannerPro
     }
   };
 
+  // Efeito para abrir no modo correto
+  useEffect(() => {
+    if (isOpen) {
+      if (initialMode === 'upload') {
+        // Abre o seletor de arquivo automaticamente
+        setTimeout(() => {
+          fileInputRef.current?.click();
+        }, 100);
+      } else {
+        setMode('camera');
+        startCamera();
+      }
+    }
+    
+    return () => {
+      stopCamera();
+    };
+  }, [isOpen, initialMode, startCamera, stopCamera]);
+
   // Efeitos para abrir/fechar câmera
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen && mode === 'camera') {
       startCamera();
     }
@@ -164,7 +230,7 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess }: ReceiptScannerPro
   }, [isOpen, mode, startCamera, stopCamera]);
 
   // Reset ao fechar
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) {
       setCapturedImage(null);
       setCapturedBlob(null);
@@ -182,6 +248,15 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess }: ReceiptScannerPro
         <Dialog.Overlay className="fixed inset-0 bg-black/80 z-50" />
         <Dialog.Content className="fixed inset-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-md md:max-h-[90vh] w-full h-full md:h-auto bg-black md:bg-white md:rounded-2xl shadow-lg flex flex-col z-50 overflow-hidden">
           
+          {/* Hidden file input for upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+
           {mode === 'camera' && (
             <>
               {/* Camera View */}
@@ -247,7 +322,7 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess }: ReceiptScannerPro
               {/* Header */}
               <div className="bg-[#073863] px-4 py-3 flex items-center justify-between flex-shrink-0">
                 <button
-                  onClick={retakePhoto}
+                  onClick={backToCamera}
                   className="p-1.5 rounded-full hover:bg-[#052a4a] transition-colors flex items-center gap-1 text-white text-sm"
                 >
                   <RotateCcw className="w-4 h-4" />
