@@ -10,7 +10,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production' || mode === 'analyze';
-  
+
   const plugins = [
     react({
       // Garantir que o React esteja em modo de produção durante a build
@@ -22,19 +22,15 @@ export default defineConfig(({ mode }) => {
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'firebase-messaging-sw.js'],
       manifest: {
-        name: 'EXPENSES',
-        short_name: 'EXPENSES',
+        name: 'C&A Gutters APP',
+        short_name: 'CeA APP',
         theme_color: '#073763',
         icons: [
           {
-            src: '/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: '/icon-512.png',
+            src: '/cealogo.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           }
         ]
       },
@@ -124,21 +120,21 @@ export default defineConfig(({ mode }) => {
           manualChunks: (id) => {
             // Abordagem mais segura para dividir chunks
             if (id.includes('node_modules')) {
-              if (id.includes('react') || 
-                  id.includes('@radix-ui') || 
-                  id.includes('date-fns')) {
+              if (id.includes('react') ||
+                id.includes('@radix-ui') ||
+                id.includes('date-fns')) {
                 return 'vendor';
               }
-              
+
               if (id.includes('lucide-react')) {
                 return 'ui';
               }
             }
-            
+
             if (id.includes('src/components/ui')) {
               return 'ui';
             }
-            
+
             return undefined;
           }
         }
