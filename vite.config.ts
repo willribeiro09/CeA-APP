@@ -90,7 +90,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     optimizeDeps: {
-      exclude: ['lucide-react'],
+      // exclude: ['lucide-react'], // Removido para evitar erro com adblockers bloqueando fingerprint.js
       // Pré-bundling de dependências comuns para melhorar o tempo de inicialização
       entries: ['./src/**/*.tsx', './src/**/*.ts'],
       esbuildOptions: {

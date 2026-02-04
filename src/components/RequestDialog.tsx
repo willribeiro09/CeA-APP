@@ -29,7 +29,7 @@ async function sendTelegramNotification(requestData: {
         body: JSON.stringify(requestData),
       }
     );
-    
+
     if (!response.ok) {
       console.error('Failed to send Telegram notification:', await response.text());
     }
@@ -169,29 +169,29 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
     // Encontrar o último item não confirmado (editável)
     const unconfirmedItems = workItems.filter(item => !item.isConfirmed);
     if (unconfirmedItems.length === 0) return;
-    
+
     const lastUnconfirmedItem = unconfirmedItems[unconfirmedItems.length - 1];
-    
+
     // Validar se o item está preenchido
     if (!lastUnconfirmedItem.workType || lastUnconfirmedItem.quantity <= 0 || lastUnconfirmedItem.unitPrice <= 0) {
       alert('Please fill in all required fields (Work Type, Quantity, and Unit Price)');
       return;
     }
-    
+
     // Se o workType ou color for "Other", validar campos customizados
     if (lastUnconfirmedItem.workType === 'Other' && !lastUnconfirmedItem.customWorkType?.trim()) {
       alert('Please specify the custom work type');
       return;
     }
-    
+
     if (lastUnconfirmedItem.color === 'Other' && !lastUnconfirmedItem.customColor?.trim()) {
       alert('Please specify the custom color');
       return;
     }
-    
+
     // Marcar o item como confirmado (não cria novo item)
-    setWorkItems(workItems.map(item => 
-      item.id === lastUnconfirmedItem.id 
+    setWorkItems(workItems.map(item =>
+      item.id === lastUnconfirmedItem.id
         ? { ...item, isConfirmed: true }
         : item
     ));
@@ -207,12 +207,12 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
     setWorkItems(workItems.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
-        
+
         // Recalculate total when quantity or unitPrice changes
         if (field === 'quantity' || field === 'unitPrice') {
           updated.total = updated.quantity * updated.unitPrice;
         }
-        
+
         return updated;
       }
       return item;
@@ -222,28 +222,28 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
   const handleSubmit = async () => {
     // Determinar o tipo do request (edição ou novo)
     const requestType = editingRequest ? editingRequest.type : type;
-    
+
     // Validation - apenas nome obrigatório para invoice
     if (!customerName.trim()) {
       alert('Customer name is required');
       return;
     }
-    
+
     // Preparar dados que serão usados independente do tipo
     const selectedSendFrom = [];
     if (sendFrom.carlos) selectedSendFrom.push('Carlos');
     if (sendFrom.diego) selectedSendFrom.push('Diego');
     if (sendFrom.ciaPhone) selectedSendFrom.push('Cia Phone');
-    
+
     // Check if at least one "Send PDF to" option is selected (obrigatório para ambos)
     if (selectedSendFrom.length === 0) {
       alert('Please select at least one "Send PDF to" option');
       return;
     }
-    
+
     // Filter only confirmed work items
     const confirmedWorkItems = workItems.filter(item => item.isConfirmed);
-    
+
     // Para estimate, manter validações completas
     if (requestType === 'estimate') {
       if (!customerPhone.trim()) {
@@ -254,13 +254,13 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
         alert('Address is required');
         return;
       }
-      
+
       // Check if there's at least one confirmed work item (apenas para estimate)
       if (confirmedWorkItems.length === 0) {
         alert('Please add and confirm at least one work item');
         return;
       }
-      
+
       // Check if all confirmed work items are valid (apenas para estimate)
       const invalidItem = confirmedWorkItems.find(item => {
         // Check quantity and unit price
@@ -379,7 +379,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
       setCustomerName(editingRequest.customer_name);
       setCustomerPhone(editingRequest.customer_phone);
       setAddress(editingRequest.address);
-      
+
       // Preencher Send PDF to se existir
       if (editingRequest.send_from && Array.isArray(editingRequest.send_from)) {
         setSendFrom({
@@ -394,13 +394,13 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
           ciaPhone: false
         });
       }
-      
+
       // Converter work_items para o formato do componente
       if (editingRequest.work_items && editingRequest.work_items.length > 0) {
         const convertedItems: WorkItem[] = editingRequest.work_items.map((item, index) => {
           const workType = item.workType || '';
           const color = item.color || '';
-          
+
           return {
             id: (index + 1).toString(),
             workType: WORK_TYPES.includes(workType) ? workType : 'Other',
@@ -447,7 +447,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
           {/* Header */}
           <div className="bg-[#073863] px-4 py-3 flex items-center justify-between flex-shrink-0">
             <h2 className="text-xl font-semibold text-white">
-              {editingRequest 
+              {editingRequest
                 ? `Edit ${editingRequest.type === 'invoice' ? 'Invoice' : 'Estimate'}`
                 : (type === 'invoice' ? 'Invoice' : 'Estimate')
               }
@@ -464,7 +464,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
             {/* Customer Data */}
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-2">Customer Information</h3>
-              
+
               <div className="space-y-2">
                 {/* Customer Name with Autocomplete */}
                 <div className="relative">
@@ -482,7 +482,7 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
                     className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                     placeholder="Enter customer name"
                   />
-                  
+
                   {/* Autocomplete Suggestions */}
                   {showCustomerSuggestions && filteredClients.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
@@ -535,157 +535,157 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
             {/* Work Items */}
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-2">Work Items</h3>
-                
-                <div className="space-y-2">
-                  {workItems.map((item, index) => {
-                    const displayWorkType = item.workType === 'Other' ? item.customWorkType || 'Other' : item.workType;
-                    const displayColor = item.color === 'Other' ? item.customColor || 'Other' : item.color;
-                    
-                    // Encontrar o último item não confirmado
-                    const unconfirmedItems = workItems.filter(i => !i.isConfirmed);
-                    const lastUnconfirmedItem = unconfirmedItems.length > 0 ? unconfirmedItems[unconfirmedItems.length - 1] : null;
-                    const isEditableItem = lastUnconfirmedItem && item.id === lastUnconfirmedItem.id;
-                    
-                    // Itens confirmados ou não confirmados que não são o último: mostrar resumo compacto
-                    if (item.isConfirmed || !isEditableItem) {
-                      return (
-                        <div key={item.id} className="p-2 border border-gray-200 rounded-lg bg-white flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm text-gray-900">
-                              {displayWorkType} - {displayColor} | Qty: {item.quantity} | ${item.unitPrice.toFixed(2)}/unit
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => removeWorkItem(item.id)}
-                            className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors ml-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      );
-                    }
-                    
-                    // Último item não confirmado (editável): mostrar formulário editável
+
+              <div className="space-y-2">
+                {workItems.map((item, index) => {
+                  const displayWorkType = item.workType === 'Other' ? item.customWorkType || 'Other' : item.workType;
+                  const displayColor = item.color === 'Other' ? item.customColor || 'Other' : item.color;
+
+                  // Encontrar o último item não confirmado
+                  const unconfirmedItems = workItems.filter(i => !i.isConfirmed);
+                  const lastUnconfirmedItem = unconfirmedItems.length > 0 ? unconfirmedItems[unconfirmedItems.length - 1] : null;
+                  const isEditableItem = lastUnconfirmedItem && item.id === lastUnconfirmedItem.id;
+
+                  // Itens confirmados ou não confirmados que não são o último: mostrar resumo compacto
+                  if (item.isConfirmed || !isEditableItem) {
                     return (
-                      <div key={item.id} className="p-3 border border-gray-300 rounded-lg bg-gray-50">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700">Item {index + 1}</span>
-                          {workItems.length > 1 && (
-                            <button
-                              onClick={() => removeWorkItem(item.id)}
-                              className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                      <div key={item.id} className="p-2 border border-gray-200 rounded-lg bg-white flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm text-gray-900">
+                            {displayWorkType} - {displayColor} | Qty: {item.quantity} | ${item.unitPrice.toFixed(2)}/unit
+                          </span>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          {/* Work Type */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                              Work Type <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                              value={item.workType}
-                              onChange={(e) => updateWorkItem(item.id, 'workType', e.target.value)}
-                              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                            >
-                              {WORK_TYPES.map(type => (
-                                <option key={type} value={type}>{type}</option>
-                              ))}
-                            </select>
-                            {item.workType === 'Other' && (
-                              <input
-                                type="text"
-                                value={item.customWorkType || ''}
-                                onChange={(e) => updateWorkItem(item.id, 'customWorkType', e.target.value)}
-                                className="w-full mt-1 p-2 text-sm border border-gray-300 rounded-lg bg-white"
-                                placeholder="Specify work type"
-                              />
-                            )}
-                          </div>
-
-                          {/* Color */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                              Color <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                              value={item.color}
-                              onChange={(e) => updateWorkItem(item.id, 'color', e.target.value)}
-                              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                            >
-                              {COLORS.map(color => (
-                                <option key={color} value={color}>{color}</option>
-                              ))}
-                            </select>
-                            {item.color === 'Other' && (
-                              <input
-                                type="text"
-                                value={item.customColor || ''}
-                                onChange={(e) => updateWorkItem(item.id, 'customColor', e.target.value)}
-                                className="w-full mt-1 p-2 text-sm border border-gray-300 rounded-lg bg-white"
-                                placeholder="Specify color"
-                              />
-                            )}
-                          </div>
-
-                          {/* Quantity */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                              Quantity <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={item.quantity || ''}
-                              onChange={(e) => updateWorkItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                              placeholder="0"
-                            />
-                          </div>
-
-                          {/* Unit Price */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                              Unit Price <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.unitPrice || ''}
-                              onChange={(e) => updateWorkItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-                        
-                        {/* OK, Next Button - aparece abaixo do item editável */}
                         <button
-                          onClick={confirmWorkItem}
-                          className="w-full mt-3 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+                          onClick={() => removeWorkItem(item.id)}
+                          className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors ml-2"
                         >
-                          OK, Next
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     );
-                  })}
+                  }
 
-                  {/* Add Work Item Button - aparece apenas quando não há item editável (todos estão confirmados) */}
-                  {!workItems.some(item => !item.isConfirmed) && (
-                    <button
-                      onClick={addWorkItem}
-                      className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add New Work Item
-                    </button>
-                  )}
-                </div>
+                  // Último item não confirmado (editável): mostrar formulário editável
+                  return (
+                    <div key={item.id} className="p-3 border border-gray-300 rounded-lg bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Item {index + 1}</span>
+                        {workItems.length > 1 && (
+                          <button
+                            onClick={() => removeWorkItem(item.id)}
+                            className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Work Type */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                            Work Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={item.workType}
+                            onChange={(e) => updateWorkItem(item.id, 'workType', e.target.value)}
+                            className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                          >
+                            {WORK_TYPES.map(type => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                          {item.workType === 'Other' && (
+                            <input
+                              type="text"
+                              value={item.customWorkType || ''}
+                              onChange={(e) => updateWorkItem(item.id, 'customWorkType', e.target.value)}
+                              className="w-full mt-1 p-2 text-sm border border-gray-300 rounded-lg bg-white"
+                              placeholder="Specify work type"
+                            />
+                          )}
+                        </div>
+
+                        {/* Color */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                            Color <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={item.color}
+                            onChange={(e) => updateWorkItem(item.id, 'color', e.target.value)}
+                            className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                          >
+                            {COLORS.map(color => (
+                              <option key={color} value={color}>{color}</option>
+                            ))}
+                          </select>
+                          {item.color === 'Other' && (
+                            <input
+                              type="text"
+                              value={item.customColor || ''}
+                              onChange={(e) => updateWorkItem(item.id, 'customColor', e.target.value)}
+                              className="w-full mt-1 p-2 text-sm border border-gray-300 rounded-lg bg-white"
+                              placeholder="Specify color"
+                            />
+                          )}
+                        </div>
+
+                        {/* Quantity */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                            Quantity <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={item.quantity || ''}
+                            onChange={(e) => updateWorkItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                            className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                            placeholder="0"
+                          />
+                        </div>
+
+                        {/* Unit Price */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                            Unit Price <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unitPrice || ''}
+                            onChange={(e) => updateWorkItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                            className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+
+                      {/* OK, Next Button - aparece abaixo do item editável */}
+                      <button
+                        onClick={confirmWorkItem}
+                        className="w-full mt-3 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* Add Work Item Button - aparece apenas quando não há item editável (todos estão confirmados) */}
+                {!workItems.some(item => !item.isConfirmed) && (
+                  <button
+                    onClick={addWorkItem}
+                    className="w-full mt-3 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-colors flex items-center justify-center gap-2 font-semibold"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add New Work Item
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -738,8 +738,8 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 text-sm bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting 
-                ? (editingRequest ? 'Updating...' : 'Submitting...') 
+              {isSubmitting
+                ? (editingRequest ? 'Updating...' : 'Submitting...')
                 : (editingRequest ? 'Update' : 'Submit')
               }
             </button>
