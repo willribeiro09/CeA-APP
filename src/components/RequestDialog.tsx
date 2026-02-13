@@ -286,6 +286,10 @@ export function RequestDialog({ isOpen, onClose, type, projects, onSuccess, edit
     setIsSubmitting(true);
 
     try {
+      if (!supabase) {
+        throw new Error('Integration not configured. Please check your environment variables.');
+      }
+
       // Prepare work items data (only confirmed items, pode ser array vazio para invoice)
       const workItemsData = confirmedWorkItems.map(item => ({
         workType: item.workType === 'Other' ? (item.customWorkType || 'Other') : item.workType,
