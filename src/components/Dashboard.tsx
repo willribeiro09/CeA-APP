@@ -318,6 +318,7 @@ export function Dashboard({
   // Função para deletar receipt
   const handleDeleteReceipt = async (receiptId: string, filename?: string) => {
     if (!confirm('Are you sure you want to delete this receipt?')) return;
+    if (!supabase) return;
 
     try {
       // Deletar arquivo do storage se existir
@@ -363,11 +364,9 @@ export function Dashboard({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase!.removeChannel(channel);
     };
   }, []);
-
-  // Carregar receipts do Supabase
   useEffect(() => {
     if (!supabase) return;
     loadReceipts();
@@ -389,11 +388,9 @@ export function Dashboard({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase!.removeChannel(channel);
     };
   }, []);
-
-  // Recarregar receipts quando refreshReceiptsTimestamp mudar
   useEffect(() => {
     if (refreshReceiptsTimestamp) {
       loadReceipts();
@@ -772,11 +769,30 @@ export function Dashboard({
       });
     });
 
+    // 4. Receipts Recentes (Últimos 7 dias)
+    receipts.forEach(receipt => {
+      const receiptDate = new Date(receipt.created_at);
+      if (differenceInDays(now, receiptDate) <= 7) {
+        activities.push({
+          id: `receipt-${receipt.id}`,
+          type: 'expense',
+          title: 'Receipt Added',
+          description: receipt.description || 'Receipt',
+          date: receiptDate,
+          icon: FileText,
+          color: 'text-blue-600',
+          bg: 'from-blue-50 to-blue-100',
+          amount: receipt.amount || undefined,
+          photo: receipt.photo_url || undefined,
+          data: receipt
+        });
+      }
+    });
 
     // Remover duplicatas exatas de ID e ordenar
     const unique = Array.from(new Map(activities.map(item => [item.id, item])).values());
     return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 50);
-  }, [projects, employees, expenses]);
+  }, [projects, employees, expenses, receipts]);
 
   // (Projetos não possuem mais slideshow no card)
 
@@ -1093,7 +1109,7 @@ export function Dashboard({
                           onItemClick(activity.data, activity.type);
                         }
                       }}
-                      className="relative px-3 py-2 hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100 flex items-center gap-3"
+                      className="relative px-3 py-2.5 hover:bg-gray-50/50 transition-colors cursor-pointer border-b border-gray-100 flex items-center gap-3"
                     >
                       {/* Ícone menor ou Foto */}
                       <div className="flex-shrink-0">
@@ -1101,10 +1117,10 @@ export function Dashboard({
                           <img
                             src={activity.photo}
                             alt=""
-                            className="w-8 h-8 rounded-lg object-cover border border-gray-200"
+                            className="w-9 h-9 rounded-lg object-cover border border-gray-200"
                           />
                         ) : (
-                          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${activity.bg} flex items-center justify-center`}>
+                          <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${activity.bg} flex items-center justify-center`}>
                             <EventIcon className={`w-4 h-4 ${activity.color}`} />
                           </div>
                         )}
@@ -1113,30 +1129,32 @@ export function Dashboard({
                       {/* Conteúdo compacto */}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline">
-                          <h4 className="text-[13px] font-semibold text-gray-900 leading-none truncate mr-2">
+                          <h4 className="text-[14px] font-semibold text-gray-900 leading-none truncate mr-2">
                             {activity.title}
                           </h4>
                           {activity.amount !== undefined ? (
-                            <span className={`text-sm font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'employee' || (activity.type === 'expense' && !activity.title.includes('Paid')) ? 'text-red-600' : 'text-green-600'}`}>
-                              ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            <span className={`text-[15px] font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'employee' || (activity.type === 'expense' && !activity.title.includes('Paid')) ? 'text-red-600' : 'text-green-600'}`}>
+                              ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           ) : (
-                            <span className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0">{timeAgo}</span>
+                            <span className="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">{timeAgo}</span>
                           )}
                         </div>
                         <div className="flex flex-col mt-0.5">
-                          <p className="text-[11px] text-gray-600 leading-tight truncate pr-2">
+                          <p className="text-[12px] text-gray-600 leading-tight truncate pr-2">
                             {activity.description}
                           </p>
                           {activity.location && (
-                            <div className="flex items-center gap-1 mt-0.5 text-[10px] text-gray-500 truncate">
+                            <div className="flex items-center gap-1 mt-0.5 text-[11px] text-gray-500 truncate">
                               <MapPin className="w-3 h-3 flex-shrink-0" />
                               <span className="truncate">{activity.location}</span>
                             </div>
                           )}
                         </div>
                       </div>
+
                     </div>
+
                   );
                 })}
               </div>
