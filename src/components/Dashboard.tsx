@@ -611,7 +611,7 @@ export function Dashboard({
   const recentActivities = useMemo(() => {
     const activities: Array<{
       id: string;
-      type: 'notification' | 'project' | 'employee' | 'expense' | 'stock';
+      type: 'notification' | 'project' | 'employee' | 'expense' | 'stock' | 'receipt';
       title: string;
       description: string;
       date: Date;
@@ -775,7 +775,7 @@ export function Dashboard({
       if (differenceInDays(now, receiptDate) <= 7) {
         activities.push({
           id: `receipt-${receipt.id}`,
-          type: 'expense',
+          type: 'receipt' as const,
           title: 'Receipt Added',
           description: receipt.description || 'Receipt',
           date: receiptDate,
@@ -1105,7 +1105,9 @@ export function Dashboard({
                     <div
                       key={activity.id}
                       onClick={() => {
-                        if (activity.data && (activity.type === 'expense' || activity.type === 'project')) {
+                        if (activity.type === 'receipt') {
+                          setRecentTab('Receipts');
+                        } else if (activity.data && (activity.type === 'expense' || activity.type === 'project')) {
                           onItemClick(activity.data, activity.type);
                         }
                       }}
