@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronDown, Calendar } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 interface MonthOption {
   value: string;
@@ -17,29 +17,28 @@ interface MonthSelectorProps {
 
 export function MonthSelector({ selectedMonthStart, onMonthChange }: MonthSelectorProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
-  // Gerar lista de meses (começando em setembro, adicionando novos conforme o tempo passa)
+
+  // Gerar lista de meses (de setembro até o mês atual, recalculando quando o mês mudar)
+  const currentDate = new Date();
+  const currentMonthIndex = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+
   const months = useMemo(() => {
     const monthOptions: MonthOption[] = [];
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth(); // 0-11 (0=Jan, 8=Sep)
-    const currentYear = currentDate.getFullYear();
-    
-    // Começar sempre em setembro (mês 8)
-    const startYear = currentMonth >= 8 ? currentYear : currentYear - 1; // Se estamos antes de setembro, usar ano anterior
-    
-    // Se estamos em setembro ou depois, incluir do setembro atual até agora
-    // Se estamos antes de setembro, incluir do setembro do ano passado até agora
-    let monthsToAdd = currentMonth >= 8 ? (currentMonth - 8) + 1 : (currentMonth + 1) + (12 - 8);
-    
-    for (let i = 0; i < monthsToAdd; i++) {
-      const monthIndex = (8 + i) % 12; // Começar em setembro (8)
-      const year = startYear + Math.floor((8 + i) / 12);
-      
-      const monthStart = startOfMonth(new Date(year, monthIndex, 1));
-      const monthEnd = endOfMonth(new Date(year, monthIndex, 1));
-      const isCurrent = monthIndex === currentMonth && year === currentYear;
-      
+
+    // Data fixa de início: Setembro 2025
+    const startYear = 2025;
+    const startMonthIndex = 8; // Setembro
+
+    // Iterar mês a mês de Setembro 2025 até o mês atual
+    let year = startYear;
+    let month = startMonthIndex;
+
+    while (year < currentYear || (year === currentYear && month <= currentMonthIndex)) {
+      const monthStart = startOfMonth(new Date(year, month, 1));
+      const monthEnd = endOfMonth(new Date(year, month, 1));
+      const isCurrent = month === currentMonthIndex && year === currentYear;
+
       monthOptions.push({
         value: format(monthStart, 'yyyy-MM'),
         label: format(monthStart, 'MMMM yyyy'),
@@ -47,10 +46,17 @@ export function MonthSelector({ selectedMonthStart, onMonthChange }: MonthSelect
         endDate: monthEnd,
         isCurrent
       });
+
+      // Avançar para o próximo mês
+      month++;
+      if (month > 11) {
+        month = 0;
+        year++;
+      }
     }
-    
-    return monthOptions;
-  }, []);
+
+    return monthOptions.reverse();
+  }, [currentMonthIndex, currentYear]);
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
     // Encontrar o mês que corresponde à data selecionada
@@ -62,7 +68,7 @@ export function MonthSelector({ selectedMonthStart, onMonthChange }: MonthSelect
   useEffect(() => {
     const selectedValue = format(selectedMonthStart, 'yyyy-MM');
     const matchingMonth = months.find(month => month.value === selectedValue);
-    
+
     if (matchingMonth) {
       setSelectedMonth(matchingMonth);
     } else {
@@ -96,22 +102,20 @@ export function MonthSelector({ selectedMonthStart, onMonthChange }: MonthSelect
             {selectedMonth.label}
           </span>
           <ChevronDown
-            className={`w-3.5 h-3.5 text-[#5ABB37] ml-1 transition-transform ${
-              isDropdownOpen ? 'transform rotate-180' : ''
-            }`}
+            className={`w-3.5 h-3.5 text-[#5ABB37] ml-1 transition-transform ${isDropdownOpen ? 'transform rotate-180' : ''
+              }`}
           />
         </div>
       </button>
-      
+
       {isDropdownOpen && (
         <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40 min-w-[200px] max-h-60 overflow-y-auto">
           {months.map((month) => (
             <button
               key={month.value}
               onClick={() => handleMonthSelect(month)}
-              className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
-                selectedMonth.value === month.value ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-              }`}
+              className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${selectedMonth.value === month.value ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                }`}
             >
               <div className="flex flex-col">
                 <span className="font-medium text-sm">{month.label}</span>

@@ -6,7 +6,10 @@ interface TotalValuePopupProps {
 
 export function TotalValuePopup({ total }: TotalValuePopupProps) {
   return (
-    <div className="fixed bottom-[69px] left-4 z-30">
+    <div
+      className="fixed left-4 z-30"
+      style={{ bottom: 'calc(69px + env(safe-area-inset-bottom, 0px))' }}
+    >
       <div className="bg-[#5ABB37] rounded-full px-4 py-1 shadow-md backdrop-blur-sm">
         <span className="text-white text-lg font-semibold">
           ${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
