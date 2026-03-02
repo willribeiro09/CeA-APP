@@ -102,6 +102,7 @@ export function Dashboard({
 
   // Estado para Receipts
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [receiptsLoaded, setReceiptsLoaded] = useState(false);
   const [internalReceiptScannerOpen, setInternalReceiptScannerOpen] = useState(false);
   const [refreshReceiptsTimestamp, setRefreshReceiptsTimestamp] = useState(0);
   const [showReceiptOptions, setShowReceiptOptions] = useState(false);
@@ -208,6 +209,8 @@ export function Dashboard({
     if (!error && data) {
       setReceipts(data);
     }
+    // Marcar como carregado em qualquer caso (sucesso ou erro)
+    setReceiptsLoaded(true);
   };
 
   // Função para converter Receipt em ProjectPhoto
@@ -1092,7 +1095,7 @@ export function Dashboard({
           </div>
 
           <div className="flex-1 overflow-y-auto hide-scrollbar">
-            {recentTab === 'Recent' && recentActivities.length > 0 ? (
+            {recentTab === 'Recent' && receiptsLoaded && recentActivities.length > 0 ? (
               <div>
                 {recentActivities.map((activity) => {
                   const timeAgo = formatDistanceToNow(activity.date, {
@@ -1135,7 +1138,7 @@ export function Dashboard({
                             {activity.title}
                           </h4>
                           {activity.amount !== undefined ? (
-                            <span className={`text-[15px] font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'employee' || (activity.type === 'expense' && !activity.title.includes('Paid')) ? 'text-red-600' : 'text-green-600'}`}>
+                            <span className={`text-[15px] font-bold whitespace-nowrap flex-shrink-0 ${activity.type === 'employee' || activity.type === 'receipt' || (activity.type === 'expense' && !activity.title.includes('Paid')) ? 'text-red-600' : 'text-green-600'}`}>
                               ${activity.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           ) : (
@@ -1160,6 +1163,8 @@ export function Dashboard({
                   );
                 })}
               </div>
+            ) : recentTab === 'Recent' && !receiptsLoaded ? (
+              null
             ) : recentTab === 'Recent' ? (
               <div className="flex flex-col items-center justify-center h-32 text-gray-400">
                 <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2">
@@ -1167,6 +1172,7 @@ export function Dashboard({
                 </div>
                 <p className="text-xs">No recent activity</p>
               </div>
+
             ) : recentTab === 'Stock' ? (
               // Lista de itens do inventário
               stockItems.length > 0 ? (
