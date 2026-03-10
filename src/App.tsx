@@ -2904,8 +2904,8 @@ export default function App() {
                     >
                       <div
                         className={`p-4 rounded-lg shadow-md cursor-pointer transition-all duration-300 border-2 backdrop-blur-sm ${project.status === 'completed' && project.invoiceOk
-                            ? 'bg-gradient-to-br from-white to-green-50/50 border-green-300/80 shadow-green-200/20'
-                            : 'bg-white border-gray-200/60 shadow-gray-200/20'
+                          ? 'bg-gradient-to-br from-white to-green-50/50 border-green-300/80 shadow-green-200/20'
+                          : 'bg-white border-gray-200/60 shadow-gray-200/20'
                           }`}
                         style={{
                           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
@@ -2966,19 +2966,19 @@ export default function App() {
                             {/* Botão de edição visível */}
                             {project.invoiceOk && (
                               <span className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md font-medium border whitespace-nowrap ${project.clientType === 'Private'
-                                  ? 'bg-green-200 text-green-900 border-green-300'
-                                  : 'bg-green-100 text-green-800 border-green-200'
+                                ? 'bg-green-200 text-green-900 border-green-300'
+                                : 'bg-green-100 text-green-800 border-green-200'
                                 }`}>
                                 Invoice OK
                               </span>
                             )}
                             <span className={`rounded-md font-medium border whitespace-nowrap ${project.status === 'completed'
-                                ? (project.clientType === 'Private'
-                                  ? 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-200 text-green-900 border-green-300'
-                                  : 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-100 text-green-800 border-green-200')
-                                : project.status === 'in_progress'
-                                  ? 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-100 text-blue-800 border-blue-200'
-                                  : 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-yellow-100 text-yellow-800 border-yellow-200'
+                              ? (project.clientType === 'Private'
+                                ? 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-200 text-green-900 border-green-300'
+                                : 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-100 text-green-800 border-green-200')
+                              : project.status === 'in_progress'
+                                ? 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-100 text-blue-800 border-blue-200'
+                                : 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-yellow-100 text-yellow-800 border-yellow-200'
                               }`}>
                               {project.status === 'completed' ? 'Completed' :
                                 project.status === 'in_progress' ? 'In Progress' : 'Pending'}

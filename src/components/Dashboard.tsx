@@ -87,8 +87,8 @@ export function Dashboard({
   // NOTIFICAÇÕES DESABILITADAS - Não aparecem mais na lista Recent (apenas ações reais dos usuários)
   // const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Estados para slideshow dos cards (somente Expenses mantém slideshow)
-  const [expenseSlideIndex, setExpenseSlideIndex] = useState(0);
+  // Estado para rolagem das despesas vencidas
+  const [overdueSlideIndex, setOverdueSlideIndex] = useState(0);
 
   const [recentTab, setRecentTab] = useState<'Recent' | 'Requests' | 'Receipts' | 'Stock'>('Recent');
 
@@ -437,14 +437,77 @@ export function Dashboard({
     }
   };
 
-  // Lista de despesas C&A: mostrar todas (nome, valor e data de vencimento)
-  const overdueExpenses = useMemo(() => {
+  // Estatísticas do card To Pay (despesas C&A)
+  const toPayStats = useMemo(() => {
     const listCA = (expenses['C&A'] || []) as Expense[];
-    return listCA.map(e => ({
-      description: e.description || 'No description',
-      amount: e.amount || 0,
-      date: e.date || '',
-    }));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let unpaidTotal = 0;
+
+    // Lista de pendências
+    const pendingItems: { name: string; dueDate: Date; isLate: boolean; diffDays: number; amount: number }[] = [];
+
+    listCA.forEach(e => {
+      if (e.is_paid || e.paid) return;
+
+      if (e.installments && e.installments.length > 0) {
+        const unpaidInst = e.installments.filter(inst => !inst.isPaid);
+        if (unpaidInst.length > 0) {
+          unpaidInst.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+          const oldestInst = unpaidInst[0];
+
+          let instTotal = 0;
+          unpaidInst.forEach(inst => { instTotal += inst.amount; });
+          unpaidTotal += instTotal;
+
+          const itemDate = new Date(oldestInst.dueDate);
+          itemDate.setHours(0, 0, 0, 0);
+          const diffDays = Math.round((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+          pendingItems.push({
+            name: unpaidInst.length > 1 ? `${e.description} (${unpaidInst.length}x)` : e.description || 'No description',
+            dueDate: itemDate,
+            isLate: diffDays < 0,
+            diffDays,
+            amount: instTotal
+          });
+        }
+      } else if (e.date) {
+        unpaidTotal += e.amount || 0;
+        const itemDate = new Date(e.date);
+        itemDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        pendingItems.push({
+          name: e.description || 'No description',
+          dueDate: itemDate,
+          isLate: diffDays < 0,
+          diffDays,
+          amount: e.amount || 0
+        });
+      }
+    });
+
+    pendingItems.sort((a, b) => a.diffDays - b.diffDays);
+    const urgentItems = pendingItems.slice(0, 3).map(item => {
+      let statusText = '';
+      if (item.diffDays < 0) {
+        statusText = `${Math.abs(item.diffDays)}d late`;
+      } else if (item.diffDays === 0) {
+        statusText = 'Due today';
+      } else if (item.diffDays === 1) {
+        statusText = 'Due tomorrow';
+      } else {
+        statusText = `Due in ${item.diffDays}d`;
+      }
+      return { ...item, statusText };
+    });
+
+    const unpaidCount = pendingItems.length;
+    const overdueCount = pendingItems.filter(item => item.isLate).length;
+
+    return { unpaidCount, unpaidTotal, overdueCount, urgentItems };
   }, [expenses]);
 
   // Estatísticas de expenses (TODAS, sem filtro de data)
@@ -853,18 +916,15 @@ export function Dashboard({
     return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 50);
   }, [projects, employees, expenses, receipts]);
 
-  // (Projetos não possuem mais slideshow no card)
 
-  // Slideshow automático para despesas atrasadas
+  // Rolagem automática das despesas vencidas
   useEffect(() => {
-    if (overdueExpenses.length === 0) return;
-
+    if (toPayStats.urgentItems.length <= 1) return;
     const interval = setInterval(() => {
-      setExpenseSlideIndex((prev) => (prev + 1) % overdueExpenses.length);
-    }, 10000); // Muda a cada 10 segundos
-
+      setOverdueSlideIndex(prev => (prev + 1) % toPayStats.urgentItems.length);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [overdueExpenses.length]);
+  }, [toPayStats.urgentItems.length]);
 
   return (
     <div className="relative h-screen overflow-hidden">
@@ -873,7 +933,7 @@ export function Dashboard({
       {/* Cards fixos */}
       <div className="fixed top-[110px] left-0 right-0 z-10 px-4">
         <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          {/* Card To Pay - SLIDESHOW */}
+          {/* Card To Pay */}
           <div
             onClick={() => onNavigate('Expenses')}
             className="relative bg-gradient-to-br from-red-50 via-red-50 to-red-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
@@ -884,86 +944,57 @@ export function Dashboard({
             </div>
 
             <div className="relative z-10 h-full flex flex-col">
-              {/* Header fixo - ícone e título lado a lado */}
-              <div className="flex items-center gap-2 mb-2">
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-1">
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow flex-shrink-0">
                   <ReceiptIcon className="w-4 h-4 text-white" />
                 </div>
-                <div className="flex-1 flex items-center justify-between min-w-0">
-                  <div className="text-[13px] text-gray-700 font-semibold">To Pay</div>
-                </div>
+                <div className="text-[13px] text-gray-700 font-semibold">To Pay</div>
               </div>
 
-              {/* Slideshow area */}
-              <div className="flex-1 flex items-center justify-center overflow-hidden min-h-0">
-                {overdueExpenses.length > 0 ? (
-                  <div className="w-full h-full relative">
-                    {overdueExpenses.map((expense, index) => {
-                      const isActive = index === expenseSlideIndex;
-                      const isPast = index < expenseSlideIndex;
-                      return (
-                        <div
-                          key={index}
-                          className="absolute inset-0 flex flex-col justify-center px-1"
-                          style={{ pointerEvents: isActive ? 'auto' : 'none' }}
-                        >
-                          {/* Nome (esquerda) + Valor (direita) na mesma linha */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div
-                              className="text-sm font-semibold text-gray-700 truncate min-w-0 flex-1 transition-all ease-out"
-                              style={{
-                                transitionDuration: '600ms',
-                                transitionDelay: isActive ? '100ms' : '0ms',
-                                opacity: isActive ? 1 : 0,
-                                transform: isActive
-                                  ? 'translateX(0)'
-                                  : isPast
-                                    ? 'translateX(-100%)'
-                                    : 'translateX(60px)',
-                              }}
-                            >
-                              {expense.description}
-                            </div>
-                            <div
-                              className="text-xl font-extrabold text-gray-800 leading-none flex-shrink-0 transition-all ease-out"
-                              style={{
-                                transitionDuration: '600ms',
-                                transitionDelay: isActive ? '250ms' : '0ms',
-                                opacity: isActive ? 1 : 0,
-                                transform: isActive
-                                  ? 'translateX(0)'
-                                  : isPast
-                                    ? 'translateX(100%)'
-                                    : 'translateX(-60px)',
-                              }}
-                            >
-                              ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                            </div>
-                          </div>
-
-                          {/* Due Day - sobe de baixo */}
-                          {expense.date && (
-                            <div
-                              className="text-[11px] text-gray-500 mt-1 transition-all ease-out"
-                              style={{
-                                transitionDuration: '500ms',
-                                transitionDelay: isActive ? '200ms' : '0ms',
-                                opacity: isActive ? 1 : 0,
-                                transform: isActive
-                                  ? 'translateY(0)'
-                                  : isPast
-                                    ? 'translateY(-10px)'
-                                    : 'translateY(10px)',
-                              }}
-                            >
-                              Due Day: {format(new Date(expense.date), 'd', { locale: ptBR })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+              {/* Conteúdo */}
+              {toPayStats.unpaidCount > 0 ? (
+                <div className="flex-1 flex flex-col">
+                  {/* Contagem + Valor na mesma linha */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-[10px] text-gray-700 font-semibold uppercase tracking-wide">
+                      {toPayStats.overdueCount > 0 ? (
+                        <span className="text-red-600">{toPayStats.overdueCount} overdue</span>
+                      ) : (
+                        <span>{toPayStats.unpaidCount} bill{toPayStats.unpaidCount > 1 ? 's' : ''}</span>
+                      )}
+                    </div>
+                    <div className="text-xl font-extrabold text-gray-800 leading-none">
+                      ${toPayStats.unpaidTotal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </div>
                   </div>
-                ) : (
+                  {/* Despesa mais próxima ou vencida rolando */}
+                  {toPayStats.urgentItems.length > 0 && (
+                    <div className="mt-1 border-t border-red-200/50 pt-1 relative h-[16px] overflow-hidden">
+                      {toPayStats.urgentItems.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="absolute inset-x-0 flex items-center justify-between transition-all duration-500 ease-in-out"
+                          style={{
+                            opacity: idx === overdueSlideIndex ? 1 : 0,
+                            transform: idx === overdueSlideIndex
+                              ? 'translateY(0)'
+                              : idx < overdueSlideIndex
+                                ? 'translateY(-14px)'
+                                : 'translateY(14px)',
+                          }}
+                        >
+                          <span className="text-[9px] text-gray-600 truncate flex-1 mr-2">{item.name}</span>
+                          <span className={`text-[9px] font-semibold flex-shrink-0 ${item.isLate ? 'text-red-500' : 'text-orange-500'}`}>
+                            {item.statusText}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600 mb-0.5">
                       ✓ All Paid
@@ -975,8 +1006,8 @@ export function Dashboard({
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
