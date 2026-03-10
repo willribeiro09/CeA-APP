@@ -907,27 +907,44 @@ export function Dashboard({
                           className="absolute inset-0 flex flex-col justify-center px-1"
                           style={{ pointerEvents: isActive ? 'auto' : 'none' }}
                         >
-                          {/* Nome - desliza da esquerda */}
-                          <div
-                            className="text-sm font-semibold text-gray-700 truncate transition-all ease-out"
-                            style={{
-                              transitionDuration: '600ms',
-                              transitionDelay: isActive ? '100ms' : '0ms',
-                              opacity: isActive ? 1 : 0,
-                              transform: isActive
-                                ? 'translateX(0)'
-                                : isPast
-                                  ? 'translateX(-100%)'
-                                  : 'translateX(60px)',
-                            }}
-                          >
-                            {expense.description}
+                          {/* Nome (esquerda) + Valor (direita) na mesma linha */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div
+                              className="text-sm font-semibold text-gray-700 truncate min-w-0 flex-1 transition-all ease-out"
+                              style={{
+                                transitionDuration: '600ms',
+                                transitionDelay: isActive ? '100ms' : '0ms',
+                                opacity: isActive ? 1 : 0,
+                                transform: isActive
+                                  ? 'translateX(0)'
+                                  : isPast
+                                    ? 'translateX(-100%)'
+                                    : 'translateX(60px)',
+                              }}
+                            >
+                              {expense.description}
+                            </div>
+                            <div
+                              className="text-xl font-extrabold text-gray-800 leading-none flex-shrink-0 transition-all ease-out"
+                              style={{
+                                transitionDuration: '600ms',
+                                transitionDelay: isActive ? '250ms' : '0ms',
+                                opacity: isActive ? 1 : 0,
+                                transform: isActive
+                                  ? 'translateX(0)'
+                                  : isPast
+                                    ? 'translateX(100%)'
+                                    : 'translateX(-60px)',
+                              }}
+                            >
+                              ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </div>
                           </div>
 
                           {/* Due Day - sobe de baixo */}
                           {expense.date && (
                             <div
-                              className="text-[9px] text-gray-500 mt-0.5 transition-all ease-out"
+                              className="text-[11px] text-gray-500 mt-1 transition-all ease-out"
                               style={{
                                 transitionDuration: '500ms',
                                 transitionDelay: isActive ? '200ms' : '0ms',
@@ -942,23 +959,6 @@ export function Dashboard({
                               Due Day: {format(new Date(expense.date), 'd', { locale: ptBR })}
                             </div>
                           )}
-
-                          {/* Valor - desliza da direita */}
-                          <div
-                            className="text-xl font-extrabold text-gray-800 text-right leading-none mt-1 transition-all ease-out"
-                            style={{
-                              transitionDuration: '600ms',
-                              transitionDelay: isActive ? '250ms' : '0ms',
-                              opacity: isActive ? 1 : 0,
-                              transform: isActive
-                                ? 'translateX(0)'
-                                : isPast
-                                  ? 'translateX(100%)'
-                                  : 'translateX(-60px)',
-                            }}
-                          >
-                            ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                          </div>
                         </div>
                       );
                     })}
@@ -1002,7 +1002,7 @@ export function Dashboard({
               {/* Cliente + Valor na mesma linha */}
               <div className="flex-1 flex flex-col justify-center">
                 <div className="flex items-center justify-between">
-                  <div className="text-[10px] text-green-700 font-semibold uppercase tracking-wide">Power</div>
+                  <div className="text-[10px] text-gray-700 font-semibold uppercase tracking-wide">Power</div>
                   <div className="text-xl font-extrabold text-gray-800 leading-none">
                     ${powerProjectsWeekValues.current.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </div>
@@ -1076,11 +1076,16 @@ export function Dashboard({
             <div className="absolute -right-3 -bottom-3 opacity-5 text-blue-500">
               <Calendar className="w-28 h-28" />
             </div>
-            <div
-              className="absolute right-2 top-1 text-[28px] text-gray-800/80 font-semibold"
-              style={{ fontFamily: 'Arial, sans-serif' }}
-            >
-              {format(new Date(), 'd')}
+            {/* Caixa calendário - dia + mês */}
+            <div className="absolute right-2 top-2 z-20">
+              <div className="w-10 h-12 rounded-lg bg-white/90 shadow-md border border-blue-200/60 flex flex-col items-center justify-center overflow-hidden">
+                <div className="text-[18px] font-bold text-gray-800 leading-none">
+                  {format(new Date(), 'd')}
+                </div>
+                <div className="text-[8px] font-semibold text-blue-600 uppercase tracking-wider mt-0.5">
+                  {format(new Date(), 'MMM')}
+                </div>
+              </div>
             </div>
 
             <div className="relative z-10 h-full flex flex-col">
@@ -1090,7 +1095,6 @@ export function Dashboard({
                 </div>
                 <div>
                   <div className="text-[13px] text-gray-800 font-semibold tracking-wide">Planner</div>
-                  <div className="text-sm text-gray-900 font-normal">{format(new Date(), 'MMMM')}</div>
                 </div>
               </div>
               <div className="flex-1 flex items-center">
