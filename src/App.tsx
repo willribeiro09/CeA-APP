@@ -40,16 +40,16 @@ import { v4 as uuidv4 } from 'uuid';
 import { SyncOverlay, useSyncStatus } from './components/SyncOverlay';
 import { LoginScreen } from './components/LoginScreen';
 
-import { 
-  formatDateToISO, 
-  parseISODate, 
-  getEmployeeWeekStart, 
+import {
+  formatDateToISO,
+  parseISODate,
+  getEmployeeWeekStart,
   getEmployeeWeekEnd,
-  getProjectWeekStart, 
+  getProjectWeekStart,
   getProjectWeekEnd,
   normalizeDate,
   testWeekRanges,
-  formatDateForDisplay 
+  formatDateForDisplay
 } from './lib/dateUtils';
 import { isMobileDevice, isPwaInstalled, isIOSDevice, getEnvironmentInfo } from './lib/deviceUtils';
 import { initializeNotifications, setupForegroundNotificationListener } from './lib/notificationService';
@@ -104,7 +104,7 @@ async function sendAppOpenedNotification(eventType: 'app_opened' | 'app_resumed'
     const userAgent = navigator.userAgent;
     let platform = 'Unknown';
     let browser = 'Unknown';
-    
+
     // Detectar plataforma
     if (userAgent.includes('iPhone')) platform = 'iPhone';
     else if (userAgent.includes('iPad')) platform = 'iPad';
@@ -112,13 +112,13 @@ async function sendAppOpenedNotification(eventType: 'app_opened' | 'app_resumed'
     else if (userAgent.includes('Windows')) platform = 'Windows';
     else if (userAgent.includes('Mac')) platform = 'Mac';
     else if (userAgent.includes('Linux')) platform = 'Linux';
-    
+
     // Detectar navegador
     if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) browser = 'Safari';
     else if (userAgent.includes('Chrome')) browser = 'Chrome';
     else if (userAgent.includes('Firefox')) browser = 'Firefox';
     else if (userAgent.includes('Edge')) browser = 'Edge';
-    
+
     const deviceInfo = {
       type: eventType,
       timestamp: new Date().toISOString(),
@@ -229,25 +229,25 @@ export default function App() {
       } else {
         console.warn('Supabase não configurado corretamente. Usando apenas armazenamento local.');
       }
-      
+
       // Inicializar sincronização simples
       await basicSyncService.init();
-      
+
       // Carregar dados iniciais
       const localData = await loadData();
 
       if (localData) {
         setExpenses(localData.expenses || {});
-        
+
         // Carregar projetos e sincronizar fotos
         let projects = (localData.projects || []).map(project => ({
           ...project,
           // Configurar projetos existentes como Power se não tiverem clientType
           clientType: project.clientType || 'Power'
         }));
-        
+
         // CORREÇÃO: Mover projeto "Power" que está na sessão Private para Power
-        const powerProjectIndex = projects.findIndex(p => 
+        const powerProjectIndex = projects.findIndex(p =>
           p.name === 'Power' && p.clientType === 'Private'
         );
         if (powerProjectIndex !== -1) {
@@ -266,17 +266,17 @@ export default function App() {
             willBonus: localData.willBonus
           }));
         }
-        
+
         setProjects(projects);
-        
+
         // Sincronizar fotos para cada projeto em background
         if (isSupabaseConfigured() && projects.length > 0) {
           syncProjectPhotos(projects);
         }
-        
+
         setStockItems(localData.stock || []);
         setEmployees(localData.employees || {});
-        
+
         // Carregar dados do Will se existirem
         if (localData.willBaseRate !== undefined) {
           setWillBaseRate(localData.willBaseRate);
@@ -301,7 +301,7 @@ export default function App() {
 
       // Configurar sincronização em tempo real com debounce
       const cleanup = basicSyncService.setupRealtimeUpdates((data) => {
-        
+
         if (data && !isUpdatingProject) {
           const now = Date.now();
           // Debounce: só atualizar se passou pelo menos 5000ms desde a última atualização
@@ -311,7 +311,7 @@ export default function App() {
             setProjects(data.projects || []);
             setStockItems(data.stock || []);
             setEmployees(data.employees || {});
-            
+
             // Atualizar dados do Will se existirem
             if (data.willBaseRate !== undefined) {
               setWillBaseRate(data.willBaseRate);
@@ -329,7 +329,7 @@ export default function App() {
         // Limpar listeners de sincronização
         window.removeEventListener('syncReturnStarted', handleSyncReturnStarted);
         window.removeEventListener('syncReturnCompleted', handleSyncReturnCompleted);
-        
+
         if (typeof cleanup === 'function') {
           cleanup();
         }
@@ -344,18 +344,18 @@ export default function App() {
     const setupNotifications = async () => {
       try {
         console.log('[App] Inicializando sistema de notificações push...');
-        
+
         // Inicializar notificações (solicitar permissão e obter token)
         const result = await initializeNotifications();
-        
+
         if (result.success) {
           console.log('[App] Notificações configuradas com sucesso!');
           console.log('[App] Token FCM:', result.token);
-          
+
           // Configurar listener para notificações em foreground
           setupForegroundNotificationListener((payload) => {
             console.log('[App] Notificação recebida enquanto app está aberto:', payload);
-            
+
             // Aqui você pode adicionar lógica customizada
             // Por exemplo: atualizar dados, mostrar toast, etc.
             if (payload.data?.type === 'sync') {
@@ -388,7 +388,7 @@ export default function App() {
     if (needsUserInteraction) {
       // Para iOS/PWA mobile: aguardar primeira interação do usuário
       console.log('[App] iOS/PWA detectado - aguardando interação do usuário para solicitar notificações');
-      
+
       let hasRequested = false;
       const requestOnInteraction = () => {
         if (!hasRequested) {
@@ -410,8 +410,8 @@ export default function App() {
       };
     } else {
       // Para desktop/navegador: comportamento automático após delay
-    const timer = setTimeout(setupNotifications, 2000);
-    return () => clearTimeout(timer);
+      const timer = setTimeout(setupNotifications, 2000);
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -427,7 +427,7 @@ export default function App() {
           const listName = notificationData.listName as ListName;
           const expenseList = expenses[listName] || [];
           const expense = expenseList.find(e => e.id === notificationData.expenseId);
-          
+
           if (expense) {
             setExpenseToView(expense);
             setIsExpenseDetailOpen(true);
@@ -436,7 +436,7 @@ export default function App() {
         } else if (notificationData.type === 'project') {
           // Buscar o projeto
           const project = projects.find(p => p.id === notificationData.projectId);
-          
+
           if (project) {
             setSelectedProject(project);
             setIsProjectSummaryOpen(true);
@@ -460,11 +460,11 @@ export default function App() {
   // Calcular o total dos projetos baseado no cliente e período selecionado
   useEffect(() => {
     if (projects.length === 0) return;
-    
+
     // Usar a mesma lógica da lista - comparação por string de data
     let periodStartStr: string;
     let periodEndStr: string;
-    
+
     if (selectedClient === 'Power') {
       // Para Power, usar semana
       periodStartStr = format(selectedWeekStart, 'yyyy-MM-dd');
@@ -474,38 +474,38 @@ export default function App() {
       periodStartStr = format(selectedMonthStart, 'yyyy-MM-dd');
       periodEndStr = format(selectedMonthEnd, 'yyyy-MM-dd');
     }
-    
+
     let total = 0;
-    
+
     projects.forEach(project => {
       // Somar apenas projetos concluídos
       if (project.status !== 'completed') {
         return;
       }
       // Filtrar projetos baseado no cliente
-      if ((selectedClient === 'Power' && project.clientType !== 'Private') || 
-          (selectedClient === 'Private' && project.clientType === 'Private')) {
-        
+      if ((selectedClient === 'Power' && project.clientType !== 'Private') ||
+        (selectedClient === 'Private' && project.clientType === 'Private')) {
+
         // Usar a mesma lógica da lista - comparação por string de data
         const projectStartStr = (project.startDate as string)?.slice(0, 10);
         const projectEndStr = project.endDate ? (project.endDate as string).slice(0, 10) : undefined;
-        
+
         // Verificar se está no intervalo (mesma lógica da lista)
-        const startInRange = projectStartStr >= periodStartStr && 
-                            projectStartStr <= periodEndStr;
-        const endInRange = projectEndStr && 
-                          projectEndStr >= periodStartStr && 
-                          projectEndStr <= periodEndStr;
-        const spansRange = projectStartStr <= periodStartStr && 
-                          projectEndStr && 
-                          projectEndStr >= periodEndStr;
-        
+        const startInRange = projectStartStr >= periodStartStr &&
+          projectStartStr <= periodEndStr;
+        const endInRange = projectEndStr &&
+          projectEndStr >= periodStartStr &&
+          projectEndStr <= periodEndStr;
+        const spansRange = projectStartStr <= periodStartStr &&
+          projectEndStr &&
+          projectEndStr >= periodEndStr;
+
         if (startInRange || endInRange || spansRange) {
           total += project.value || 0;
         }
       }
     });
-    
+
     setWeekTotalValue(total);
   }, [projects, selectedWeekStart, selectedWeekEnd, selectedMonthStart, selectedMonthEnd, selectedClient]);
 
@@ -515,15 +515,15 @@ export default function App() {
   const saveChanges = async (newData: StorageItems) => {
     // Deep clone para evitar problemas de referência
     const dataCopy = JSON.parse(JSON.stringify(newData));
-    
+
     // Verificar se os projetos estão presentes
     if (!dataCopy.projects || !Array.isArray(dataCopy.projects)) {
       console.error('Erro: projects não está definido ou não é um array', dataCopy);
       dataCopy.projects = [];
     }
-    
-    
-    
+
+
+
     // Verificar projetos com dados incompletos
     dataCopy.projects.forEach((project: any, index: number) => {
       if (!project.id) {
@@ -532,18 +532,18 @@ export default function App() {
         project.id = uuidv4();
       }
     });
-    
+
     setIsSaving(true);
-    
+
     // Definir um contador de tentativas
     let attempts = 0;
     const maxAttempts = 3;
-    
+
     const attemptSave = async (): Promise<boolean> => {
       try {
         // Salvar dados
         const result = await saveData(dataCopy);
-        
+
         if (result) {
           setShowFeedback({ show: true, message: 'Dados salvos com sucesso!', type: 'success' });
           return true;
@@ -551,29 +551,29 @@ export default function App() {
           throw new Error('Falha na sincronização');
         }
       } catch (error) {
-        console.error(`Tentativa ${attempts+1}/${maxAttempts} falhou:`, error);
-        
+        console.error(`Tentativa ${attempts + 1}/${maxAttempts} falhou:`, error);
+
         if (attempts < maxAttempts - 1) {
           attempts++;
           await new Promise(resolve => setTimeout(resolve, 1000));
           return attemptSave();
         }
-        
+
         console.error('Todas as tentativas falharam. Salvando apenas localmente.');
         setShowFeedback({ show: true, message: 'Erro ao sincronizar com o servidor!', type: 'error' });
-        
+
         // Mesmo com erro, atualizar o estado local para evitar perda de dados
         localStorage.setItem('expenses-app-data', JSON.stringify(dataCopy));
         return false;
       }
     };
-    
+
     try {
       const success = await attemptSave();
-      
+
       // Garantir que o estado de projetos seja atualizado mesmo em caso de falha
       setProjects(dataCopy.projects);
-      
+
       setIsSaving(false);
     } catch (finalError) {
       console.error('Erro fatal ao salvar:', finalError);
@@ -588,9 +588,9 @@ export default function App() {
         const serverPhotos = await PhotoService.syncProjectPhotos(project.id);
         if (serverPhotos.length > 0) {
           // Atualizar o projeto com as fotos do servidor
-          setProjects(prevProjects => 
-            prevProjects.map(p => 
-              p.id === project.id 
+          setProjects(prevProjects =>
+            prevProjects.map(p =>
+              p.id === project.id
                 ? { ...p, photos: serverPhotos }
                 : p
             )
@@ -610,7 +610,7 @@ export default function App() {
 
   // Debounce para evitar loops de sincronização
   const [photoUpdateTimeout, setPhotoUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
-  
+
   // Limpar timeout ao desmontar
   useEffect(() => {
     return () => {
@@ -619,23 +619,23 @@ export default function App() {
       }
     };
   }, [photoUpdateTimeout]);
-  
+
   const handleProjectPhotosChange = (projectId: string, photos: ProjectPhoto[]) => {
     // Marcar que estamos atualizando fotos para evitar loops de sincronização
     (window as any).__isUpdatingPhoto = true;
-    
+
     // Limpar timeout anterior se existir
     if (photoUpdateTimeout) {
       clearTimeout(photoUpdateTimeout);
     }
-    
+
     // Debounce de 500ms para evitar loops
     const timeout = setTimeout(() => {
       setProjects(prevProjects => {
-        const updatedProjects = prevProjects.map(p => 
+        const updatedProjects = prevProjects.map(p =>
           p.id === projectId ? { ...p, photos } : p
         );
-        
+
         // Salvar no storage
         saveChanges(createStorageData({
           expenses,
@@ -643,21 +643,21 @@ export default function App() {
           stock: stockItems,
           employees
         }));
-        
+
         return updatedProjects;
       });
-      
+
       // Atualizar o projeto selecionado se for o mesmo
       if (selectedProject && selectedProject.id === projectId) {
         setSelectedProject({ ...selectedProject, photos });
       }
-      
+
       // Liberar flag após 1 segundo
       setTimeout(() => {
         (window as any).__isUpdatingPhoto = false;
       }, 1000);
     }, 500);
-    
+
     setPhotoUpdateTimeout(timeout);
   };
 
@@ -668,27 +668,27 @@ export default function App() {
 
   const handleSaveEditedPhoto = (editedPhoto: ProjectPhoto) => {
     if (!selectedProject) return;
-    
+
     // Substituir a foto original pela editada, não adicionar
     const updatedPhotos = (selectedProject.photos || []).map(photo => {
       const isOriginal = photo.id === selectedPhoto?.id;
       return isOriginal ? editedPhoto : photo;
     });
-    
+
     // Se a foto original não foi encontrada (caso raro), adicionar a editada
     if (!updatedPhotos.find(p => p.id === editedPhoto.id)) {
       updatedPhotos.push(editedPhoto);
     }
-    
+
     // ATUALIZAÇÃO IMEDIATA DA UI (sem debounce para edições)
     // Marcar que estamos atualizando fotos para evitar loops de sincronização
     (window as any).__isUpdatingPhoto = true;
-    
+
     setProjects(prevProjects => {
-      const updatedProjects = prevProjects.map(p => 
+      const updatedProjects = prevProjects.map(p =>
         p.id === selectedProject.id ? { ...p, photos: updatedPhotos } : p
       );
-      
+
       // Salvar no storage
       saveChanges(createStorageData({
         expenses,
@@ -696,18 +696,18 @@ export default function App() {
         stock: stockItems,
         employees
       }));
-      
+
       return updatedProjects;
     });
-    
+
     // Atualizar o projeto selecionado imediatamente
     setSelectedProject({ ...selectedProject, photos: updatedPhotos });
-    
+
     // Liberar flag após 1 segundo
     setTimeout(() => {
       (window as any).__isUpdatingPhoto = false;
     }, 1000);
-    
+
     setIsImageEditorOpen(false);
     setSelectedPhoto(null); // Limpar foto selecionada
   };
@@ -715,12 +715,12 @@ export default function App() {
   const handleTogglePaid = (id: string) => {
     const selectedExpenses = [...expenses[selectedList]];
     const index = selectedExpenses.findIndex(expense => expense.id === id);
-    
+
     if (index !== -1) {
       const updatedExpenses = [...selectedExpenses];
       const expense = updatedExpenses[index];
       const newPaidStatus = !(expense.is_paid || expense.paid);
-      
+
       // Se estamos marcando como paga uma despesa recorrente
       if (newPaidStatus && expense.description && (expense.description.endsWith('*M') || expense.description.endsWith('*B') || expense.description.endsWith('*W'))) {
         const today = new Date();
@@ -729,19 +729,19 @@ export default function App() {
         const expenseDate = new Date(expense.date);
         const expenseMonth = expenseDate.getMonth();
         const expenseYear = expenseDate.getFullYear();
-        
+
         // Se a despesa é de mês anterior, atualizar para o mês atual
         if (expenseYear < currentYear || (expenseYear === currentYear && expenseMonth < currentMonth)) {
           // Calcular nova data mantendo o dia original
           const originalDay = expenseDate.getDate();
           let newDueDate = new Date(currentYear, currentMonth, originalDay);
-          
+
           // Se o dia não existe no mês atual (ex: 31 de janeiro → 31 de fevereiro)
           // ajustar para o último dia do mês
           if (newDueDate.getDate() !== originalDay) {
             newDueDate = new Date(currentYear, currentMonth + 1, 0); // Último dia do mês
           }
-          
+
           updatedExpenses[index] = {
             ...expense,
             date: newDueDate.toISOString(),
@@ -764,14 +764,14 @@ export default function App() {
           paid: newPaidStatus
         };
       }
-      
+
       const newExpenses = {
         ...expenses,
         [selectedList]: updatedExpenses
       };
-      
+
       setExpenses(newExpenses);
-      
+
       // Salvar alterações
       const storageData: StorageItems = {
         expenses: newExpenses,
@@ -782,7 +782,7 @@ export default function App() {
         willBonus,
         lastSync: Date.now()
       };
-      
+
       // Verificar se há alterações pendentes
       saveChanges(storageData);
     }
@@ -838,42 +838,42 @@ export default function App() {
         return newStockItems;
       });
     } else if (category === 'Employees') {
-      
-      
+
+
       setEmployees(prevEmployees => {
         const newEmployees = { ...prevEmployees };
         const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-        
-        
-        
-        
+
+
+
+
         // Listar todos os funcionários da semana para debug
         if (newEmployees[formattedSelectedWeekStart]) {
-          
+
         }
-        
+
         // Deletar apenas da semana selecionada, não de todas as semanas
         if (newEmployees[formattedSelectedWeekStart]) {
           const beforeCount = newEmployees[formattedSelectedWeekStart].length;
-          
+
           // Verificar se o funcionário existe na semana
           const employeeExists = newEmployees[formattedSelectedWeekStart].some(emp => emp.id === id);
-          
-          
+
+
           newEmployees[formattedSelectedWeekStart] = newEmployees[formattedSelectedWeekStart].filter(
             employee => {
               const shouldKeep = employee.id !== id;
-              
+
               return shouldKeep;
             }
           );
           const afterCount = newEmployees[formattedSelectedWeekStart].length;
-          
-          
+
+
         } else {
-          
+
         }
-        
+
         saveChanges(createStorageData({
           expenses,
           projects,
@@ -901,11 +901,11 @@ export default function App() {
       try {
         setExpenses(prevExpenses => {
           const newExpenses = { ...prevExpenses };
-          
+
           if (!newExpenses[selectedList]) {
             newExpenses[selectedList] = [];
           }
-          
+
           // Find and update the expense
           const expenseIndex = newExpenses[selectedList].findIndex(exp => exp.id === updatedExpense.id);
           if (expenseIndex !== -1) {
@@ -914,17 +914,17 @@ export default function App() {
               lastModified: Date.now()
             };
           }
-          
+
           saveChanges(createStorageData({
             expenses: newExpenses,
             projects,
             stock: stockItems,
             employees
           }));
-          
+
           return newExpenses;
         });
-        
+
         setShowFeedback({ show: true, message: 'Expense updated successfully!', type: 'success' });
         setTimeout(() => setShowFeedback({ show: false, message: '', type: 'success' }), 3000);
       } catch (error) {
@@ -940,15 +940,15 @@ export default function App() {
     if ('client' in updatedItem) {
       try {
         const itemWithTimestamp = updatedItem;
-        
+
         // É um projeto - usar abordagem direta
         setIsUpdatingProject(true);
         (window as any).__isUpdatingProject = true;
-        
+
         // Variáveis para detectar mudança de status ANTES de atualizar
         let shouldNotifyStatusChange = false;
         let statusNotificationData: { project: Project; oldStatus: string; newStatus: string } | null = null;
-        
+
         setProjects(prevProjects => {
           try {
             // Verificar se o ID existe
@@ -956,17 +956,17 @@ export default function App() {
               console.error("ID do projeto não encontrado nos dados de atualização");
               return prevProjects;
             }
-            
+
             const index = prevProjects.findIndex(project => project.id === itemWithTimestamp.id);
-            
+
             if (index === -1) {
               console.error("Projeto não encontrado com ID:", itemWithTimestamp.id);
               return prevProjects;
             }
-            
+
             // Garantir que todos os campos obrigatórios estejam presentes
             const existingProject = prevProjects[index];
-            
+
             // Criar uma cópia do projeto com todos os campos necessários
             const updatedProject: Project = {
               ...existingProject,
@@ -974,7 +974,7 @@ export default function App() {
               id: itemWithTimestamp.id || existingProject.id,
               photos: itemWithTimestamp.photos || existingProject.photos || [],
             };
-            
+
             // Detectar mudança de status para enviar notificação DEPOIS
             if (itemWithTimestamp.status && existingProject.status !== itemWithTimestamp.status) {
               shouldNotifyStatusChange = true;
@@ -984,11 +984,11 @@ export default function App() {
                 newStatus: itemWithTimestamp.status
               };
             }
-            
+
             // Criar um novo array para evitar mutação direta
             const newProjects = [...prevProjects];
             newProjects[index] = updatedProject;
-            
+
             // Salvar as alterações
             saveChanges(createStorageData({
               expenses,
@@ -996,7 +996,7 @@ export default function App() {
               stock: stockItems,
               employees
             }));
-            
+
             return newProjects;
           } catch (error) {
             console.error("Erro ao atualizar projeto:", error);
@@ -1015,13 +1015,13 @@ export default function App() {
             console.error('Erro ao enviar notificação de mudança de status:', error);
           });
         }
-        
+
         // Limpar flag após delay mínimo
         setTimeout(() => {
           setIsUpdatingProject(false);
           (window as any).__isUpdatingProject = false;
         }, 100);
-        
+
       } catch (error) {
         console.error("Erro ao atualizar projeto:", error);
         // Limpar flag em caso de erro
@@ -1032,99 +1032,99 @@ export default function App() {
       }
       return; // Sair da função para Projects
     }
-    
+
     // Para outros itens, usar executeWhenUnblocked normal
     executeWhenUnblocked(() => {
-    try {
-      // Item básico para edição
-      const itemWithTimestamp = updatedItem;
-      
-      // Verificar o tipo do item usando propriedades específicas
-      if ('description' in itemWithTimestamp) {
-        // É uma despesa
-        setExpenses(prevExpenses => {
-          const newExpenses = { ...prevExpenses };
-          
-          // Procurar e atualizar a despesa em todas as listas
-          Object.keys(newExpenses).forEach(listName => {
-            const index = newExpenses[listName as ListName].findIndex(expense => expense.id === itemWithTimestamp.id);
-            if (index !== -1) {
-              newExpenses[listName as ListName][index] = itemWithTimestamp as Expense;
-            }
+      try {
+        // Item básico para edição
+        const itemWithTimestamp = updatedItem;
+
+        // Verificar o tipo do item usando propriedades específicas
+        if ('description' in itemWithTimestamp) {
+          // É uma despesa
+          setExpenses(prevExpenses => {
+            const newExpenses = { ...prevExpenses };
+
+            // Procurar e atualizar a despesa em todas as listas
+            Object.keys(newExpenses).forEach(listName => {
+              const index = newExpenses[listName as ListName].findIndex(expense => expense.id === itemWithTimestamp.id);
+              if (index !== -1) {
+                newExpenses[listName as ListName][index] = itemWithTimestamp as Expense;
+              }
+            });
+
+            // Salvar as alterações
+            saveChanges(createStorageData({
+              expenses: newExpenses,
+              projects,
+              stock: stockItems,
+              employees
+            }));
+
+            return newExpenses;
           });
-          
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses: newExpenses,
-            projects,
-            stock: stockItems,
-            employees
-          }));
-          
-          return newExpenses;
-        });
-      // Projects já foram processados acima - este código não deve executar
-      } else if ('client' in itemWithTimestamp) {
-        // Projects já processados acima
-      } else if ('quantity' in itemWithTimestamp) {
-        // É um item de estoque
-        setStockItems(prevStockItems => {
-          const index = prevStockItems.findIndex(item => item.id === itemWithTimestamp.id);
-          if (index === -1) return prevStockItems;
-          
-          const newStockItems = [...prevStockItems];
-          newStockItems[index] = itemWithTimestamp as StockItem;
-          
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: newStockItems,
-            employees
-          }));
-          
-          return newStockItems;
-        });
-      } else if ('employeeName' in itemWithTimestamp) {
-        // É um funcionário
-        setEmployees(prevEmployees => {
-          if (itemWithTimestamp.name === 'Will' || itemWithTimestamp.employeeName === 'Will') {
-            return prevEmployees;
-          }
-          
-          const newEmployees = { ...prevEmployees };
-          
-          // Procurar e atualizar o funcionário em todas as semanas
-          Object.keys(newEmployees).forEach(weekStartDate => {
-            const index = newEmployees[weekStartDate].findIndex(employee => employee.id === itemWithTimestamp.id);
-            if (index !== -1) {
-              newEmployees[weekStartDate][index] = itemWithTimestamp as Employee;
-            }
+          // Projects já foram processados acima - este código não deve executar
+        } else if ('client' in itemWithTimestamp) {
+          // Projects já processados acima
+        } else if ('quantity' in itemWithTimestamp) {
+          // É um item de estoque
+          setStockItems(prevStockItems => {
+            const index = prevStockItems.findIndex(item => item.id === itemWithTimestamp.id);
+            if (index === -1) return prevStockItems;
+
+            const newStockItems = [...prevStockItems];
+            newStockItems[index] = itemWithTimestamp as StockItem;
+
+            // Salvar as alterações
+            saveChanges(createStorageData({
+              expenses,
+              projects,
+              stock: newStockItems,
+              employees
+            }));
+
+            return newStockItems;
           });
-          
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: stockItems,
-            employees: newEmployees,
-            willBaseRate,
-            willBonus
-          }));
-          
-          return newEmployees;
-        });
-      }
-    } catch (error) {
-      console.error("Erro ao atualizar item:", error);
-      // Garantir que o diálogo seja fechado mesmo em caso de erro
-      setIsEditDialogOpen(false);
-    } finally {
-      // Pequeno delay para garantir que a atualização de estado seja processada
-      setTimeout(() => {
+        } else if ('employeeName' in itemWithTimestamp) {
+          // É um funcionário
+          setEmployees(prevEmployees => {
+            if (itemWithTimestamp.name === 'Will' || itemWithTimestamp.employeeName === 'Will') {
+              return prevEmployees;
+            }
+
+            const newEmployees = { ...prevEmployees };
+
+            // Procurar e atualizar o funcionário em todas as semanas
+            Object.keys(newEmployees).forEach(weekStartDate => {
+              const index = newEmployees[weekStartDate].findIndex(employee => employee.id === itemWithTimestamp.id);
+              if (index !== -1) {
+                newEmployees[weekStartDate][index] = itemWithTimestamp as Employee;
+              }
+            });
+
+            saveChanges(createStorageData({
+              expenses,
+              projects,
+              stock: stockItems,
+              employees: newEmployees,
+              willBaseRate,
+              willBonus
+            }));
+
+            return newEmployees;
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar item:", error);
+        // Garantir que o diálogo seja fechado mesmo em caso de erro
         setIsEditDialogOpen(false);
-        setItemToEdit(null); // Limpar o item sendo editado
-      }, 1500); // Tempo maior para garantir que a proteção funcione
-    }
+      } finally {
+        // Pequeno delay para garantir que a atualização de estado seja processada
+        setTimeout(() => {
+          setIsEditDialogOpen(false);
+          setItemToEdit(null); // Limpar o item sendo editado
+        }, 1500); // Tempo maior para garantir que a proteção funcione
+      }
     });
   };;
 
@@ -1140,254 +1140,254 @@ export default function App() {
   };
 
   const handleAddItem = async (item: any) => {
-    
+
     // PROTEÇÃO: Executar apenas quando app não estiver bloqueado
     executeWhenUnblocked(async () => {
-    try {
-      
-      // Verificar se o item já tem um ID, caso contrário, criar um novo
-      if (!item.id) {
-        item.id = uuidv4();
-      }
-      
-      // Item básico sem timestamp complexo
-      const newItem = { ...item, id: item.id };
-      
-      const categoryToUse = addDialogCategory || activeCategory;
-      
-      if (categoryToUse === 'Expenses') {
-        const expense = newItem as Expense;
-        expense.paid = expense.paid || false;
-        expense.is_paid = expense.is_paid || false;
+      try {
 
-        // Atualizar o estado
-        setExpenses(prevExpenses => {
-          // Criar uma cópia do objeto com tipagem correta
-          const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
-          
-          // Verificar se a lista existe
-          if (!newExpenses[selectedList]) {
-            newExpenses[selectedList] = [];
-          }
-          
-          // Adicionar a nova despesa à lista selecionada
-          newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
-
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses: newExpenses,
-            projects,
-            stock: stockItems,
-            employees
-          }));
-
-          return newExpenses;
-        });
-        
-        // Mostrar popup de confirmação
-        setConfirmationCategory('Expenses');
-        setIsConfirmationOpen(true);
-      } else if (categoryToUse === 'Projects') {
-        // Garantir que o projeto esteja formatado corretamente
-        const project = newItem as Project;
-        
-        // Garantir ID único
-        if (!project.id) {
-          project.id = uuidv4();
-        }
-        
-        // Garantir que campos obrigatórios existam
-        if (!project.client) project.client = "Cliente";
-        if (!project.name) project.name = project.client;
-        // IMPORTANTE: clientType deve sempre usar o selectedClient atual, não o nome do projeto
-        // Se já existe um clientType, manter; caso contrário, usar o selectedClient atual
-        if (!project.clientType) {
-          project.clientType = selectedClient; // Definir o tipo de cliente baseado no selectedClient atual
-        }
-        if (!project.startDate) {
-          project.startDate = selectedWeekStart.toISOString();
-        }
-        if (!project.status) project.status = "in_progress";
-        if (!project.location) project.location = "";
-        if (project.value === undefined) project.value = 0;
-        
-        // Garantir timestamp de modificação para ordenação correta
-        if (!project.lastModified) {
-          project.lastModified = Date.now();
+        // Verificar se o item já tem um ID, caso contrário, criar um novo
+        if (!item.id) {
+          item.id = uuidv4();
         }
 
-        // Verificar se é um novo projeto ANTES de atualizar o estado
-        const isNewProject = !projects.find((p: Project) => p.id === project.id);
+        // Item básico sem timestamp complexo
+        const newItem = { ...item, id: item.id };
 
-        // Atualizar o estado
-        setProjects(prevProjects => {
-          // Clone profundo para evitar problemas de referência
-          const existingProjects = JSON.parse(JSON.stringify(prevProjects));
-          
-          // Verificar se o projeto já existe
-          const existingIndex = existingProjects.findIndex((p: Project) => p.id === project.id);
-          
-          let newProjects;
-          if (existingIndex >= 0) {
-            // Atualizar projeto existente
-            newProjects = [...existingProjects];
-            newProjects[existingIndex] = project;
-          } else {
-            // Adicionar novo projeto
-            newProjects = [...existingProjects, project];
-          }
-          
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses,
-            projects: newProjects,
-            stock: stockItems,
-            employees
-          }));
-          
-          return newProjects;
-        });
+        const categoryToUse = addDialogCategory || activeCategory;
 
-        // Notificar APÓS atualizar o estado, apenas se for novo projeto
-        if (isNewProject) {
-          notifyNewProject(project).catch(error => {
-            console.error('Erro ao enviar notificação de novo projeto:', error);
+        if (categoryToUse === 'Expenses') {
+          const expense = newItem as Expense;
+          expense.paid = expense.paid || false;
+          expense.is_paid = expense.is_paid || false;
+
+          // Atualizar o estado
+          setExpenses(prevExpenses => {
+            // Criar uma cópia do objeto com tipagem correta
+            const newExpenses: Record<string, Expense[]> = { ...prevExpenses };
+
+            // Verificar se a lista existe
+            if (!newExpenses[selectedList]) {
+              newExpenses[selectedList] = [];
+            }
+
+            // Adicionar a nova despesa à lista selecionada
+            newExpenses[selectedList] = [...(newExpenses[selectedList] || []), expense];
+
+            // Salvar as alterações
+            saveChanges(createStorageData({
+              expenses: newExpenses,
+              projects,
+              stock: stockItems,
+              employees
+            }));
+
+            return newExpenses;
           });
-        }
-        
-        // Mostrar popup de confirmação
-        setConfirmationCategory('Projects');
-        setIsConfirmationOpen(true);
-      } else if (categoryToUse === 'Stock') {
-        const stockItem = newItem as StockItem;
-        stockItem.id = uuidv4();
 
-        // Atualizar o estado
-        setStockItems(prevStockItems => {
-          const newStockItems = [...prevStockItems, stockItem];
+          // Mostrar popup de confirmação
+          setConfirmationCategory('Expenses');
+          setIsConfirmationOpen(true);
+        } else if (categoryToUse === 'Projects') {
+          // Garantir que o projeto esteja formatado corretamente
+          const project = newItem as Project;
 
-          // Salvar as alterações
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: newStockItems,
-            employees
-          }));
-
-          return newStockItems;
-        });
-        
-        // Mostrar popup de confirmação
-        setConfirmationCategory('Stock');
-        setIsConfirmationOpen(true);
-      } else if (categoryToUse === 'Employees') {
-        const employee = newItem as Employee;
-
-        // Garantir campos essenciais
-        if (!employee.id) {
-          employee.id = uuidv4();
-        }
-        if (!employee.name) {
-          employee.name = employee.employeeName || 'Funcionário';
-        }
-        if (!employee.employeeName) {
-          employee.employeeName = employee.name;
-        }
-        if (!employee.weekStartDate) {
-          // Chave da semana no formato ISO compatível com a listagem
-          employee.weekStartDate = formatDateToISO(selectedWeekStart);
-        }
-        if (employee.daysWorked === undefined) {
-          employee.daysWorked = 0;
-        }
-        if (!employee.workedDates) {
-          employee.workedDates = [];
-        }
-        if (employee.dailyRate === undefined || Number.isNaN(employee.dailyRate)) {
-          employee.dailyRate = 250;
-        }
-
-        // Atualizar estado de employees organizado por semana
-        setEmployees(prevEmployees => {
-          const newEmployees = { ...prevEmployees };
-          const weekKey = employee.weekStartDate as string;
-
-          if (!newEmployees[weekKey]) {
-            newEmployees[weekKey] = [];
+          // Garantir ID único
+          if (!project.id) {
+            project.id = uuidv4();
           }
 
-          // Evitar duplicar pelo mesmo id na mesma semana
-          const existsIdx = newEmployees[weekKey].findIndex(e => e.id === employee.id);
-          if (existsIdx >= 0) {
-            const updated = [...newEmployees[weekKey]];
-            updated[existsIdx] = employee;
-            newEmployees[weekKey] = updated;
-          } else {
-            newEmployees[weekKey] = [...newEmployees[weekKey], employee];
+          // Garantir que campos obrigatórios existam
+          if (!project.client) project.client = "Cliente";
+          if (!project.name) project.name = project.client;
+          // IMPORTANTE: clientType deve sempre usar o selectedClient atual, não o nome do projeto
+          // Se já existe um clientType, manter; caso contrário, usar o selectedClient atual
+          if (!project.clientType) {
+            project.clientType = selectedClient; // Definir o tipo de cliente baseado no selectedClient atual
+          }
+          if (!project.startDate) {
+            project.startDate = selectedWeekStart.toISOString();
+          }
+          if (!project.status) project.status = "in_progress";
+          if (!project.location) project.location = "";
+          if (project.value === undefined) project.value = 0;
+
+          // Garantir timestamp de modificação para ordenação correta
+          if (!project.lastModified) {
+            project.lastModified = Date.now();
           }
 
-          // Persistir alterações
-          saveChanges(createStorageData({
-            expenses,
-            projects,
-            stock: stockItems,
-            employees: newEmployees,
-            willBaseRate,
-            willBonus
-          }));
+          // Verificar se é um novo projeto ANTES de atualizar o estado
+          const isNewProject = !projects.find((p: Project) => p.id === project.id);
 
-          return newEmployees;
-        });
-        
-        // Mostrar popup de confirmação
-        setConfirmationCategory('Employees');
-        setIsConfirmationOpen(true);
+          // Atualizar o estado
+          setProjects(prevProjects => {
+            // Clone profundo para evitar problemas de referência
+            const existingProjects = JSON.parse(JSON.stringify(prevProjects));
+
+            // Verificar se o projeto já existe
+            const existingIndex = existingProjects.findIndex((p: Project) => p.id === project.id);
+
+            let newProjects;
+            if (existingIndex >= 0) {
+              // Atualizar projeto existente
+              newProjects = [...existingProjects];
+              newProjects[existingIndex] = project;
+            } else {
+              // Adicionar novo projeto
+              newProjects = [...existingProjects, project];
+            }
+
+            // Salvar as alterações
+            saveChanges(createStorageData({
+              expenses,
+              projects: newProjects,
+              stock: stockItems,
+              employees
+            }));
+
+            return newProjects;
+          });
+
+          // Notificar APÓS atualizar o estado, apenas se for novo projeto
+          if (isNewProject) {
+            notifyNewProject(project).catch(error => {
+              console.error('Erro ao enviar notificação de novo projeto:', error);
+            });
+          }
+
+          // Mostrar popup de confirmação
+          setConfirmationCategory('Projects');
+          setIsConfirmationOpen(true);
+        } else if (categoryToUse === 'Stock') {
+          const stockItem = newItem as StockItem;
+          stockItem.id = uuidv4();
+
+          // Atualizar o estado
+          setStockItems(prevStockItems => {
+            const newStockItems = [...prevStockItems, stockItem];
+
+            // Salvar as alterações
+            saveChanges(createStorageData({
+              expenses,
+              projects,
+              stock: newStockItems,
+              employees
+            }));
+
+            return newStockItems;
+          });
+
+          // Mostrar popup de confirmação
+          setConfirmationCategory('Stock');
+          setIsConfirmationOpen(true);
+        } else if (categoryToUse === 'Employees') {
+          const employee = newItem as Employee;
+
+          // Garantir campos essenciais
+          if (!employee.id) {
+            employee.id = uuidv4();
+          }
+          if (!employee.name) {
+            employee.name = employee.employeeName || 'Funcionário';
+          }
+          if (!employee.employeeName) {
+            employee.employeeName = employee.name;
+          }
+          if (!employee.weekStartDate) {
+            // Chave da semana no formato ISO compatível com a listagem
+            employee.weekStartDate = formatDateToISO(selectedWeekStart);
+          }
+          if (employee.daysWorked === undefined) {
+            employee.daysWorked = 0;
+          }
+          if (!employee.workedDates) {
+            employee.workedDates = [];
+          }
+          if (employee.dailyRate === undefined || Number.isNaN(employee.dailyRate)) {
+            employee.dailyRate = 250;
+          }
+
+          // Atualizar estado de employees organizado por semana
+          setEmployees(prevEmployees => {
+            const newEmployees = { ...prevEmployees };
+            const weekKey = employee.weekStartDate as string;
+
+            if (!newEmployees[weekKey]) {
+              newEmployees[weekKey] = [];
+            }
+
+            // Evitar duplicar pelo mesmo id na mesma semana
+            const existsIdx = newEmployees[weekKey].findIndex(e => e.id === employee.id);
+            if (existsIdx >= 0) {
+              const updated = [...newEmployees[weekKey]];
+              updated[existsIdx] = employee;
+              newEmployees[weekKey] = updated;
+            } else {
+              newEmployees[weekKey] = [...newEmployees[weekKey], employee];
+            }
+
+            // Persistir alterações
+            saveChanges(createStorageData({
+              expenses,
+              projects,
+              stock: stockItems,
+              employees: newEmployees,
+              willBaseRate,
+              willBonus
+            }));
+
+            return newEmployees;
+          });
+
+          // Mostrar popup de confirmação
+          setConfirmationCategory('Employees');
+          setIsConfirmationOpen(true);
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar item:", error);
       }
-    } catch (error) {
-      console.error("Erro ao atualizar item:", error);
-    }
     });
   };
 
   const handleListSelect = (value: ListName) => {
     setSelectedList(value);
     setIsDropdownOpen(false);
-    
+
     const storageData = getData();
     storageData.expenses = expenses;
     storageData.projects = projects;
     storageData.stock = stockItems;
     storageData.employees = employees;
-    
+
     saveChanges(createStorageData(storageData));
   };
 
   const handleEmployeeSelect = (value: EmployeeName) => {
     setSelectedEmployeeName(value);
-    
+
     const storageData = getData();
     storageData.expenses = expenses;
     storageData.projects = projects;
     storageData.stock = stockItems;
     storageData.employees = employees;
-    
+
     saveChanges(createStorageData(storageData));
   };
 
   const handleResetEmployee = (employeeId: string, weekStartDate: string) => {
     setEmployees(prevEmployees => {
       const newEmployees = { ...prevEmployees };
-      
+
       // Resetar o funcionário em todas as semanas
       Object.keys(newEmployees).forEach(weekKey => {
         const employeeIndex = newEmployees[weekKey].findIndex(e => e.id === employeeId);
-        
+
         if (employeeIndex !== -1) {
           // Resetar os dias trabalhados
           const updatedEmployee = { ...newEmployees[weekKey][employeeIndex] };
           updatedEmployee.daysWorked = 0;
           updatedEmployee.workedDates = [];
-          
+
           // Atualizar a lista de funcionários
           newEmployees[weekKey] = [
             ...newEmployees[weekKey].slice(0, employeeIndex),
@@ -1396,7 +1396,7 @@ export default function App() {
           ];
         }
       });
-      
+
       // Salvar no Supabase e localmente
       const storageData = getData();
       if (storageData) {
@@ -1408,7 +1408,7 @@ export default function App() {
         };
         saveChanges(createStorageData(updatedStorageData));
       }
-      
+
       return newEmployees;
     });
   };
@@ -1416,7 +1416,7 @@ export default function App() {
   const resetWillValues = () => {
     setWillBaseRate(200);
     setWillBonus(0);
-    
+
     // Salvar dados após resetar os valores
     setTimeout(() => {
       const storageData = getData();
@@ -1432,7 +1432,7 @@ export default function App() {
     // Adicionar os dados do Will ao objeto de armazenamento
     storageData.willBaseRate = willBaseRate;
     storageData.willBonus = willBonus;
-    
+
     // Salvar todas as alterações
     saveChanges(createStorageData(storageData));
   };
@@ -1465,10 +1465,10 @@ export default function App() {
     const form = e.currentTarget;
     const formData = new FormData(form);
     const newBaseRate = parseFloat(formData.get('baseRate') as string) || 200;
-    
+
     setWillBaseRate(newBaseRate);
     setIsRateDialogOpen(false);
-    
+
     // Salvar dados após atualizar o salário base
     setTimeout(() => {
       const storageData = getData();
@@ -1503,7 +1503,7 @@ export default function App() {
     } else {
       document.body.classList.remove('dialog-open');
     }
-    
+
     return () => {
       document.body.classList.remove('dialog-open');
     };
@@ -1516,7 +1516,7 @@ export default function App() {
     } else {
       document.body.classList.remove('dialog-open');
     }
-    
+
     return () => {
       document.body.classList.remove('dialog-open');
     };
@@ -1558,7 +1558,7 @@ export default function App() {
 
   const calculateEmployeesTotal = () => {
     let total = 0;
-    
+
     // Obter TODOS os funcionários de todas as semanas
     const allEmployees: Employee[] = [];
     Object.keys(employees).forEach(weekKey => {
@@ -1568,23 +1568,23 @@ export default function App() {
         }
       });
     });
-    
+
     // Calcular total baseado nos dias trabalhados na semana selecionada
     allEmployees.forEach((employee) => {
       if (employee.name !== 'Will') { // Excluir Will do cálculo por dias trabalhados
         // Calcular dias trabalhados especificamente para a semana selecionada
         let daysWorkedInWeek = 0;
-        
+
         if (employee.workedDates && employee.workedDates.length > 0) {
           const weekStart = selectedWeekStart;
           const weekEnd = selectedWeekEnd;
-          
+
           daysWorkedInWeek = employee.workedDates.filter(dateStr => {
             const workedDate = new Date(dateStr);
             return workedDate >= weekStart && workedDate <= weekEnd;
           }).length;
         }
-        
+
         const dailyRate = typeof employee?.dailyRate === 'number' && !isNaN(employee.dailyRate)
           ? employee.dailyRate
           : 250;
@@ -1594,7 +1594,7 @@ export default function App() {
 
     // Adicionar valor fixo do Will + bônus
     total += willBaseRate + willBonus;
-    
+
     return total;
   };
 
@@ -1607,10 +1607,10 @@ export default function App() {
       setSelectedWeekStart(weekStart);
       setSelectedWeekEnd(weekEnd);
     } else {
-    const weekStart = getProjectWeekStart(today);
-    const weekEnd = getProjectWeekEnd(today);
-    setSelectedWeekStart(weekStart);
-    setSelectedWeekEnd(weekEnd);
+      const weekStart = getProjectWeekStart(today);
+      const weekEnd = getProjectWeekEnd(today);
+      setSelectedWeekStart(weekStart);
+      setSelectedWeekEnd(weekEnd);
     }
   };
 
@@ -1776,9 +1776,9 @@ export default function App() {
 
     // Para outros itens, manter a lógica do filtro por data
     const itemDate = new Date(
-      'date' in item ? item.date : 
-      'startDate' in item ? item.startDate : 
-      new Date()
+      'date' in item ? item.date :
+        'startDate' in item ? item.startDate :
+          new Date()
     );
 
     return itemDate.toDateString() === filterDate.toDateString();
@@ -1788,10 +1788,10 @@ export default function App() {
   const didEmployeeWorkOnDate = (employee: Employee): boolean => {
     // Will deve sempre aparecer
     if (employee.name === 'Will') return true;
-    
+
     // Se não houver filtro de data, mostrar todos
     if (!filterDate) return true;
-    
+
     // Verificar se o funcionário trabalhou na data selecionada
     const formattedDate = format(filterDate, 'yyyy-MM-dd');
     return employee.workedDates?.includes(formattedDate) || false;
@@ -1812,27 +1812,27 @@ export default function App() {
     setEmployees(prevEmployees => {
       const newEmployees = { ...prevEmployees };
       const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-      
+
       // Verificar se a semana existe, se não, criá-la
       if (!newEmployees[formattedSelectedWeekStart]) {
         newEmployees[formattedSelectedWeekStart] = [];
       }
-      
+
       // Encontrar o funcionário na semana
       let employeeIndex = newEmployees[formattedSelectedWeekStart].findIndex(e => e.id === employeeId);
-      
+
       // Se não encontrar o funcionário na semana atual, precisamos criá-lo
       if (employeeIndex === -1) {
         // Procurar o funcionário em todas as semanas
         let employeeFromOtherWeek: Employee | undefined;
-        
+
         Object.keys(newEmployees).forEach(weekKey => {
           const found = newEmployees[weekKey].find(e => e.id === employeeId);
           if (found && !employeeFromOtherWeek) {
             employeeFromOtherWeek = found;
           }
         });
-        
+
         if (employeeFromOtherWeek) {
           // Criar uma cópia do funcionário para a semana atual
           const newEmployee: Employee = {
@@ -1841,10 +1841,10 @@ export default function App() {
             workedDates: [], // Inicializar com array vazio
             daysWorked: 0    // Inicializar com zero dias trabalhados
           };
-          
+
           // Adicionar o funcionário à semana atual
           newEmployees[formattedSelectedWeekStart].push(newEmployee);
-          
+
           // Atualizar o índice do funcionário
           employeeIndex = newEmployees[formattedSelectedWeekStart].length - 1;
         } else {
@@ -1852,19 +1852,19 @@ export default function App() {
           return prevEmployees;
         }
       }
-      
+
       // Atualizar as datas trabalhadas e o número de dias
       const updatedEmployee = { ...newEmployees[formattedSelectedWeekStart][employeeIndex] };
       updatedEmployee.workedDates = dates;
       updatedEmployee.daysWorked = dates.length;
-      
+
       // Atualizar a lista de funcionários
       newEmployees[formattedSelectedWeekStart] = [
         ...newEmployees[formattedSelectedWeekStart].slice(0, employeeIndex),
         updatedEmployee,
         ...newEmployees[formattedSelectedWeekStart].slice(employeeIndex + 1)
       ];
-      
+
       // Salvar no Supabase e localmente
       const storageData = getData();
       if (storageData) {
@@ -1876,7 +1876,7 @@ export default function App() {
         };
         saveChanges(createStorageData(updatedStorageData));
       }
-      
+
       return newEmployees;
     });
   };
@@ -1887,12 +1887,12 @@ export default function App() {
     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
     const weekEmployee = weekEmployees.find(e => e.id === employee.id);
-    
+
     // Se o funcionário não tem registro para esta semana, verificar em outras semanas
     if (!weekEmployee) {
       // Procurar o funcionário em outras semanas
       const foundEmployee = findEmployeeInOtherWeeks(employee.id, employees);
-      
+
       if (foundEmployee) {
         // Criar uma cópia do funcionário para a semana atual com propriedades explícitas
         const newEmployee: Employee = {
@@ -1904,7 +1904,7 @@ export default function App() {
           workedDates: [], // ← SEMPRE iniciar com array vazio para nova semana
           category: 'Employees'
         };
-        
+
         // Adicionar o funcionário à semana atual
         setEmployees(prevEmployees => {
           return {
@@ -1912,14 +1912,14 @@ export default function App() {
             [formattedSelectedWeekStart]: [...(prevEmployees[formattedSelectedWeekStart] || []), newEmployee]
           };
         });
-        
+
         // Usar o funcionário recém-criado
         setSelectedEmployee(newEmployee);
         setIsCalendarDialogOpen(true);
         return;
       }
     }
-    
+
     // Se o funcionário já tem registro para esta semana, ou não foi encontrado em nenhuma outra
     const employeeToUse = weekEmployee || {
       id: employee.id || "",
@@ -1931,7 +1931,7 @@ export default function App() {
       workedDates: [], // ← SEMPRE iniciar com array vazio para nova semana
       category: 'Employees' as const
     };
-    
+
     setSelectedEmployee(employeeToUse);
     setIsCalendarDialogOpen(true);
   };
@@ -1942,48 +1942,48 @@ export default function App() {
     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
     const weekEmployees = employees[formattedSelectedWeekStart] || [];
     const weekEmployee = weekEmployees.find(e => e.id === employee.id);
-    
+
     // SEMPRE filtrar pelos dias da semana selecionada, independente de ter registro específico
-      let workedDatesInWeek: string[] = [];
-      
+    let workedDatesInWeek: string[] = [];
+
     if (weekEmployee && weekEmployee.workedDates && weekEmployee.workedDates.length > 0) {
       // Se tem registro específico para esta semana, filtrar pelos dias da semana selecionada
       const weekStart = selectedWeekStart;
       const weekEnd = selectedWeekEnd;
-      
+
       workedDatesInWeek = weekEmployee.workedDates.filter(dateStr => {
         // Comparar apenas as strings de data (YYYY-MM-DD) para evitar problemas de timezone
         const workedDateStr = dateStr.split('T')[0]; // Pega apenas a parte da data
         const weekStartStr = weekStart.toISOString().split('T')[0];
         const weekEndStr = weekEnd.toISOString().split('T')[0];
-        
+
         return workedDateStr >= weekStartStr && workedDateStr <= weekEndStr;
       });
     } else if (employee.workedDates) {
       // Se não tem registro específico, filtrar datas trabalhadas que estão na semana selecionada
-        const weekStart = selectedWeekStart;
-        const weekEnd = selectedWeekEnd;
-        
-        workedDatesInWeek = employee.workedDates.filter(dateStr => {
-          // Comparar apenas as strings de data (YYYY-MM-DD) para evitar problemas de timezone
-          const workedDateStr = dateStr.split('T')[0]; // Pega apenas a parte da data
-          const weekStartStr = weekStart.toISOString().split('T')[0];
-          const weekEndStr = weekEnd.toISOString().split('T')[0];
-          
-          return workedDateStr >= weekStartStr && workedDateStr <= weekEndStr;
-        });
-      }
-      
-      // Criar uma cópia do funcionário com apenas as datas desta semana
-      const employeeWithWeekDates = {
-        ...employee,
-        workedDates: workedDatesInWeek,
-        daysWorked: workedDatesInWeek.length,
-        // Garantir que temos a data de início da semana correta
-        weekStartDate: formattedSelectedWeekStart
-      };
-      
-      setReceiptEmployee(employeeWithWeekDates);
+      const weekStart = selectedWeekStart;
+      const weekEnd = selectedWeekEnd;
+
+      workedDatesInWeek = employee.workedDates.filter(dateStr => {
+        // Comparar apenas as strings de data (YYYY-MM-DD) para evitar problemas de timezone
+        const workedDateStr = dateStr.split('T')[0]; // Pega apenas a parte da data
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+        const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+        return workedDateStr >= weekStartStr && workedDateStr <= weekEndStr;
+      });
+    }
+
+    // Criar uma cópia do funcionário com apenas as datas desta semana
+    const employeeWithWeekDates = {
+      ...employee,
+      workedDates: workedDatesInWeek,
+      daysWorked: workedDatesInWeek.length,
+      // Garantir que temos a data de início da semana correta
+      weekStartDate: formattedSelectedWeekStart
+    };
+
+    setReceiptEmployee(employeeWithWeekDates);
     setIsReceiptDialogOpen(true);
   };
 
@@ -1998,11 +1998,11 @@ export default function App() {
   // Função para alternar uma data trabalhada do funcionário
   const handleToggleEmployeeWorkedDate = (employeeId: string, date: string) => {
     console.log("🔄 handleToggleEmployeeWorkedDate chamado:", { employeeId, date });
-    
+
     // Encontrar o funcionário em qualquer semana
     let employeeData: Employee | undefined;
     let foundWeekKey: string | undefined;
-    
+
     Object.keys(employees).forEach(weekKey => {
       const found = employees[weekKey].find(e => e.id === employeeId);
       if (found && !employeeData) {
@@ -2010,23 +2010,23 @@ export default function App() {
         foundWeekKey = weekKey;
       }
     });
-    
+
     if (!employeeData) {
       console.error(`Funcionário com ID ${employeeId} não encontrado em nenhuma semana`);
       return;
     }
-    
+
     // Obter os dados do funcionário
     const workedDates = employeeData.workedDates || [];
-    
+
     // Verificar se a data já está marcada como trabalhada
     const isDateWorked = workedDates.includes(date);
-    
+
     // Criar a nova lista de datas trabalhadas
     const newWorkedDates = isDateWorked
       ? workedDates.filter(d => d !== date)
       : [...workedDates, date];
-    
+
     console.log("🔄 Estado atual do funcionário:", {
       employeeId,
       date,
@@ -2034,11 +2034,11 @@ export default function App() {
       isDateWorked,
       newWorkedDates
     });
-    
+
     // Atualizar o funcionário em todas as semanas onde ele existe
     setEmployees(prevEmployees => {
       const updatedEmployees = { ...prevEmployees };
-      
+
       // Atualizar o funcionário em todas as semanas onde ele existe
       Object.keys(updatedEmployees).forEach(weekKey => {
         const employeeIndex = updatedEmployees[weekKey].findIndex(e => e.id === employeeId);
@@ -2050,7 +2050,7 @@ export default function App() {
           };
         }
       });
-      
+
       // Salvar no armazenamento local imediatamente
       const storageData = getData();
       if (storageData) {
@@ -2064,7 +2064,7 @@ export default function App() {
           console.error('Erro ao salvar alterações:', error);
         }
       }
-      
+
       console.log("🔄 Estado atualizado:", {
         employeeId,
         date,
@@ -2080,7 +2080,7 @@ export default function App() {
           return acc;
         }, {} as any)
       });
-      
+
       return updatedEmployees;
     });
   };
@@ -2093,17 +2093,17 @@ export default function App() {
       const clearCacheAndUpdate = async () => {
         try {
           const registrations = await navigator.serviceWorker.getRegistrations();
-          
+
           for (const registration of registrations) {
             // Enviar mensagem para limpar o cache
             if (registration.active) {
               registration.active.postMessage({ type: 'CLEAR_CACHE' });
-              
+
               // Verificar atualizações
               registration.update();
             }
           }
-          
+
           // Atualizar dados locais
           const storageData = getData();
           if (storageData) {
@@ -2112,7 +2112,7 @@ export default function App() {
               storageData.lastSync = Date.now();
               saveChanges(storageData);
             }
-            
+
             // Limpar qualquer dado temporário potencialmente inconsistente
             localStorage.removeItem('temp_employee_data');
             sessionStorage.clear();
@@ -2121,10 +2121,10 @@ export default function App() {
           console.error('Erro ao atualizar aplicação:', error);
         }
       };
-      
+
       // Executar limpeza e atualização
       clearCacheAndUpdate();
-      
+
       // Adicionar listener para detectar quando há uma nova versão disponível
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -2134,7 +2134,7 @@ export default function App() {
         }
       });
     }
-    
+
     // Definir mecanismo de persistência para o IndexedDB
     if ('indexedDB' in window && 'persist' in navigator.storage) {
       navigator.storage.persist().then(isPersisted => {
@@ -2142,7 +2142,7 @@ export default function App() {
       });
     }
   }, []);
-  
+
   // Verificar problemas de fuso horário
   useEffect(() => {
     // Silenciosamente verificar fuso horário
@@ -2162,7 +2162,7 @@ export default function App() {
     };
 
     window.addEventListener('dataUpdated', handleDataUpdate as EventListener);
-    
+
     return () => {
       window.removeEventListener('dataUpdated', handleDataUpdate as EventListener);
     };
@@ -2170,18 +2170,18 @@ export default function App() {
 
   // Log de sincronização que executa apenas uma vez ao montar o componente
   useEffect(() => {
-    
+
   }, []); // [] garante execução única
 
   // Enviar notificação de app aberto via Telegram
   useEffect(() => {
     // Notificação de abertura inicial
     sendAppOpenedNotification('app_opened');
-    
+
     // Variável para evitar notificações duplicadas
     let lastResumeTime = Date.now();
     const MIN_RESUME_INTERVAL = 5000; // 5 segundos mínimo entre notificações de volta
-    
+
     // Listener para detectar volta do segundo plano
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -2193,10 +2193,10 @@ export default function App() {
         }
       }
     };
-    
+
     // Adicionar listener
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     // Cleanup
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -2218,7 +2218,7 @@ export default function App() {
   useEffect(() => {
     // agendar apenas quando estivermos em Projects (para evitar atualizações desnecessárias)
     if (activeCategory !== 'Projects') return;
-    
+
     const now = new Date();
     const currentWeekEnd = getProjectWeekEnd(now); // termina na terça às 23:59:59.999 UTC
     const delay = currentWeekEnd.getTime() - now.getTime() + 1; // próximo ms vira nova semana
@@ -2246,7 +2246,7 @@ export default function App() {
   useEffect(() => {
     // agendar apenas quando estivermos em Projects Private (para evitar atualizações desnecessárias)
     if (activeCategory !== 'Projects' || selectedClient !== 'Private') return;
-    
+
     const now = new Date();
     // Último momento do mês atual (último dia às 23:59:59.999)
     const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -2284,54 +2284,54 @@ export default function App() {
       const newNow = new Date();
       const currentMonth = newNow.getMonth();
       const currentYear = newNow.getFullYear();
-      
+
       // Processar todas as listas de despesas
       const updatedExpenses = { ...expenses };
       let hasChanges = false;
-      
+
       Object.keys(updatedExpenses).forEach(listName => {
         const listExpenses = [...updatedExpenses[listName as ListName]];
-        
+
         listExpenses.forEach((expense, index) => {
           // Verificar se é despesa recorrente
           if (expense.description && (expense.description.endsWith('*M') || expense.description.endsWith('*B') || expense.description.endsWith('*W'))) {
             const expenseDate = new Date(expense.date);
             const expenseMonth = expenseDate.getMonth();
             const expenseYear = expenseDate.getFullYear();
-            
+
             // Se a despesa é de mês anterior e estava paga, resetar para o mês atual
-            if ((expenseYear < currentYear || (expenseYear === currentYear && expenseMonth < currentMonth)) && 
-                (expense.is_paid || expense.paid)) {
-              
+            if ((expenseYear < currentYear || (expenseYear === currentYear && expenseMonth < currentMonth)) &&
+              (expense.is_paid || expense.paid)) {
+
               // Calcular nova data mantendo o dia original
               const originalDay = expenseDate.getDate();
               let newDueDate = new Date(currentYear, currentMonth, originalDay);
-              
+
               // Se o dia não existe no mês atual (ex: 31 de janeiro → 31 de fevereiro)
               // ajustar para o último dia do mês
               if (newDueDate.getDate() !== originalDay) {
                 newDueDate = new Date(currentYear, currentMonth + 1, 0); // Último dia do mês
               }
-              
+
               listExpenses[index] = {
                 ...expense,
                 date: newDueDate.toISOString(),
                 is_paid: false,
                 paid: false
               };
-              
+
               hasChanges = true;
             }
           }
         });
-        
+
         updatedExpenses[listName as ListName] = listExpenses;
       });
-      
+
       // Se houve mudanças, atualizar estado e salvar
       if (hasChanges) {
         setExpenses(updatedExpenses);
-        
+
         const storageData: StorageItems = {
           expenses: updatedExpenses,
           projects,
@@ -2341,7 +2341,7 @@ export default function App() {
           willBonus,
           lastSync: Date.now()
         };
-        
+
         saveChanges(storageData);
       }
     };
@@ -2360,12 +2360,12 @@ export default function App() {
   // Handler para cliques em notificações do dropdown
   const handleNotificationClick = (notification: any) => {
     console.log('[App] Notificação clicada:', notification);
-    
+
     if (notification.data?.type === 'expense') {
       const listName = notification.data.listName as ListName;
       const expenseList = expenses[listName] || [];
       const expense = expenseList.find(e => e.id === notification.data.expenseId);
-      
+
       if (expense) {
         setExpenseToView(expense);
         setIsExpenseDetailOpen(true);
@@ -2373,7 +2373,7 @@ export default function App() {
       }
     } else if (notification.data?.type === 'project') {
       const project = projects.find(p => p.id === notification.data.projectId);
-      
+
       if (project) {
         setSelectedProject(project);
         setIsProjectSummaryOpen(true);
@@ -2388,8 +2388,8 @@ export default function App() {
     activeCategory === 'Home'
       ? ''
       : activeCategory === 'Expenses'
-      ? '-mt-[72px]'
-      : '-mt-[94px]';
+        ? '-mt-[72px]'
+        : '-mt-[94px]';
   const mainPaddingBottomClass =
     activeCategory === 'Home' ? 'pb-20' : 'pb-20';
   const listBottomPaddingClass =
@@ -2491,7 +2491,7 @@ export default function App() {
   return (
     <>
       <div className="min-h-screen">
-        <Header 
+        <Header
           activeCategory={activeCategory}
           onNotificationClick={handleNotificationClick}
           expenses={expenses}
@@ -2500,7 +2500,7 @@ export default function App() {
           employees={employees}
           onSearchResultClick={(result) => {
             console.log('Resultado da busca clicado:', result);
-            
+
             if (result.type === 'expense') {
               const expense = result.data as Expense;
               setExpenseToView(expense);
@@ -2524,13 +2524,13 @@ export default function App() {
         />
         <Navigation
           activeCategory={activeCategory}
-          onCategoryChange={isBackgroundSyncing ? () => {} : setActiveCategory}
+          onCategoryChange={isBackgroundSyncing ? () => { } : setActiveCategory}
           disabled={isBackgroundSyncing}
         />
-        
+
         {/* Faixa azul global (um pouco abaixo do header, com bordas suaves) */}
         <div className={`fixed top-[60px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[100px]' : 'h-[87px]'} bg-[#073863] rounded-b-[1rem] z-0`}></div>
-        
+
         {/* Botão + flutuante no centro */}
         <button
           onClick={handlePrimaryAddClick}
@@ -2570,10 +2570,10 @@ export default function App() {
           </div>
         ) : null}
 
-        
+
         {/* Notificações de conflito */}
         <ConflictNotification />
-        
+
         <div className="relative z-10 pt-[100px] pb-20 pointer-events-none">
           {activeCategory === 'Home' && (
             <div className="pointer-events-auto">
@@ -2583,6 +2583,10 @@ export default function App() {
                 stockItems={stockItems}
                 employees={employees}
                 onNavigate={setActiveCategory}
+                onNavigateToProjects={(client) => {
+                  setSelectedClient(client);
+                  setActiveCategory('Projects');
+                }}
                 onOpenPlanner={() => setIsPlannerOpen(true)}
                 refreshRequests={refreshRequestsTimestamp}
                 onEditRequest={handleEditRequest}
@@ -2614,17 +2618,17 @@ export default function App() {
                     setSelectedProject(item);
                     setIsProjectSummaryOpen(true);
                   } else if (type === 'stock') { // Adicionado suporte a estoque
-                      setItemToEdit(item);
-                      setIsEditDialogOpen(true);
+                    setItemToEdit(item);
+                    setIsEditDialogOpen(true);
                   } else if (type === 'employee') {
-                       // Implementar visualização de funcionário se necessário
+                    // Implementar visualização de funcionário se necessário
                   }
                 }}
               />
             </div>
           )}
-          
-          <PlannerDialog 
+
+          <PlannerDialog
             isOpen={isPlannerOpen}
             onClose={() => setIsPlannerOpen(false)}
             projects={projects}
@@ -2659,43 +2663,39 @@ export default function App() {
             <div className="sticky top-[210px] left-0 right-0 px-4 z-30 bg-transparent pointer-events-auto">
               <div className="relative max-w-[800px] mx-auto pb-2 bg-transparent">
                 <button
-                  onClick={isBackgroundSyncing ? () => {} : () => setIsDropdownOpen(!isDropdownOpen)}
+                  onClick={isBackgroundSyncing ? () => { } : () => setIsDropdownOpen(!isDropdownOpen)}
                   disabled={isBackgroundSyncing}
                   className="w-full px-4 py-1.5 bg-white border border-transparent rounded-lg shadow-sm flex items-center justify-between"
                 >
-                    <span className="text-gray-700 font-medium">
-                      {selectedList}
-                    </span>
+                  <span className="text-gray-700 font-medium">
+                    {selectedList}
+                  </span>
                   <ChevronDown
-                    className={`w-5 h-5 text-gray-500 transition-transform ${
-                      isDropdownOpen ? 'transform rotate-180' : ''
-                    }`}
+                    className={`w-5 h-5 text-gray-500 transition-transform ${isDropdownOpen ? 'transform rotate-180' : ''
+                      }`}
                   />
                 </button>
-                
+
                 {isDropdownOpen && !isBackgroundSyncing && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-transparent rounded-lg shadow-lg overflow-hidden z-35">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-transparent rounded-lg shadow-lg overflow-hidden z-35">
                     <button
                       onClick={() => handleListSelect('Carlos')}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                      }`}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${selectedList === 'Carlos' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                        }`}
                     >
                       Carlos
                     </button>
                     <button
                       onClick={() => handleListSelect('Diego')}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                      }`}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${selectedList === 'Diego' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                        }`}
                     >
                       Diego
                     </button>
                     <button
                       onClick={() => handleListSelect('C&A')}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
-                      }`}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${selectedList === 'C&A' ? 'bg-gray-50 text-[#5ABB37]' : 'text-gray-700'
+                        }`}
                     >
                       C&A
                     </button>
@@ -2704,28 +2704,28 @@ export default function App() {
               </div>
             </div>
           )}
-          
+
           {(activeCategory === 'Projects') && (
             <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent mb-3 pointer-events-auto">
               <div className="relative max-w-[800px] mx-auto pb-2 bg-transparent">
                 <div className="w-full px-2 py-2 bg-transparent border border-transparent rounded-lg shadow-sm">
                   <div className="flex items-center justify-between py-0 text-white">
-                    <ClientSelector 
+                    <ClientSelector
                       selectedClient={selectedClient}
-                      onClientChange={isBackgroundSyncing ? () => {} : handleClientChange}
+                      onClientChange={isBackgroundSyncing ? () => { } : handleClientChange}
                     />
                     <div className="flex items-center">
                       {selectedClient === 'Power' && (
-                        <ProjectWeekSelector 
+                        <ProjectWeekSelector
                           selectedWeekStart={selectedWeekStart}
-                          onWeekChange={isBackgroundSyncing ? () => {} : handleProjectWeekChange}
+                          onWeekChange={isBackgroundSyncing ? () => { } : handleProjectWeekChange}
                           projectsData={projects}
                         />
                       )}
                       {selectedClient === 'Private' && (
-                        <MonthSelector 
+                        <MonthSelector
                           selectedMonthStart={selectedMonthStart}
-                          onMonthChange={isBackgroundSyncing ? () => {} : handleMonthChange}
+                          onMonthChange={isBackgroundSyncing ? () => { } : handleMonthChange}
                         />
                       )}
                     </div>
@@ -2734,20 +2734,20 @@ export default function App() {
               </div>
             </div>
           )}
-          
+
           {(activeCategory === 'Stock') && (
             <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent pointer-events-auto">
               {/* Conteúdo do Stock */}
             </div>
           )}
-          
+
           {(activeCategory === 'Employees') && (
             <div className="sticky top-[210px] left-0 right-0 px-2 z-30 bg-transparent mb-3 pointer-events-auto">
               <div className="relative max-w-[800px] mx-auto pb-2 bg-transparent">
                 <div className="w-full px-2 py-2 bg-transparent border border-transparent rounded-lg shadow-sm flex items-center justify-between text-white">
-                  <WeekSelector 
+                  <WeekSelector
                     selectedWeekStart={selectedWeekStart}
-                    onWeekChange={isBackgroundSyncing ? () => {} : handleWeekChange}
+                    onWeekChange={isBackgroundSyncing ? () => { } : handleWeekChange}
                     employeesData={employees}
                   />
                 </div>
@@ -2755,10 +2755,10 @@ export default function App() {
             </div>
           )}
         </div>
-        
+
         <main className={`px-4 ${mainPaddingBottomClass} ${mainOffsetClass}`}>
-          <div 
-            className="max-w-[800px] mx-auto relative z-0 hide-scrollbar main-list-container" 
+          <div
+            className="max-w-[800px] mx-auto relative z-0 hide-scrollbar main-list-container"
           >
             {/* Indicador de filtro ativo */}
             {filterDate && (
@@ -2766,7 +2766,7 @@ export default function App() {
                 <span className="text-sm">
                   Filtrando por: {filterDate.toLocaleDateString('en-US')}
                 </span>
-                <button 
+                <button
                   onClick={clearDateFilter}
                   className="text-blue-700 hover:text-blue-900"
                 >
@@ -2780,31 +2780,31 @@ export default function App() {
                 .filter(isItemFromSelectedDate)
                 .map(expense => (
                   <li key={expense.id} className="list-none">
-            <ExpenseItem
-              expense={expense}
-              onTogglePaid={isBackgroundSyncing ? () => {} : handleTogglePaid}
-                      onDelete={isBackgroundSyncing ? () => {} : (id) => handleDeleteItem(id, 'Expenses')}
-                      onEdit={isBackgroundSyncing ? () => {} : (expense) => handleEditItem(expense)}
-                      onViewDetails={isBackgroundSyncing ? () => {} : handleViewExpenseDetails}
+                    <ExpenseItem
+                      expense={expense}
+                      onTogglePaid={isBackgroundSyncing ? () => { } : handleTogglePaid}
+                      onDelete={isBackgroundSyncing ? () => { } : (id) => handleDeleteItem(id, 'Expenses')}
+                      onEdit={isBackgroundSyncing ? () => { } : (expense) => handleEditItem(expense)}
+                      onViewDetails={isBackgroundSyncing ? () => { } : handleViewExpenseDetails}
                     />
                   </li>
                 ))}
-              
+
               {activeCategory === 'Projects' && projects
                 .filter(project => {
                   // Primeiro, filtrar por tipo de cliente
-                  const clientMatches = (selectedClient === 'Power' && project.clientType !== 'Private') || 
-                                       (selectedClient === 'Private' && project.clientType === 'Private');
-                  
+                  const clientMatches = (selectedClient === 'Power' && project.clientType !== 'Private') ||
+                    (selectedClient === 'Private' && project.clientType === 'Private');
+
                   if (!clientMatches) return false;
-                  
+
                   // Normalizar para comparação por dia (YYYY-MM-DD)
                   const projectStartStr = (project.startDate as string)?.slice(0, 10);
                   const projectEndStr = project.endDate ? (project.endDate as string).slice(0, 10) : undefined;
-                  
+
                   let periodStartStr: string;
                   let periodEndStr: string;
-                  
+
                   if (selectedClient === 'Power') {
                     // Para Power, usar semana
                     periodStartStr = format(selectedWeekStart, 'yyyy-MM-dd');
@@ -2814,7 +2814,7 @@ export default function App() {
                     periodStartStr = format(selectedMonthStart, 'yyyy-MM-dd');
                     periodEndStr = format(selectedMonthEnd, 'yyyy-MM-dd');
                   }
-                  
+
                   // Lógica especial para Projects Private
                   if (selectedClient === 'Private') {
                     // Projetos em progresso ou pendentes sempre aparecem no mês atual
@@ -2824,7 +2824,7 @@ export default function App() {
                       const currentMonthEnd = endOfMonth(now);
                       const currentMonthStartStr = format(currentMonthStart, 'yyyy-MM-dd');
                       const currentMonthEndStr = format(currentMonthEnd, 'yyyy-MM-dd');
-                      
+
                       // Se estamos visualizando o mês atual, mostrar projetos em progresso/pendentes
                       if (periodStartStr === currentMonthStartStr && periodEndStr === currentMonthEndStr) {
                         return true;
@@ -2834,32 +2834,32 @@ export default function App() {
                         return false;
                       }
                     }
-                    
+
                     // Projetos completos ficam no período onde foram criados/completados
                     if (project.status === 'completed') {
-                      const startInRange = projectStartStr >= periodStartStr && 
-                                         projectStartStr <= periodEndStr;
-                      const endInRange = projectEndStr && 
-                                       projectEndStr >= periodStartStr && 
-                                       projectEndStr <= periodEndStr;
-                      const spansRange = projectStartStr <= periodStartStr && 
-                                       projectEndStr && 
-                                       projectEndStr >= periodEndStr;
-                      
+                      const startInRange = projectStartStr >= periodStartStr &&
+                        projectStartStr <= periodEndStr;
+                      const endInRange = projectEndStr &&
+                        projectEndStr >= periodStartStr &&
+                        projectEndStr <= periodEndStr;
+                      const spansRange = projectStartStr <= periodStartStr &&
+                        projectEndStr &&
+                        projectEndStr >= periodEndStr;
+
                       return startInRange || endInRange || spansRange;
                     }
                   }
-                  
+
                   // Para Power ou lógica padrão
-                  const startInRange = projectStartStr >= periodStartStr && 
-                                     projectStartStr <= periodEndStr;
-                  const endInRange = projectEndStr && 
-                                   projectEndStr >= periodStartStr && 
-                                   projectEndStr <= periodEndStr;
-                  const spansRange = projectStartStr <= periodStartStr && 
-                                   projectEndStr && 
-                                   projectEndStr >= periodEndStr;
-                  
+                  const startInRange = projectStartStr >= periodStartStr &&
+                    projectStartStr <= periodEndStr;
+                  const endInRange = projectEndStr &&
+                    projectEndStr >= periodStartStr &&
+                    projectEndStr <= periodEndStr;
+                  const spansRange = projectStartStr <= periodStartStr &&
+                    projectEndStr &&
+                    projectEndStr >= periodEndStr;
+
                   return startInRange || endInRange || spansRange;
                 })
                 .sort((a, b) => {
@@ -2868,50 +2868,49 @@ export default function App() {
                     // Primeiro, ordenar por status
                     if (a.status === 'completed' && b.status !== 'completed') return -1;
                     if (a.status !== 'completed' && b.status === 'completed') return 1;
-                    
+
                     if (a.status === 'in_progress' && b.status === 'pending') return -1;
                     if (a.status === 'pending' && b.status === 'in_progress') return 1;
-                    
+
                     // Se mesmo status, ordenar por data de adição (mais recente primeiro)
                     const aTime = a.lastModified || new Date(a.startDate).getTime();
                     const bTime = b.lastModified || new Date(b.startDate).getTime();
                     return bTime - aTime;
                   }
-                  
+
                   // Para projetos Power, ordenar por status: Completed > In Progress > Pending
                   if (selectedClient === 'Power') {
                     // Primeiro, ordenar por status
                     if (a.status === 'completed' && b.status !== 'completed') return -1;
                     if (a.status !== 'completed' && b.status === 'completed') return 1;
-                    
+
                     if (a.status === 'in_progress' && b.status === 'pending') return -1;
                     if (a.status === 'pending' && b.status === 'in_progress') return 1;
-                    
+
                     // Se mesmo status, ordenar por data de adição (mais recente primeiro)
                     const aTime = a.lastModified || new Date(a.startDate).getTime();
                     const bTime = b.lastModified || new Date(b.startDate).getTime();
                     return bTime - aTime;
                   }
-                  
+
                   // Fallback: ordenar por data
                   return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
                 })
                 .map(project => (
                   <li key={project.id} className="list-none">
-                    <SwipeableItem 
-                      onDelete={isBackgroundSyncing ? () => {} : () => handleDeleteItem(project.id, 'Projects')}
-                      onEdit={isBackgroundSyncing ? () => {} : () => handleEditItem(project)}
+                    <SwipeableItem
+                      onDelete={isBackgroundSyncing ? () => { } : () => handleDeleteItem(project.id, 'Projects')}
+                      onEdit={isBackgroundSyncing ? () => { } : () => handleEditItem(project)}
                     >
-                      <div 
-                        className={`p-4 rounded-lg shadow-md cursor-pointer transition-all duration-300 border-2 backdrop-blur-sm ${
-                          project.status === 'completed' && project.invoiceOk 
+                      <div
+                        className={`p-4 rounded-lg shadow-md cursor-pointer transition-all duration-300 border-2 backdrop-blur-sm ${project.status === 'completed' && project.invoiceOk
                             ? 'bg-gradient-to-br from-white to-green-50/50 border-green-300/80 shadow-green-200/20'
                             : 'bg-white border-gray-200/60 shadow-gray-200/20'
-                        }`}
+                          }`}
                         style={{
                           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                         }}
-                        onClick={isBackgroundSyncing ? () => {} : () => handleOpenProjectSummary(project)}
+                        onClick={isBackgroundSyncing ? () => { } : () => handleOpenProjectSummary(project)}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1 min-w-0 pr-2">
@@ -2939,8 +2938,8 @@ export default function App() {
                                 <div className="flex -space-x-1">
                                   {project.photos.slice(0, 3).map((photo, index) => (
                                     <div key={photo.id} className="relative">
-                                      <img 
-                                        src={photo.url} 
+                                      <img
+                                        src={photo.url}
                                         alt={`Photo ${index + 1}`}
                                         className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg object-cover border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow"
                                         onError={(e) => {
@@ -2966,25 +2965,23 @@ export default function App() {
                           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                             {/* Botão de edição visível */}
                             {project.invoiceOk && (
-                              <span className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md font-medium border whitespace-nowrap ${
-                                project.clientType === 'Private' 
+                              <span className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md font-medium border whitespace-nowrap ${project.clientType === 'Private'
                                   ? 'bg-green-200 text-green-900 border-green-300'
                                   : 'bg-green-100 text-green-800 border-green-200'
-                              }`}>
+                                }`}>
                                 Invoice OK
                               </span>
                             )}
-                            <span className={`rounded-md font-medium border whitespace-nowrap ${
-                              project.status === 'completed' 
-                                ? (project.clientType === 'Private' 
-                                    ? 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-200 text-green-900 border-green-300'
-                                    : 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-100 text-green-800 border-green-200')
+                            <span className={`rounded-md font-medium border whitespace-nowrap ${project.status === 'completed'
+                                ? (project.clientType === 'Private'
+                                  ? 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-200 text-green-900 border-green-300'
+                                  : 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-100 text-green-800 border-green-200')
                                 : project.status === 'in_progress'
                                   ? 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-100 text-blue-800 border-blue-200'
                                   : 'text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 bg-yellow-100 text-yellow-800 border-yellow-200'
-                            }`}>
-                              {project.status === 'completed' ? 'Completed' : 
-                               project.status === 'in_progress' ? 'In Progress' : 'Pending'}
+                              }`}>
+                              {project.status === 'completed' ? 'Completed' :
+                                project.status === 'in_progress' ? 'In Progress' : 'Pending'}
                             </span>
                           </div>
                         </div>
@@ -2992,12 +2989,12 @@ export default function App() {
                     </SwipeableItem>
                   </li>
                 ))}
-              
+
               {activeCategory === 'Stock' && stockItems.map(item => (
                 <li key={item.id} className="list-none">
-                  <SwipeableItem 
-                    onDelete={isBackgroundSyncing ? () => {} : () => handleDeleteItem(item.id, 'Stock')}
-                    onEdit={isBackgroundSyncing ? () => {} : () => handleEditItem(item)}
+                  <SwipeableItem
+                    onDelete={isBackgroundSyncing ? () => { } : () => handleDeleteItem(item.id, 'Stock')}
+                    onEdit={isBackgroundSyncing ? () => { } : () => handleEditItem(item)}
                   >
                     <div className="bg-white p-4 rounded-lg shadow-sm">
                       <div className="flex justify-between items-center">
@@ -3010,16 +3007,16 @@ export default function App() {
                   </SwipeableItem>
                 </li>
               ))}
-              
+
               {activeCategory === 'Employees' && (
                 <>
                   {(() => {
                     const formattedSelectedWeekStart = format(selectedWeekStart, 'yyyy-MM-dd');
-                    
+
                     // Mostrar apenas os funcionários da semana selecionada
                     const employeesInSelectedWeek = (employees[formattedSelectedWeekStart] || []).filter(employee => employee.name !== 'Will');
-                    
-                    
+
+
                     const employeeElements = [];
 
                     // Will - funcionário fixo
@@ -3029,10 +3026,10 @@ export default function App() {
                           key="will-fixed"
                           willBaseRate={willBaseRate}
                           willBonus={willBonus}
-                          onReset={isBackgroundSyncing ? () => {} : resetWillValues}
-                          onLayoff={isBackgroundSyncing ? () => {} : () => setShowLayoffAlert(true)}
-                          onIncreaseRate={isBackgroundSyncing ? () => {} : () => setIsRateDialogOpen(true)}
-                          onAddBonus={isBackgroundSyncing ? () => {} : handleAddBonus}
+                          onReset={isBackgroundSyncing ? () => { } : resetWillValues}
+                          onLayoff={isBackgroundSyncing ? () => { } : () => setShowLayoffAlert(true)}
+                          onIncreaseRate={isBackgroundSyncing ? () => { } : () => setIsRateDialogOpen(true)}
+                          onAddBonus={isBackgroundSyncing ? () => { } : handleAddBonus}
                           disabled={isBackgroundSyncing}
                         />
                       </li>
@@ -3040,7 +3037,7 @@ export default function App() {
 
                     // Verificar se há funcionários (excluindo Will)
                     const otherEmployees = employeesInSelectedWeek;
-                    
+
                     if (otherEmployees.length === 0) {
                       employeeElements.push(
                         <li key="no-employees" className="list-none">
@@ -3055,11 +3052,11 @@ export default function App() {
                         // Calcular dias trabalhados especificamente para a semana selecionada
                         let daysWorkedInWeek = 0;
                         let workedDatesInWeek: string[] = [];
-                        
+
                         if (employee.workedDates && employee.workedDates.length > 0) {
                           const weekStart = selectedWeekStart;
                           const weekEnd = selectedWeekEnd;
-                          
+
                           // Debug para o funcionário específico
                           if (employee.id === '5d9cabc7-4be0-4df8-85b2-745494ed5069') {
                             console.log("🔍 DEBUG FUNCIONÁRIO NA LISTA:", {
@@ -3072,15 +3069,15 @@ export default function App() {
                               selectedWeekEnd: selectedWeekEnd.toISOString()
                             });
                           }
-                          
+
                           workedDatesInWeek = employee.workedDates.filter(dateStr => {
                             // Comparar apenas as strings de data (YYYY-MM-DD)
                             const workedDateStr = dateStr.split('T')[0]; // Pega apenas a parte da data
                             const weekStartStr = weekStart.toISOString().split('T')[0];
                             const weekEndStr = weekEnd.toISOString().split('T')[0];
-                            
+
                             const isInWeek = workedDateStr >= weekStartStr && workedDateStr <= weekEndStr;
-                            
+
                             // Debug para o funcionário específico
                             if (employee.id === '5d9cabc7-4be0-4df8-85b2-745494ed5069') {
                               console.log("🔍 FILTRO DE DATA:", {
@@ -3091,12 +3088,12 @@ export default function App() {
                                 isInWeek
                               });
                             }
-                            
+
                             return isInWeek;
                           });
-                          
+
                           daysWorkedInWeek = workedDatesInWeek.length;
-                          
+
                           // Debug final para o funcionário específico
                           if (employee.id === '5d9cabc7-4be0-4df8-85b2-745494ed5069') {
                             console.log("🔍 RESULTADO FINAL:", {
@@ -3105,19 +3102,19 @@ export default function App() {
                             });
                           }
                         }
-                        
+
                         employeeElements.push(
                           <li key={employee.id} className="list-none">
-                            <SwipeableItem 
-                              onDelete={isBackgroundSyncing ? () => {} : () => handleDeleteItem(employee.id, 'Employees')}
-                              onEdit={isBackgroundSyncing ? () => {} : () => handleEditItem(employee)}
+                            <SwipeableItem
+                              onDelete={isBackgroundSyncing ? () => { } : () => handleDeleteItem(employee.id, 'Employees')}
+                              onEdit={isBackgroundSyncing ? () => { } : () => handleEditItem(employee)}
                             >
                               <div className="bg-white p-2.5 rounded-lg shadow-sm">
                                 <div className="flex items-center justify-between mb-1.5">
                                   <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
                                   <div className="flex items-center gap-1.5">
                                     <button
-                                      onClick={isBackgroundSyncing ? () => {} : () => {
+                                      onClick={isBackgroundSyncing ? () => { } : () => {
                                         // Usar a função para abrir o calendário
                                         openWorkDaysCalendar(employee);
                                       }}
@@ -3127,7 +3124,7 @@ export default function App() {
                                       Days Worked
                                     </button>
                                     <button
-                                      onClick={isBackgroundSyncing ? () => {} : () => {
+                                      onClick={isBackgroundSyncing ? () => { } : () => {
                                         // Usar a função para abrir o recibo - passar o funcionário original
                                         openReceipt(employee);
                                       }}
@@ -3168,7 +3165,7 @@ export default function App() {
                 </>
               )}
             </ul>
-            
+
             {/* Espaçamento para evitar que os botões flutuantes cubram o último item */}
             <div className="list-bottom-spacing"></div>
           </div>
@@ -3179,7 +3176,7 @@ export default function App() {
 
       {/* Popup flutuante do total para Projects */}
       {activeCategory === 'Projects' && (
-        <TotalValuePopup 
+        <TotalValuePopup
           total={weekTotalValue}
         />
       )}
@@ -3190,7 +3187,7 @@ export default function App() {
           if (isBackgroundSyncing) {
             return;
           }
-            setIsAddDialogOpen(open);
+          setIsAddDialogOpen(open);
           if (!open) {
             setIsQuickAddMenuOpen(false);
           }
@@ -3209,7 +3206,7 @@ export default function App() {
           setActiveCategory(confirmationCategory);
         }}
       />
-  
+
       <EditItemDialog
         isOpen={isEditDialogOpen && !isBackgroundSyncing}
         onOpenChange={(open) => {
@@ -3227,8 +3224,8 @@ export default function App() {
       {/* Overlay de sincronização obrigatória */}
       <SyncOverlay isVisible={isSyncBlocked} message={syncMessage} />
 
-      <Dialog.Root 
-        open={showLayoffAlert && !isBackgroundSyncing} 
+      <Dialog.Root
+        open={showLayoffAlert && !isBackgroundSyncing}
         onOpenChange={(open: boolean) => {
           if (!isBackgroundSyncing) {
             setShowLayoffAlert(open);
@@ -3237,7 +3234,7 @@ export default function App() {
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content 
+          <Dialog.Content
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-8 shadow-xl w-[90%] max-w-md z-[100]"
             onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
             aria-labelledby="layoff-alert-title"
@@ -3255,8 +3252,8 @@ export default function App() {
         </Dialog.Portal>
       </Dialog.Root>
 
-      <Dialog.Root 
-        open={isRateDialogOpen && !isBackgroundSyncing} 
+      <Dialog.Root
+        open={isRateDialogOpen && !isBackgroundSyncing}
         onOpenChange={(open: boolean) => {
           if (!isBackgroundSyncing) {
             setIsRateDialogOpen(open);
@@ -3265,7 +3262,7 @@ export default function App() {
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content 
+          <Dialog.Content
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 shadow-xl w-[90%] max-w-md z-[100]"
             onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
             aria-labelledby="rate-dialog-title"
@@ -3279,9 +3276,9 @@ export default function App() {
                 <X className="w-5 h-5" />
               </Dialog.Close>
             </div>
-            
-            <form 
-              onSubmit={handleWillRateChange} 
+
+            <form
+              onSubmit={handleWillRateChange}
               className="space-y-4"
             >
               <div>
@@ -3301,7 +3298,7 @@ export default function App() {
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#5ABB37] focus:ring focus:ring-[#5ABB37] focus:ring-opacity-50"
                 />
               </div>
-              
+
               <div className="flex justify-end gap-3 mt-6">
                 <Dialog.Close className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800">
                   Cancel
@@ -3317,7 +3314,7 @@ export default function App() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-      
+
       <Calendar
         selectedDate={filterDate || undefined}
         onSelect={handleDateSelect}
@@ -3331,8 +3328,8 @@ export default function App() {
 
       {/* Adicionar modal para o calendário de dias trabalhados */}
       {selectedEmployee && (
-        <Dialog.Root 
-          open={isCalendarDialogOpen && !isBackgroundSyncing} 
+        <Dialog.Root
+          open={isCalendarDialogOpen && !isBackgroundSyncing}
           onOpenChange={(open: boolean) => {
             if (!isBackgroundSyncing) {
               setIsCalendarDialogOpen(open);
@@ -3341,7 +3338,7 @@ export default function App() {
         >
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-            <Dialog.Content 
+            <Dialog.Content
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl max-w-md w-[95%] z-[100]"
               onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
               aria-labelledby="calendar-dialog-title"
@@ -3383,8 +3380,8 @@ export default function App() {
 
       {/* Adicionar modal para o recibo */}
       {receiptEmployee && (
-        <Dialog.Root 
-          open={isReceiptDialogOpen && !isBackgroundSyncing} 
+        <Dialog.Root
+          open={isReceiptDialogOpen && !isBackgroundSyncing}
           onOpenChange={(open: boolean) => {
             if (!isBackgroundSyncing) {
               setIsReceiptDialogOpen(open);
@@ -3393,7 +3390,7 @@ export default function App() {
         >
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-            <Dialog.Content 
+            <Dialog.Content
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-4 shadow-xl w-[95%] max-w-2xl max-h-[90vh] overflow-y-auto z-[100]"
               onOpenAutoFocus={(e: React.FocusEvent) => e.preventDefault()}
               aria-labelledby="receipt-dialog-title"
@@ -3407,7 +3404,7 @@ export default function App() {
                   <X className="w-5 h-5" />
                 </Dialog.Close>
               </div>
-              
+
               <EmployeeReceipt
                 employee={{
                   ...receiptEmployee,

@@ -5,8 +5,9 @@ import { supabase } from '../lib/supabase';
 import { getDeviceId } from '../lib/deviceUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AlertCircle, CheckCircle, Home, DollarSign, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin, Receipt as ReceiptIcon, CheckSquare, Camera, Upload, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Home, DollarSign, CreditCard, TrendingUp, Clock, Users, Calendar, StickyNote, FileText, Boxes, MapPin, Receipt as ReceiptIcon, CheckSquare, Camera, Upload, Trash2 } from 'lucide-react';
 import { isRecurringExpense, getRecurrenceType } from '../lib/recurringUtils';
+import { getProjectWeekStart, getProjectWeekEnd } from '../lib/dateUtils';
 import { buildCardExpensesFromCA } from '../lib/expenseCardUtils';
 import { RequestSummaryDialog } from './RequestSummaryDialog';
 import { ReceiptScanner } from './ReceiptScanner';
@@ -43,6 +44,7 @@ interface DashboardProps {
   stockItems: StockItem[];
   employees: Record<string, Employee[]>;
   onNavigate: (category: 'Expenses' | 'Projects' | 'Stock' | 'Employees') => void;
+  onNavigateToProjects?: (client: 'Power' | 'Private') => void;
   onItemClick: (item: any, type: 'expense' | 'project' | 'stock' | 'employee') => void;
   onOpenPlanner?: () => void;
   refreshRequests?: number; // Timestamp para forçar refresh
@@ -70,6 +72,7 @@ export function Dashboard({
   stockItems,
   employees,
   onNavigate,
+  onNavigateToProjects,
   onItemClick,
   onOpenPlanner,
   refreshRequests,
@@ -553,6 +556,59 @@ export function Dashboard({
     return { total, segments };
   }, [privateProjectsStats]);
 
+  // Valor total dos projetos Power da semana atual e próxima (To Receive)
+  const powerProjectsWeekValues = useMemo(() => {
+    const now = new Date();
+    // Semana atual (quarta → terça) - será pago na sexta
+    const currentWeekStart = getProjectWeekStart(now);
+    const currentWeekEnd = getProjectWeekEnd(now);
+    const currentStartStr = format(currentWeekStart, 'yyyy-MM-dd');
+    const currentEndStr = format(currentWeekEnd, 'yyyy-MM-dd');
+    // Sexta-feira de pagamento = 3 dias após a terça (fim do ciclo)
+    const currentPayDay = addDays(currentWeekEnd, 3);
+
+    // Próxima semana (quarta seguinte → terça seguinte)
+    const nextWeekStartDate = addDays(currentWeekEnd, 1);
+    const nextWeekStart = getProjectWeekStart(nextWeekStartDate);
+    const nextWeekEnd = getProjectWeekEnd(nextWeekStartDate);
+    const nextStartStr = format(nextWeekStart, 'yyyy-MM-dd');
+    const nextEndStr = format(nextWeekEnd, 'yyyy-MM-dd');
+    const nextPayDay = addDays(nextWeekEnd, 3);
+
+    let currentTotal = 0;
+    let nextTotal = 0;
+
+    const isInRange = (project: Project, periodStart: string, periodEnd: string) => {
+      const projectStartStr = (project.startDate as string)?.slice(0, 10);
+      const projectEndStr = project.endDate ? (project.endDate as string).slice(0, 10) : undefined;
+
+      const startInRange = projectStartStr >= periodStart && projectStartStr <= periodEnd;
+      const endInRange = projectEndStr && projectEndStr >= periodStart && projectEndStr <= periodEnd;
+      const spansRange = projectStartStr <= periodStart && projectEndStr && projectEndStr >= periodEnd;
+
+      return startInRange || endInRange || spansRange;
+    };
+
+    projects.forEach(project => {
+      if (project.clientType !== 'Power') return;
+      if (project.status !== 'completed') return;
+
+      if (isInRange(project, currentStartStr, currentEndStr)) {
+        currentTotal += project.value || 0;
+      }
+      if (isInRange(project, nextStartStr, nextEndStr)) {
+        nextTotal += project.value || 0;
+      }
+    });
+
+    return {
+      current: currentTotal,
+      nextWeek: nextTotal,
+      currentPayDate: format(currentPayDay, 'MMM d'),
+      nextPayDate: format(nextPayDay, 'MMM d'),
+    };
+  }, [projects]);
+
   // Estatísticas de projetos
   const projectsStats = useMemo(() => {
     const currentMonth = new Date().getMonth();
@@ -805,7 +861,7 @@ export function Dashboard({
 
     const interval = setInterval(() => {
       setExpenseSlideIndex((prev) => (prev + 1) % overdueExpenses.length);
-    }, 4000); // Muda a cada 4 segundos
+    }, 10000); // Muda a cada 10 segundos
 
     return () => clearInterval(interval);
   }, [overdueExpenses.length]);
@@ -817,152 +873,95 @@ export function Dashboard({
       {/* Cards fixos */}
       <div className="fixed top-[110px] left-0 right-0 z-10 px-4">
         <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          {/* Card Projects - SLIDESHOW */}
-          <div
-            onClick={() => onNavigate('Projects')}
-            className="relative bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
-          >
-            {/* Ícone de fundo sutil */}
-            <div className="absolute -right-3 -bottom-3 opacity-5">
-              <Home className="w-24 h-24 text-blue-600" />
-            </div>
-
-            <div className="relative z-10 h-full flex flex-col">
-              {/* Header fixo - ícone e título lado a lado */}
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow flex-shrink-0">
-                  <Home className="w-4 h-4 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between">
-                    <div className="text-xs text-gray-800 font-semibold tracking-wide">Projects</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Área informativa: gráfico pizza (Private only) */}
-              <div className="flex-1 flex items-center">
-                {privateProjectsDonut.total > 0 ? (
-                  <div className="w-full flex items-center">
-                    {/* Donut */}
-                    <div className="flex items-center justify-center mr-2">
-                      <svg width="60" height="60" viewBox="0 0 72 72" className="-rotate-90">
-                        {(() => {
-                          const radius = 28;
-                          const cx = 36;
-                          const cy = 36;
-                          const circumference = 2 * Math.PI * radius;
-                          let offset = 0;
-                          return privateProjectsDonut.segments
-                            .filter(s => s.value > 0)
-                            .map((seg, idx) => {
-                              const length = (seg.value / privateProjectsDonut.total) * circumference;
-                              const el = (
-                                <circle
-                                  key={idx}
-                                  cx={cx}
-                                  cy={cy}
-                                  r={radius}
-                                  fill="transparent"
-                                  stroke={seg.color}
-                                  strokeWidth={8}
-                                  strokeDasharray={`${length} ${circumference - length}`}
-                                  strokeDashoffset={-offset}
-                                  strokeLinecap="butt"
-                                />
-                              );
-                              offset += length;
-                              return el;
-                            });
-                        })()}
-                        <circle cx="36" cy="36" r="22" fill="white" />
-                      </svg>
-                    </div>
-
-                    {/* Legenda compacta */}
-                    <div className="flex-1 ml-1 grid grid-cols-1 gap-1 min-w-0">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#F59E0B' }} />
-                          <span className="text-gray-700 truncate text-[10px]">Pending</span>
-                        </div>
-                        <span className="text-gray-900 font-semibold ml-1 flex-shrink-0">{privateProjectsStats.pending}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#2563EB' }} />
-                          <span className="text-gray-700 truncate text-[10px]">In Progress</span>
-                        </div>
-                        <span className="text-gray-900 font-semibold ml-1 flex-shrink-0">{privateProjectsStats.inProgress}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: '#16A34A' }} />
-                          <span className="text-gray-700 truncate text-[10px]">Completed</span>
-                        </div>
-                        <span className="text-gray-900 font-semibold ml-1 flex-shrink-0">{privateProjectsStats.completed}</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center w-full">
-                    <div className="text-sm text-gray-600">No Private projects</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Card Expenses - SLIDESHOW */}
+          {/* Card To Pay - SLIDESHOW */}
           <div
             onClick={() => onNavigate('Expenses')}
             className="relative bg-gradient-to-br from-red-50 via-red-50 to-red-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
           >
             {/* Ícone de fundo sutil */}
             <div className="absolute -right-3 -bottom-3 opacity-5">
-              <DollarSign className="w-24 h-24 text-red-600" />
+              <ReceiptIcon className="w-24 h-24 text-red-600" />
             </div>
 
             <div className="relative z-10 h-full flex flex-col">
               {/* Header fixo - ícone e título lado a lado */}
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow flex-shrink-0">
-                  <DollarSign className="w-4 h-4 text-white" />
+                  <ReceiptIcon className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1 flex items-center justify-between min-w-0">
-                  <div className="text-xs text-gray-700 font-semibold">To Pay</div>
+                  <div className="text-[13px] text-gray-700 font-semibold">To Pay</div>
                 </div>
               </div>
 
-              {/* Slideshow area - ajustado para melhor distribuição */}
+              {/* Slideshow area */}
               <div className="flex-1 flex items-center justify-center overflow-hidden min-h-0">
                 {overdueExpenses.length > 0 ? (
                   <div className="w-full h-full relative">
-                    {overdueExpenses.map((expense, index) => (
-                      <div
-                        key={index}
-                        className={`absolute inset-0 flex flex-col justify-center transition-all duration-700 ease-in-out ${index === expenseSlideIndex
-                          ? 'opacity-100 translate-y-0'
-                          : index < expenseSlideIndex
-                            ? 'opacity-0 translate-y-full'
-                            : 'opacity-0 -translate-y-full'
-                          }`}
-                      >
-                        <div className="text-center px-2">
-                          <div className="text-sm font-semibold text-gray-900 truncate max-w-[95%] mx-auto">
+                    {overdueExpenses.map((expense, index) => {
+                      const isActive = index === expenseSlideIndex;
+                      const isPast = index < expenseSlideIndex;
+                      return (
+                        <div
+                          key={index}
+                          className="absolute inset-0 flex flex-col justify-center px-1"
+                          style={{ pointerEvents: isActive ? 'auto' : 'none' }}
+                        >
+                          {/* Nome - desliza da esquerda */}
+                          <div
+                            className="text-sm font-semibold text-gray-700 truncate transition-all ease-out"
+                            style={{
+                              transitionDuration: '600ms',
+                              transitionDelay: isActive ? '100ms' : '0ms',
+                              opacity: isActive ? 1 : 0,
+                              transform: isActive
+                                ? 'translateX(0)'
+                                : isPast
+                                  ? 'translateX(-100%)'
+                                  : 'translateX(60px)',
+                            }}
+                          >
                             {expense.description}
                           </div>
-                          <div className="text-lg font-extrabold text-gray-600 mt-0.5">
-                            ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                          </div>
+
+                          {/* Due Day - sobe de baixo */}
                           {expense.date && (
-                            <div className="text-[10px] text-gray-600 mt-1">
+                            <div
+                              className="text-[9px] text-gray-500 mt-0.5 transition-all ease-out"
+                              style={{
+                                transitionDuration: '500ms',
+                                transitionDelay: isActive ? '200ms' : '0ms',
+                                opacity: isActive ? 1 : 0,
+                                transform: isActive
+                                  ? 'translateY(0)'
+                                  : isPast
+                                    ? 'translateY(-10px)'
+                                    : 'translateY(10px)',
+                              }}
+                            >
                               Due Day: {format(new Date(expense.date), 'd', { locale: ptBR })}
                             </div>
                           )}
+
+                          {/* Valor - desliza da direita */}
+                          <div
+                            className="text-xl font-extrabold text-gray-800 text-right leading-none mt-1 transition-all ease-out"
+                            style={{
+                              transitionDuration: '600ms',
+                              transitionDelay: isActive ? '250ms' : '0ms',
+                              opacity: isActive ? 1 : 0,
+                              transform: isActive
+                                ? 'translateX(0)'
+                                : isPast
+                                  ? 'translateX(100%)'
+                                  : 'translateX(-60px)',
+                            }}
+                          >
+                            ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center">
@@ -977,6 +976,52 @@ export function Dashboard({
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card To Receive - Valor total projetos Power */}
+          <div
+            onClick={() => onNavigateToProjects ? onNavigateToProjects('Power') : onNavigate('Projects')}
+            className="relative bg-gradient-to-br from-green-50 via-green-50 to-green-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
+          >
+            {/* Ícone de fundo sutil */}
+            <div className="absolute -right-3 -bottom-3 opacity-5">
+              <DollarSign className="w-24 h-24 text-green-600" />
+            </div>
+
+            <div className="relative z-10 h-full flex flex-col">
+              {/* Header: ícone + título */}
+              <div className="flex items-center gap-1.5 mb-1">
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow flex-shrink-0">
+                  <DollarSign className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div className="text-[13px] text-gray-800 font-semibold tracking-wide">To Receive</div>
+              </div>
+
+              {/* Cliente + Valor na mesma linha */}
+              <div className="flex-1 flex flex-col justify-center">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] text-green-700 font-semibold uppercase tracking-wide">Power</div>
+                  <div className="text-xl font-extrabold text-gray-800 leading-none">
+                    ${powerProjectsWeekValues.current.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mt-1 justify-end">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-[9px] text-green-700 font-medium">Fri {powerProjectsWeekValues.currentPayDate}</span>
+                </div>
+              </div>
+
+              {/* Divider + Next week */}
+              <div className="border-t border-green-200/60 pt-1 flex items-center justify-between">
+                <span className="text-[9px] text-gray-400 font-medium">Next week</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] font-bold text-gray-500">
+                    ${powerProjectsWeekValues.nextWeek.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                  <span className="text-[8px] text-gray-400">· {powerProjectsWeekValues.nextPayDate}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -997,7 +1042,7 @@ export function Dashboard({
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow flex-shrink-0">
                   <Users className="w-4 h-4 text-white" />
                 </div>
-                <div className="text-xs text-gray-800 font-semibold tracking-wide">Employees</div>
+                <div className="text-[13px] text-gray-800 font-semibold tracking-wide">Employees</div>
               </div>
 
               {/* Conteúdo: Nomes ou alerta */}
@@ -1026,25 +1071,25 @@ export function Dashboard({
           {/* Card Planner */}
           <div
             onClick={() => onOpenPlanner ? onOpenPlanner() : onNavigate('Stock')}
-            className="relative rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px] bg-gradient-to-br from-green-50 via-green-50 to-green-100"
+            className="relative rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px] bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100"
           >
-            <div className="absolute -right-3 -bottom-3 opacity-5 text-green-500">
+            <div className="absolute -right-3 -bottom-3 opacity-5 text-blue-500">
               <Calendar className="w-28 h-28" />
             </div>
             <div
-              className="absolute right-1 text-[40px] text-gray-900"
-              style={{ fontFamily: 'Arial, sans-serif', fontWeight: 400, top: '-1px' }}
+              className="absolute right-2 top-1 text-[28px] text-gray-800/80 font-semibold"
+              style={{ fontFamily: 'Arial, sans-serif' }}
             >
               {format(new Date(), 'd')}
             </div>
 
             <div className="relative z-10 h-full flex flex-col">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow bg-gradient-to-br from-green-500 to-green-600 flex-shrink-0">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow bg-gradient-to-br from-blue-500 to-blue-600 flex-shrink-0">
                   <Calendar className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <div className="text-xs text-gray-800 font-semibold tracking-wide">Planner</div>
+                  <div className="text-[13px] text-gray-800 font-semibold tracking-wide">Planner</div>
                   <div className="text-sm text-gray-900 font-normal">{format(new Date(), 'MMMM')}</div>
                 </div>
               </div>
@@ -1053,7 +1098,7 @@ export function Dashboard({
                   <div className="text-[10px] uppercase text-gray-600 font-semibold tracking-wider">Upcoming</div>
                   <div className="text-xs text-gray-600 mt-1">
                     {todayEventsCount > 0 ? (
-                      <span className="font-bold text-green-700">{todayEventsCount} events today</span>
+                      <span className="font-bold text-blue-700">{todayEventsCount} events today</span>
                     ) : (
                       "No events today"
                     )}
@@ -1108,8 +1153,8 @@ export function Dashboard({
                     <div
                       key={activity.id}
                       onClick={() => {
-                        if (activity.type === 'receipt') {
-                          setRecentTab('Receipts');
+                        if (activity.type === 'receipt' && activity.data) {
+                          handleReceiptClick(activity.data as Receipt);
                         } else if (activity.data && (activity.type === 'expense' || activity.type === 'project')) {
                           onItemClick(activity.data, activity.type);
                         }
