@@ -1107,13 +1107,14 @@ export function Dashboard({
             <div className="absolute -right-3 -bottom-3 opacity-5 text-blue-500">
               <Calendar className="w-28 h-28" />
             </div>
-            {/* Caixa calendário - dia + mês */}
-            <div className="absolute right-2 top-2 z-20">
-              <div className="w-10 h-12 rounded-lg bg-white/90 shadow-md border border-blue-200/60 flex flex-col items-center justify-center overflow-hidden">
-                <div className="text-[18px] font-bold text-gray-800 leading-none">
+            {/* Data com caixa sutil e divisória */}
+            <div className="absolute right-3 top-3 z-20">
+              <div className="flex flex-col items-center border border-gray-300/60 rounded-md overflow-hidden bg-white/50 backdrop-blur-sm">
+                <div className="text-[16px] font-black text-gray-800 leading-none px-2 py-1">
                   {format(new Date(), 'd')}
                 </div>
-                <div className="text-[8px] font-semibold text-blue-600 uppercase tracking-wider mt-0.5">
+                <div className="h-px w-full bg-gray-300/60" />
+                <div className="text-[9px] font-bold text-gray-600 uppercase tracking-widest px-2 py-0.5 bg-gray-50/50">
                   {format(new Date(), 'MMM')}
                 </div>
               </div>
