@@ -622,18 +622,37 @@ export function Dashboard({
   // Valor total dos projetos Power da semana atual e próxima (To Receive)
   const powerProjectsWeekValues = useMemo(() => {
     const now = new Date();
-    // Semana atual (quarta → terça) - será pago na sexta
-    const currentWeekStart = getProjectWeekStart(now);
-    const currentWeekEnd = getProjectWeekEnd(now);
+    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+
+    // A semana de projetos vai de Quarta a Terça, e o pagamento é na Sexta seguinte (3 dias após Terça).
+    // Queremos mostrar no card "current" = a semana cujo pagamento (sexta) AINDA NÃO PASSOU.
+    // Se hoje é Qua (3) ou Qui (4), o próximo pagamento é a Sexta desta semana,
+    // referente à semana anterior (Qua→Ter que acabou na Terça).
+    // Se hoje é Sex (5), Sáb (6), Dom (0), Seg (1) ou Ter (2),
+    // o próximo pagamento é a Sexta da próxima semana, referente à semana atual (Qua→Ter em curso ou acabada).
+
+    // Determinar: usar a semana anterior como "current" quando estamos entre Qua e Qui (antes do payday de sexta)
+    let referenceDate: Date;
+    if (dayOfWeek === 3 || dayOfWeek === 4) {
+      // Quarta ou Quinta: o próximo payday é sexta desta semana, referente à semana ANTERIOR
+      referenceDate = new Date(now);
+      referenceDate.setDate(referenceDate.getDate() - 7); // voltar 1 semana
+    } else {
+      // Sexta em diante: payday já foi, mostrar a semana em curso (cujo payday é na próxima sexta)
+      referenceDate = now;
+    }
+
+    const currentWeekStart = getProjectWeekStart(referenceDate);
+    const currentWeekEnd = getProjectWeekEnd(referenceDate);
     const currentStartStr = format(currentWeekStart, 'yyyy-MM-dd');
     const currentEndStr = format(currentWeekEnd, 'yyyy-MM-dd');
-    // Sexta-feira de pagamento = 3 dias após a terça (fim do ciclo)
     const currentPayDay = addDays(currentWeekEnd, 3);
 
-    // Próxima semana (quarta seguinte → terça seguinte)
-    const nextWeekStartDate = addDays(currentWeekEnd, 1);
-    const nextWeekStart = getProjectWeekStart(nextWeekStartDate);
-    const nextWeekEnd = getProjectWeekEnd(nextWeekStartDate);
+    // Próxima semana (a seguinte)
+    const nextWeekRefDate = new Date(referenceDate);
+    nextWeekRefDate.setDate(nextWeekRefDate.getDate() + 7);
+    const nextWeekStart = getProjectWeekStart(nextWeekRefDate);
+    const nextWeekEnd = getProjectWeekEnd(nextWeekRefDate);
     const nextStartStr = format(nextWeekStart, 'yyyy-MM-dd');
     const nextEndStr = format(nextWeekEnd, 'yyyy-MM-dd');
     const nextPayDay = addDays(nextWeekEnd, 3);
@@ -947,7 +966,7 @@ export function Dashboard({
               {/* Header */}
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow flex-shrink-0">
-                  <ReceiptIcon className="w-4 h-4 text-white" />
+                  <FileText className="w-4 h-4 text-white" />
                 </div>
                 <div className="text-[13px] text-gray-700 font-semibold">To Pay</div>
               </div>
@@ -1024,8 +1043,8 @@ export function Dashboard({
             <div className="relative z-10 h-full flex flex-col">
               {/* Header: ícone + título */}
               <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow flex-shrink-0">
-                  <DollarSign className="w-3.5 h-3.5 text-white" />
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow flex-shrink-0">
+                  <DollarSign className="w-4 h-4 text-white" />
                 </div>
                 <div className="text-[13px] text-gray-800 font-semibold tracking-wide">To Receive</div>
               </div>
