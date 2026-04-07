@@ -15,7 +15,7 @@ import PhotoViewer from './PhotoViewer';
 import ImageEditor from './ImageEditor';
 import { ProjectPhoto } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-
+import * as Dialog from '@radix-ui/react-dialog';
 interface Request {
   id: string;
   type: 'invoice' | 'estimate';
@@ -1399,61 +1399,81 @@ export function Dashboard({
                 </div>
               )
             ) : (
-              // Receipts tab
+              /* Receipts tab */
               <div className="flex flex-col h-full overflow-hidden">
-                {/* Scan/Upload Receipt Button */}
-                <div className="p-3 border-b border-gray-100 relative">
+                {/* New Receipt Button */}
+                <div className="p-3 border-b border-gray-100">
                   <button
-                    onClick={() => setShowReceiptOptions(!showReceiptOptions)}
+                    onClick={() => setShowReceiptOptions(true)}
                     className="w-full px-4 py-3 bg-gradient-to-r from-[#5abb36] to-[#4a9e2e] text-white rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 font-semibold active:scale-[0.98]"
                   >
-                    <Camera className="w-5 h-5" />
-                    <Upload className="w-5 h-5" />
-                    Scan/Upload Receipt
+                    <span className="text-xl leading-none">+</span>
+                    New Receipt
                   </button>
+                </div>
 
-                  {/* Popup de opções */}
-                  {showReceiptOptions && (
-                    <>
-                      {/* Overlay para fechar ao clicar fora */}
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setShowReceiptOptions(false)}
-                      />
-                      {/* Menu popup */}
-                      <div className="absolute top-full left-3 right-3 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
+                {/* Bottom Sheet para escolher modo */}
+                <Dialog.Root open={showReceiptOptions} onOpenChange={setShowReceiptOptions}>
+                  <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/60 z-[999] transition-opacity" />
+                    <Dialog.Content className="fixed bottom-0 left-0 right-0 z-[1000] outline-none">
+                      <div className="bg-white rounded-t-[28px] shadow-2xl px-6 pt-5 pb-8" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}>
+                        {/* Handle bar */}
+                        <div className="flex justify-center mb-6">
+                          <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
+                        </div>
+
+                        <h3 className="text-[17px] font-semibold text-gray-800 mb-5 text-center">How would you like to add?</h3>
+
+                        <div className="flex gap-4">
+                          {/* Take Photo */}
+                          <button
+                            onClick={() => {
+                              setReceiptScannerMode('camera');
+                              setIsReceiptScannerOpen(true);
+                              setShowReceiptOptions(false);
+                            }}
+                            className="flex-1 flex flex-col items-center gap-3 p-5 rounded-2xl border-2 border-gray-100 hover:border-[#073763] bg-white transition-all active:scale-[0.97]"
+                          >
+                            <div className="w-14 h-14 rounded-full bg-[#073763]/10 flex items-center justify-center">
+                              <Camera className="w-7 h-7 text-[#073763]" />
+                            </div>
+                            <div className="text-center">
+                              <div className="font-semibold text-gray-900 text-[15px]">Take Photo</div>
+                              <div className="text-[12px] text-gray-500 mt-0.5">Use camera</div>
+                            </div>
+                          </button>
+
+                          {/* Upload Photo */}
+                          <button
+                            onClick={() => {
+                              setReceiptScannerMode('upload');
+                              setIsReceiptScannerOpen(true);
+                              setShowReceiptOptions(false);
+                            }}
+                            className="flex-1 flex flex-col items-center gap-3 p-5 rounded-2xl border-2 border-gray-100 hover:border-[#5abb36] bg-white transition-all active:scale-[0.97]"
+                          >
+                            <div className="w-14 h-14 rounded-full bg-[#5abb36]/10 flex items-center justify-center">
+                              <Upload className="w-7 h-7 text-[#5abb36]" />
+                            </div>
+                            <div className="text-center">
+                              <div className="font-semibold text-gray-900 text-[15px]">Upload</div>
+                              <div className="text-[12px] text-gray-500 mt-0.5">From gallery</div>
+                            </div>
+                          </button>
+                        </div>
+
+                        {/* Cancel */}
                         <button
-                          onClick={() => {
-                            setReceiptScannerMode('camera');
-                            setIsReceiptScannerOpen(true);
-                            setShowReceiptOptions(false);
-                          }}
-                          className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                          onClick={() => setShowReceiptOptions(false)}
+                          className="w-full mt-6 py-3 text-[15px] text-gray-500 font-medium hover:text-gray-900 transition-colors bg-gray-50 rounded-xl"
                         >
-                          <Camera className="w-5 h-5 text-[#073863]" />
-                          <div className="text-left">
-                            <div className="font-medium text-gray-800">Take Photo</div>
-                            <div className="text-xs text-gray-500">Use camera to scan</div>
-                          </div>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setReceiptScannerMode('upload');
-                            setIsReceiptScannerOpen(true);
-                            setShowReceiptOptions(false);
-                          }}
-                          className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
-                        >
-                          <Upload className="w-5 h-5 text-[#5abb36]" />
-                          <div className="text-left">
-                            <div className="font-medium text-gray-800">Upload Photo</div>
-                            <div className="text-xs text-gray-500">Select from device</div>
-                          </div>
+                          Cancel
                         </button>
                       </div>
-                    </>
-                  )}
-                </div>
+                    </Dialog.Content>
+                  </Dialog.Portal>
+                </Dialog.Root>
 
                 {/* Receipts List */}
                 <div className="flex-1 overflow-y-auto hide-scrollbar pb-16">

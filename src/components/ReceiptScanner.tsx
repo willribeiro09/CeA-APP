@@ -12,7 +12,7 @@ interface ReceiptScannerProps {
 }
 
 export function ReceiptScanner({ isOpen, onClose, onSuccess, initialMode = 'camera' }: ReceiptScannerProps) {
-  const [mode, setMode] = useState<'camera' | 'form'>('camera');
+  const [mode, setMode] = useState<'camera' | 'form' | 'idle'>('idle');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [description, setDescription] = useState('');
@@ -203,20 +203,20 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess, initialMode = 'came
   useEffect(() => {
     if (isOpen) {
       if (initialMode === 'upload') {
+        setMode('idle');
         // Abre o seletor de arquivo automaticamente
         setTimeout(() => {
           fileInputRef.current?.click();
         }, 100);
       } else {
         setMode('camera');
-        startCamera();
       }
     }
     
     return () => {
       stopCamera();
     };
-  }, [isOpen, initialMode, startCamera, stopCamera]);
+  }, [isOpen, initialMode, stopCamera]);
 
   // Efeitos para abrir/fechar câmera
   useEffect(() => {
@@ -236,7 +236,7 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess, initialMode = 'came
       setCapturedBlob(null);
       setDescription('');
       setAmount('');
-      setMode('camera');
+      setMode('idle');
       setError(null);
       stopCamera();
     }
