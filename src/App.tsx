@@ -13,7 +13,7 @@ import { ChevronDown, X, Home as HomeIcon, DollarSign, Users, Package, Receipt, 
 import { storage } from './lib/storage';
 import { validation } from './lib/validation';
 import { basicSyncService, loadData, saveData } from './lib/basicSync';
-import { isSupabaseConfigured, initSyncTable } from './lib/supabase';
+import { isSupabaseConfigured, initSyncTable, supabase } from './lib/supabase';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getData } from './lib/storage';
 import { format, addDays, startOfDay, getDay, addWeeks, startOfMonth, endOfMonth } from 'date-fns';
@@ -216,6 +216,9 @@ export default function App() {
   const [lastSyncUpdate, setLastSyncUpdate] = useState(0);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [confirmationCategory, setConfirmationCategory] = useState<'Expenses' | 'Projects' | 'Stock' | 'Employees'>('Expenses');
+  const [isDataReady, setIsDataReady] = useState(false);
+  const [initialReceipts, setInitialReceipts] = useState<any[]>([]);
+  const [initialRequests, setInitialRequests] = useState<any[]>([]);
 
 
   // NOVO: Hook para controlar o status de sincronização
@@ -286,6 +289,21 @@ export default function App() {
         }
       }
 
+      // Carregar receipts e requests do Supabase em paralelo
+      if (supabase) {
+        const [receiptsResult, requestsResult] = await Promise.all([
+          supabase.from('receipts').select('*').order('created_at', { ascending: false }).limit(50),
+          supabase.from('requests').select('*').order('created_at', { ascending: false }).limit(50)
+        ]);
+
+        if (!receiptsResult.error && receiptsResult.data) {
+          setInitialReceipts(receiptsResult.data);
+        }
+        if (!requestsResult.error && requestsResult.data) {
+          setInitialRequests(requestsResult.data);
+        }
+      }
+
       // Configurar listeners para sincronização de segundo plano
       const handleSyncReturnStarted = () => {
         setIsBackgroundSyncing(true);
@@ -336,7 +354,9 @@ export default function App() {
       };
     };
 
-    initializeData();
+    initializeData().then(() => {
+      setIsDataReady(true);
+    });
   }, []);
 
   // Inicializar sistema de notificações push
@@ -2488,6 +2508,8 @@ export default function App() {
     return <LoginScreen onLoginSuccess={() => setIsLoggedIn(true)} />;
   }
 
+
+
   return (
     <>
       <div className="min-h-screen">
@@ -2598,6 +2620,8 @@ export default function App() {
                 externalReceiptScannerOpen={isReceiptScannerOpen}
                 onReceiptScannerOpenChange={setIsReceiptScannerOpen}
                 forceReceiptsTab={forceReceiptsTab}
+                initialReceipts={initialReceipts}
+                initialRequests={initialRequests}
                 onReceiptSaved={() => {
                   // Se não estiver na Home, navegar para lá
                   if (activeCategory !== 'Home') {
@@ -3221,8 +3245,8 @@ export default function App() {
 
       {isSupabaseConfigured() && <ConnectionStatus />}
 
-      {/* Overlay de sincronização obrigatória */}
-      <SyncOverlay isVisible={isSyncBlocked} message={syncMessage} />
+      {/* Overlay de sincronização obrigatória - só mostrar após carregamento inicial */}
+      {isDataReady && <SyncOverlay isVisible={isSyncBlocked} message={syncMessage} />}
 
       <Dialog.Root
         open={showLayoffAlert && !isBackgroundSyncing}
@@ -3463,6 +3487,22 @@ export default function App() {
         }}
         onSave={handleSaveExpenseDetails}
       />
+
+      {/* Loading overlay - blur com popup profissional */}
+      {!isDataReady && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center loading-overlay-enter">
+          {/* Fundo totalmente opaco */}
+          <div className="absolute inset-0 bg-[#073763]" />
+          {/* Popup card */}
+          <div className="relative bg-white/95 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-2xl flex flex-col items-center gap-4 max-w-[260px] w-[85%] loading-popup-enter">
+            <div className="w-10 h-10 border-[3px] border-gray-200 border-t-[#073763] rounded-full animate-spin" />
+            <div className="text-center">
+              <p className="text-[15px] font-semibold text-gray-800">Loading</p>
+              <p className="text-[12px] text-gray-500 mt-1">Syncing your data...</p>
+            </div>
+          </div>
+        </div>
+      )}
 
     </>
   );

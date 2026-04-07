@@ -54,6 +54,8 @@ interface DashboardProps {
   onReceiptScannerOpenChange?: (open: boolean) => void; // Callback quando o scanner abre/fecha
   onReceiptSaved?: () => void; // Callback quando um receipt é salvo
   forceReceiptsTab?: boolean; // Força a abertura da aba Receipts
+  initialReceipts?: Receipt[]; // Dados pré-carregados de receipts
+  initialRequests?: Request[]; // Dados pré-carregados de requests
 }
 
 // Interface de Notificação comentada - não usado mais
@@ -81,7 +83,9 @@ export function Dashboard({
   externalReceiptScannerOpen,
   onReceiptScannerOpenChange,
   onReceiptSaved,
-  forceReceiptsTab
+  forceReceiptsTab,
+  initialReceipts,
+  initialRequests
 }: DashboardProps) {
 
   // NOTIFICAÇÕES DESABILITADAS - Não aparecem mais na lista Recent (apenas ações reais dos usuários)
@@ -99,13 +103,14 @@ export function Dashboard({
     }
   }, [forceReceiptsTab]);
 
-  const [requests, setRequests] = useState<Request[]>([]);
+  const [requests, setRequests] = useState<Request[]>(initialRequests || []);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [isRequestSummaryOpen, setIsRequestSummaryOpen] = useState(false);
 
   // Estado para Receipts
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [receiptsLoaded, setReceiptsLoaded] = useState(false);
+  const [receipts, setReceipts] = useState<Receipt[]>(initialReceipts || []);
+  const [receiptsLoaded, setReceiptsLoaded] = useState(!!initialReceipts && initialReceipts.length >= 0);
+  const [requestsLoaded, setRequestsLoaded] = useState(!!initialRequests && initialRequests.length >= 0);
   const [internalReceiptScannerOpen, setInternalReceiptScannerOpen] = useState(false);
   const [refreshReceiptsTimestamp, setRefreshReceiptsTimestamp] = useState(0);
   const [showReceiptOptions, setShowReceiptOptions] = useState(false);
@@ -198,6 +203,7 @@ export function Dashboard({
     if (!error && data) {
       setRequests(data);
     }
+    setRequestsLoaded(true);
   };
 
   // Função para carregar receipts
@@ -1195,7 +1201,7 @@ export function Dashboard({
           </div>
 
           <div className="flex-1 overflow-y-auto hide-scrollbar">
-            {recentTab === 'Recent' && receiptsLoaded && recentActivities.length > 0 ? (
+            {recentTab === 'Recent' && receiptsLoaded && requestsLoaded && recentActivities.length > 0 ? (
               <div>
                 {recentActivities.map((activity) => {
                   const timeAgo = formatDistanceToNow(activity.date, {
@@ -1263,7 +1269,7 @@ export function Dashboard({
                   );
                 })}
               </div>
-            ) : recentTab === 'Recent' && !receiptsLoaded ? (
+            ) : recentTab === 'Recent' && (!receiptsLoaded || !requestsLoaded) ? (
               null
             ) : recentTab === 'Recent' ? (
               <div className="flex flex-col items-center justify-center h-32 text-gray-400">
