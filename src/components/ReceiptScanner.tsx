@@ -152,6 +152,12 @@ export function ReceiptScanner({ isOpen, onClose, onSuccess, initialMode = 'came
     setIsSubmitting(true);
     setError(null);
 
+    if (!supabase) {
+      setError('A conexão com o banco de dados não está configurada corretamente. Verifique as configurações.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       // Upload da imagem para o bucket
       const filename = `receipt_${uuidv4()}.jpg`;
