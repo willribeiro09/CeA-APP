@@ -1095,7 +1095,7 @@ export function Dashboard({
             <div className="relative z-10 h-full flex flex-col">
               {/* Header */}
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow flex-shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-[#1e3a6e] flex items-center justify-center shadow flex-shrink-0">
                   <Users className="w-4 h-4 text-white" />
                 </div>
                 <div className="text-[13px] text-gray-800 font-semibold tracking-wide">Employees</div>
@@ -1147,7 +1147,7 @@ export function Dashboard({
 
             <div className="relative z-10 h-full flex flex-col">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow bg-gradient-to-br from-blue-500 to-blue-600 flex-shrink-0">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow bg-[#1e3a6e] flex-shrink-0">
                   <Calendar className="w-4 h-4 text-white" />
                 </div>
                 <div>
@@ -1186,7 +1186,7 @@ export function Dashboard({
                   key={tab}
                   onClick={() => setRecentTab(tab as 'Recent' | 'Requests' | 'Receipts' | 'Stock')}
                   className={`relative px-3 pb-1.5 pt-1.5 text-xs font-medium flex items-center gap-1 border-b-2 ${recentTab === tab
-                    ? 'border-[#133d8f] text-white font-semibold bg-[#133d8f] rounded-t-2xl'
+                    ? 'border-[#0D1C34] text-white font-semibold bg-[#0D1C34] rounded-t-2xl'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                 >
