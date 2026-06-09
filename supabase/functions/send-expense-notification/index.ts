@@ -194,8 +194,8 @@ serve(async (req) => {
         try {
           const { error: insertError } = await supabase.from('notifications').insert({
             device_id: tokenData.device_id,
-            title: title || '🔔 CeA APP',
-            body: body || 'Você tem uma nova notificação',
+            title: title || 'Gutter Pros LLC',
+            body: body || 'You have a new notification',
             data: data || {},
             is_read: false,
             created_at: new Date().toISOString(),
