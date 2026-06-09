@@ -219,6 +219,8 @@ export default function App() {
   const [isDataReady, setIsDataReady] = useState(false);
   const [initialReceipts, setInitialReceipts] = useState<any[]>([]);
   const [initialRequests, setInitialRequests] = useState<any[]>([]);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
 
   // NOVO: Hook para controlar o status de sincronização
@@ -358,6 +360,34 @@ export default function App() {
       setIsDataReady(true);
     });
   }, []);
+
+  // PWA install banner
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      const dismissed = localStorage.getItem('pwa-install-dismissed');
+      if (!dismissed && !isPwaInstalled()) {
+        setShowInstallBanner(true);
+      }
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setShowInstallBanner(false));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setShowInstallBanner(false);
+    setInstallPrompt(null);
+  };
+
+  const handleDismissInstall = () => {
+    setShowInstallBanner(false);
+    localStorage.setItem('pwa-install-dismissed', '1');
+  };
 
   // Inicializar sistema de notificações push
   useEffect(() => {
@@ -3487,6 +3517,26 @@ export default function App() {
         }}
         onSave={handleSaveExpenseDetails}
       />
+
+      {/* PWA Install Banner */}
+      {showInstallBanner && (
+        <div className="fixed bottom-20 left-4 right-4 z-[9998] bg-[#0B1425] border border-white/10 rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3">
+          <img src="/gutterpros-icon.png" alt="" className="w-10 h-10 rounded-xl flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-semibold leading-tight">Add to Home Screen</p>
+            <p className="text-white/60 text-xs leading-tight mt-0.5">Install Gutter Pros LLC</p>
+          </div>
+          <button
+            onClick={handleInstallClick}
+            className="bg-[#4bbf14] text-white text-sm font-semibold px-4 py-1.5 rounded-xl flex-shrink-0"
+          >
+            Install
+          </button>
+          <button onClick={handleDismissInstall} className="text-white/40 hover:text-white/70 flex-shrink-0 ml-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Splash screen */}
       {!isDataReady && (
