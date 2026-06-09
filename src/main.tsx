@@ -51,6 +51,13 @@ if (document.readyState === 'loading') {
   preventZoom();
 }
 
+// Capturar beforeinstallprompt o mais cedo possível, antes do React montar
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  (window as any).__pwaInstallPrompt = e;
+  window.dispatchEvent(new CustomEvent('pwaInstallPromptReady', { detail: e }));
+});
+
 // Forçar atualização do cache quando houver nova versão
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

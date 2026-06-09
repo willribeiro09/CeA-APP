@@ -363,17 +363,29 @@ export default function App() {
 
   // PWA install banner
   useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
+    const dismissed = localStorage.getItem('pwa-install-dismissed');
+    const canShow = !dismissed && !isPwaInstalled();
+
+    const applyPrompt = (e: any) => {
       setInstallPrompt(e);
-      const dismissed = localStorage.getItem('pwa-install-dismissed');
-      if (!dismissed && !isPwaInstalled()) {
-        setShowInstallBanner(true);
-      }
+      if (canShow) setShowInstallBanner(true);
     };
+
+    // Evento já capturado antes do React montar (main.tsx)
+    if ((window as any).__pwaInstallPrompt) {
+      applyPrompt((window as any).__pwaInstallPrompt);
+    }
+
+    // Listener para caso ainda não tenha disparado
+    const handler = (e: any) => applyPrompt(e);
+    const customHandler = (e: any) => applyPrompt(e.detail);
     window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('pwaInstallPromptReady', customHandler);
     window.addEventListener('appinstalled', () => setShowInstallBanner(false));
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('pwaInstallPromptReady', customHandler);
+    };
   }, []);
 
   const handleInstallClick = async () => {
