@@ -23,14 +23,35 @@ export default defineConfig(({ mode }) => {
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'firebase-messaging-sw.js'],
       manifest: {
         name: 'Gutter Pros LLC',
-        short_name: 'Gutter Pros',
-        theme_color: '#262626',
+        short_name: 'Gutter Pros LLC',
+        theme_color: '#0B1425',
+        background_color: '#0B1425',
+        display: 'standalone',
+        start_url: '/',
         icons: [
           {
-            src: '/cealogo.png',
+            src: '/gp-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/gp-icon-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any'
+          },
+          {
+            src: '/gp-icon-maskable-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: '/gp-icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
