@@ -3488,18 +3488,18 @@ export default function App() {
         onSave={handleSaveExpenseDetails}
       />
 
-      {/* Loading overlay - blur com popup profissional */}
+      {/* Splash screen */}
       {!isDataReady && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center loading-overlay-enter">
-          {/* Fundo totalmente opaco */}
-          <div className="absolute inset-0 bg-[#0B1425]" />
-          {/* Popup card */}
-          <div className="relative bg-white/95 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-2xl flex flex-col items-center gap-4 max-w-[260px] w-[85%] loading-popup-enter">
-            <div className="w-10 h-10 border-[3px] border-gray-200 border-t-[#262626] rounded-full animate-spin" />
-            <div className="text-center">
-              <p className="text-[15px] font-semibold text-gray-800">Loading</p>
-              <p className="text-[12px] text-gray-500 mt-1">Syncing your data...</p>
-            </div>
+        <div className="splash-screen fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0B1425]">
+          <img
+            src="/gutterpros-icon.png"
+            alt="Gutter Pros LLC"
+            className="splash-logo w-72 h-72 object-contain"
+          />
+          <div className="flex items-center gap-2 mt-32">
+            <div className="splash-dot" />
+            <div className="splash-dot" />
+            <div className="splash-dot" />
           </div>
         </div>
       )}
