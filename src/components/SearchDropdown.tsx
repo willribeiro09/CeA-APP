@@ -184,7 +184,10 @@ export function SearchDropdown({
         className="p-2 rounded-full hover:bg-white/10 transition-colors"
         title="Buscar"
       >
-        <Search className="w-6 h-6 text-white" strokeWidth={2.8} />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-9 h-9" fill="#1a4fa8">
+          <circle cx="10.5" cy="10.5" r="6.5"/>
+          <rect x="15.5" y="14.9" width="2.2" height="7" rx="1.1" transform="rotate(-45 15.5 14.9)"/>
+        </svg>
       </button>
 
       {/* Overlay para fechar ao clicar fora */}

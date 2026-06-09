@@ -38,7 +38,7 @@ export function Header({
             </p>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-0 -space-x-2">
           <SearchDropdown 
             expenses={expenses}
             projects={projects}

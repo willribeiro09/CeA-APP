@@ -101,7 +101,9 @@ export function NotificationDropdown({ onNotificationClick }: NotificationDropdo
         className="p-2 rounded-full hover:bg-white/10 transition-colors relative"
         title="Notificações"
       >
-        <Bell className="w-6 h-6 text-white" />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-7 h-7" fill="#1a4fa8">
+          <path d="M12 2a7 7 0 0 0-7 7v4.586l-1.707 1.707A1 1 0 0 0 4 17h16a1 1 0 0 0 .707-1.707L19 13.586V9a7 7 0 0 0-7-7zm0 20a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 22z"/>
+        </svg>
         {unreadCount > 0 && (
           <span className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
             {unreadCount > 9 ? '9+' : unreadCount}
