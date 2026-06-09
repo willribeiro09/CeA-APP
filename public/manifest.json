@@ -4,8 +4,8 @@
   "description": "Business management for Gutter Pros LLC",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#262626",
-  "theme_color": "#262626",
+  "background_color": "#0B1425",
+  "theme_color": "#0B1425",
   "orientation": "portrait-primary",
   "icons": [
     {
