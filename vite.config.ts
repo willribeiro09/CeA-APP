@@ -22,9 +22,9 @@ export default defineConfig(({ mode }) => {
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'firebase-messaging-sw.js'],
       manifest: {
-        name: 'C&A Gutters APP',
-        short_name: 'CeA APP',
-        theme_color: '#073763',
+        name: 'Gutter Pros LLC',
+        short_name: 'Gutter Pros',
+        theme_color: '#262626',
         icons: [
           {
             src: '/cealogo.png',

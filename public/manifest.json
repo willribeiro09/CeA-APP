@@ -1,11 +1,11 @@
 {
-  "name": "C&A Gutters APP",
-  "short_name": "C&A Gutters",
-  "description": "Business management for C&A Gutters",
+  "name": "Gutter Pros LLC",
+  "short_name": "Gutter Pros",
+  "description": "Business management for Gutter Pros LLC",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#073763",
-  "theme_color": "#073763",
+  "background_color": "#262626",
+  "theme_color": "#262626",
   "orientation": "portrait-primary",
   "icons": [
     {

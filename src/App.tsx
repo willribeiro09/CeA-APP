@@ -2551,14 +2551,14 @@ export default function App() {
         />
 
         {/* Faixa azul global (um pouco abaixo do header, com bordas suaves) */}
-        <div className={`fixed top-[60px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[100px]' : 'h-[87px]'} bg-[#073863] rounded-b-[1rem] z-0`}></div>
+        <div className={`fixed top-[60px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[100px]' : 'h-[87px]'} bg-[#262626] rounded-b-[1rem] z-0`}></div>
 
         {/* Botão + flutuante no centro */}
         <button
           onClick={handlePrimaryAddClick}
           disabled={isBackgroundSyncing}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-16 h-16 bg-gradient-to-br from-[#fe7e26] to-[#e57121] rounded-full shadow-2xl border-4 border-white flex items-center justify-center active:scale-95 transition-all hover:shadow-3xl disabled:opacity-50"
-          style={{ boxShadow: '0 10px 40px rgba(254, 126, 38, 0.4), 0 0 0 8px rgba(254, 126, 38, 0.1)' }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-16 h-16 bg-gradient-to-br from-[#4bbf14] to-[#389e0d] rounded-full shadow-2xl border-4 border-white flex items-center justify-center active:scale-95 transition-all hover:shadow-3xl disabled:opacity-50"
+          style={{ boxShadow: '0 10px 40px rgba(92, 187, 54, 0.4), 0 0 0 8px rgba(92, 187, 54, 0.1)' }}
         >
           <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
@@ -3492,10 +3492,10 @@ export default function App() {
       {!isDataReady && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center loading-overlay-enter">
           {/* Fundo totalmente opaco */}
-          <div className="absolute inset-0 bg-[#073763]" />
+          <div className="absolute inset-0 bg-[#262626]" />
           {/* Popup card */}
           <div className="relative bg-white/95 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-2xl flex flex-col items-center gap-4 max-w-[260px] w-[85%] loading-popup-enter">
-            <div className="w-10 h-10 border-[3px] border-gray-200 border-t-[#073763] rounded-full animate-spin" />
+            <div className="w-10 h-10 border-[3px] border-gray-200 border-t-[#262626] rounded-full animate-spin" />
             <div className="text-center">
               <p className="text-[15px] font-semibold text-gray-800">Loading</p>
               <p className="text-[12px] text-gray-500 mt-1">Syncing your data...</p>

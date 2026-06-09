@@ -9,7 +9,7 @@ interface NavigationProps {
 
 export function Navigation({ activeCategory, onCategoryChange, disabled = false }: NavigationProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[#5ABB37] z-40 rounded-t-xl navigation-bottom-bar">
+    <nav className="fixed bottom-0 left-0 right-0 bg-[#133d8f] z-40 rounded-t-xl navigation-bottom-bar">
       <div className="flex justify-around items-center h-14 px-2 relative navigation-content">
         {/* Home */}
         <button

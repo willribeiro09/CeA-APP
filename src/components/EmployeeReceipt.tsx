@@ -422,12 +422,12 @@ const EmployeeReceipt: React.FC<EmployeeReceiptProps> = ({
               const target = e.target as HTMLImageElement;
               target.onerror = null;
               target.src = '';
-              target.parentElement!.innerHTML = '<h1 class="text-5xl font-bold text-[#5ABB37]">C&A</h1>';
+              target.parentElement!.innerHTML = '<h1 class="text-5xl font-bold text-[#5ABB37]">GP</h1>';
             }}
           />
         </div>
         <p className="text-lg font-medium text-gray-700 tracking-wide important-text" style={{ fontFamily: "'Segoe UI', Arial, sans-serif", letterSpacing: '0.05em' }}>
-          C&A Gutters Inc.
+          Gutter Pros LLC
         </p>
       </div>
 

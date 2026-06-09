@@ -961,20 +961,20 @@ export function Dashboard({
           {/* Card To Pay */}
           <div
             onClick={() => onNavigate('Expenses')}
-            className="relative bg-gradient-to-br from-red-50 via-red-50 to-red-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
+            className="relative bg-gradient-to-br from-slate-50 via-blue-50 to-blue-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
           >
             {/* Ícone de fundo sutil */}
             <div className="absolute -right-3 -bottom-3 opacity-5">
-              <ReceiptIcon className="w-24 h-24 text-red-600" />
+              <ReceiptIcon className="w-24 h-24 text-blue-400" />
             </div>
 
             <div className="relative z-10 h-full flex flex-col">
               {/* Header */}
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow flex-shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-[#3d4550] flex items-center justify-center shadow flex-shrink-0">
                   <FileText className="w-4 h-4 text-white" />
                 </div>
-                <div className="text-[13px] text-gray-700 font-semibold">To Pay</div>
+                <div className="text-[13px] text-[#c0292b] font-semibold">To Pay</div>
               </div>
 
               {/* Conteúdo */}
@@ -1039,27 +1039,27 @@ export function Dashboard({
           {/* Card To Receive - Valor total projetos Power */}
           <div
             onClick={() => onNavigateToProjects ? onNavigateToProjects('Power') : onNavigate('Projects')}
-            className="relative bg-gradient-to-br from-green-50 via-green-50 to-green-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
+            className="relative bg-gradient-to-br from-slate-50 via-blue-50 to-blue-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
           >
             {/* Ícone de fundo sutil */}
             <div className="absolute -right-3 -bottom-3 opacity-5">
-              <DollarSign className="w-24 h-24 text-green-600" />
+              <DollarSign className="w-24 h-24 text-blue-400" />
             </div>
 
             <div className="relative z-10 h-full flex flex-col">
               {/* Header: ícone + título */}
               <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow flex-shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-[#3d4550] flex items-center justify-center shadow flex-shrink-0">
                   <DollarSign className="w-4 h-4 text-white" />
                 </div>
-                <div className="text-[13px] text-gray-800 font-semibold tracking-wide">To Receive</div>
+                <div className="text-[13px] text-[#4bbf14] font-semibold tracking-wide">To Receive</div>
               </div>
 
               {/* Cliente + Valor na mesma linha */}
               <div className="flex-1 flex flex-col justify-center">
                 <div className="flex items-center justify-between">
                   <div className="text-[10px] text-gray-700 font-semibold uppercase tracking-wide">Power</div>
-                  <div className="text-xl font-extrabold text-gray-800 leading-none">
+                  <div className="text-xl font-extrabold text-[#4bbf14] leading-none">
                     ${powerProjectsWeekValues.current.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </div>
                 </div>
@@ -1085,17 +1085,17 @@ export function Dashboard({
           {/* Card Employees */}
           <div
             onClick={() => onNavigate('Employees')}
-            className="relative bg-gradient-to-br from-purple-50 via-purple-50 to-purple-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
+            className="relative bg-gradient-to-br from-slate-50 via-blue-50 to-blue-100 rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px]"
           >
             {/* Ícone de fundo sutil */}
             <div className="absolute -right-3 -bottom-3 opacity-5">
-              <Users className="w-24 h-24 text-purple-600" />
+              <Users className="w-24 h-24 text-blue-400" />
             </div>
 
             <div className="relative z-10 h-full flex flex-col">
               {/* Header */}
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow flex-shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-[#3d4550] flex items-center justify-center shadow flex-shrink-0">
                   <Users className="w-4 h-4 text-white" />
                 </div>
                 <div className="text-[13px] text-gray-800 font-semibold tracking-wide">Employees</div>
@@ -1127,19 +1127,19 @@ export function Dashboard({
           {/* Card Planner */}
           <div
             onClick={() => onOpenPlanner ? onOpenPlanner() : onNavigate('Stock')}
-            className="relative rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px] bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100"
+            className="relative rounded-xl p-3 shadow-lg border border-gray-200 cursor-pointer active:scale-95 transition-transform overflow-hidden h-[125px] bg-gradient-to-br from-slate-50 via-blue-50 to-blue-100"
           >
-            <div className="absolute -right-3 -bottom-3 opacity-5 text-blue-500">
+            <div className="absolute -right-3 -bottom-3 opacity-5 text-blue-400">
               <Calendar className="w-28 h-28" />
             </div>
             {/* Data com caixa sutil e divisória */}
             <div className="absolute right-3 top-3 z-20">
-              <div className="flex flex-col items-center border border-gray-300/60 rounded-md overflow-hidden bg-white/50 backdrop-blur-sm">
-                <div className="text-[16px] font-black text-gray-800 leading-none px-2 py-1">
+              <div className="flex flex-col items-center rounded-lg overflow-hidden shadow-md" style={{background: 'linear-gradient(145deg, #1e56c0, #0d2d6e)'}}>
+                <div className="text-[17px] font-black text-white leading-none px-1.5 py-1.5 drop-shadow-sm">
                   {format(new Date(), 'd')}
                 </div>
-                <div className="h-px w-full bg-gray-300/60" />
-                <div className="text-[9px] font-bold text-gray-600 uppercase tracking-widest px-2 py-0.5 bg-gray-50/50">
+                <div className="h-px w-full bg-white/20" />
+                <div className="text-[9px] font-bold text-white/80 uppercase tracking-widest px-1.5 py-0.5" style={{background: 'rgba(0,0,0,0.15)'}}>
                   {format(new Date(), 'MMM')}
                 </div>
               </div>
@@ -1147,7 +1147,7 @@ export function Dashboard({
 
             <div className="relative z-10 h-full flex flex-col">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow bg-gradient-to-br from-blue-500 to-blue-600 flex-shrink-0">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow bg-[#3d4550] flex-shrink-0">
                   <Calendar className="w-4 h-4 text-white" />
                 </div>
                 <div>
@@ -1174,8 +1174,8 @@ export function Dashboard({
       {/* Recent - Feed de Histórico */}
       <div className="fixed top-[380px] left-0 right-0 bottom-0 z-[5] px-4">
         <div className="bg-gradient-to-br from-white to-gray-50 rounded-t-3xl rounded-b-none shadow-xl shadow-[0_-12px_24px_-10px_rgba(0,0,0,0.18)] border border-gray-200 h-full flex flex-col overflow-hidden">
-          <div className="px-4 py-2 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
-            <div className="flex items-center justify-center gap-2">
+          <div className="px-4 pt-1.5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+            <div className="flex items-center justify-center gap-1">
               {[
                 { key: 'Recent', Icon: TrendingUp },
                 { key: 'Requests', Icon: StickyNote },
@@ -1185,16 +1185,13 @@ export function Dashboard({
                 <button
                   key={tab}
                   onClick={() => setRecentTab(tab as 'Recent' | 'Requests' | 'Receipts' | 'Stock')}
-                  className={`relative px-3 py-1 text-xs font-medium rounded-full transition-colors flex items-center gap-1 ${recentTab === tab
-                    ? 'text-[#073863]'
-                    : 'text-gray-500 hover:text-gray-800'
+                  className={`relative px-3 pb-1.5 pt-1.5 text-xs font-medium flex items-center gap-1 border-b-2 ${recentTab === tab
+                    ? 'border-[#c0292b] text-white font-semibold bg-[#c0292b] rounded-t-2xl'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {tab}
-                  {recentTab === tab && (
-                    <span className="absolute inset-x-0 -bottom-2 h-[3px] bg-[#073863] rounded-full"></span>
-                  )}
                 </button>
               ))}
             </div>
