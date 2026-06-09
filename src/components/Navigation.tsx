@@ -9,7 +9,7 @@ interface NavigationProps {
 
 export function Navigation({ activeCategory, onCategoryChange, disabled = false }: NavigationProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[#133d8f] z-40 rounded-t-xl navigation-bottom-bar">
+    <nav className="fixed bottom-0 left-0 right-0 bg-gradient-to-b from-[#1a2d4a] to-[#0D1C34] z-40 rounded-t-xl navigation-bottom-bar">
       <div className="flex justify-around items-center h-14 px-2 relative navigation-content">
         {/* Home */}
         <button
@@ -23,6 +23,9 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
           </span>
         </button>
 
+        {/* Separador */}
+        <div className="w-px h-6 bg-white/20 flex-shrink-0" />
+
         {/* Expenses */}
         <button
           onClick={disabled ? () => {} : () => onCategoryChange('Expenses')}
@@ -35,8 +38,14 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
           </span>
         </button>
 
+        {/* Separador */}
+        <div className="w-px h-6 bg-white/20 flex-shrink-0" />
+
         {/* Espaço para o botão + */}
         <div className="flex-1"></div>
+
+        {/* Separador */}
+        <div className="w-px h-6 bg-white/20 flex-shrink-0" />
 
         {/* Projects */}
         <button
@@ -49,6 +58,9 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
             Projects
           </span>
         </button>
+
+        {/* Separador */}
+        <div className="w-px h-6 bg-white/20 flex-shrink-0" />
 
         {/* Employees */}
         <button

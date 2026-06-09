@@ -2551,7 +2551,7 @@ export default function App() {
         />
 
         {/* Faixa azul global (um pouco abaixo do header, com bordas suaves) */}
-        <div className={`fixed top-[60px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[100px]' : 'h-[87px]'} bg-[#262626] rounded-b-[1rem] z-0`}></div>
+        <div className={`fixed top-[60px] left-0 right-0 ${activeCategory === 'Home' ? 'h-[100px]' : 'h-[87px]'} bg-[#0B1425] rounded-b-[1rem] z-0`}></div>
 
         {/* Botão + flutuante no centro */}
         <button
@@ -3492,7 +3492,7 @@ export default function App() {
       {!isDataReady && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center loading-overlay-enter">
           {/* Fundo totalmente opaco */}
-          <div className="absolute inset-0 bg-[#262626]" />
+          <div className="absolute inset-0 bg-[#0B1425]" />
           {/* Popup card */}
           <div className="relative bg-white/95 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-2xl flex flex-col items-center gap-4 max-w-[260px] w-[85%] loading-popup-enter">
             <div className="w-10 h-10 border-[3px] border-gray-200 border-t-[#262626] rounded-full animate-spin" />

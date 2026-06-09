@@ -27,7 +27,7 @@ export function Header({
   const currentMonthYear = useMemo(() => format(new Date(), 'MMMM yyyy'), []);
   
   return (
-    <header className="fixed top-0 left-0 right-0 bg-[#262626] h-[100px] pt-safe-top px-4 z-50">
+    <header className="fixed top-0 left-0 right-0 bg-[#0B1425] h-[100px] pt-safe-top px-4 z-50">
       <div className="h-full flex items-center gap-4">
         <div className="flex items-center gap-4">
           <Logo />
