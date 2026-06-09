@@ -1186,7 +1186,7 @@ export function Dashboard({
                   key={tab}
                   onClick={() => setRecentTab(tab as 'Recent' | 'Requests' | 'Receipts' | 'Stock')}
                   className={`relative px-3 pb-1.5 pt-1.5 text-xs font-medium flex items-center gap-1 border-b-2 ${recentTab === tab
-                    ? 'border-[#0D1C34] text-white font-semibold bg-[#0D1C34] rounded-t-2xl'
+                    ? 'border-[#1a3a6e] text-white font-semibold bg-[#1a3a6e] rounded-t-2xl'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                 >
