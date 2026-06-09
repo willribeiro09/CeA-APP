@@ -242,10 +242,10 @@ async function sendNotification(
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 
-    const title = daysUntilDue === 0 ? '🔔 Vencimento Hoje!' : '🔔 Vencimento Próximo'
+    const title = daysUntilDue === 0 ? 'Payment Due Today' : 'Upcoming Payment'
     const body = daysUntilDue === 0
-      ? `${expense.description} - R$ ${amount.toFixed(2)}\nVence HOJE!`
-      : `${expense.description} - R$ ${amount.toFixed(2)}\nVence em ${daysUntilDue} dias`
+      ? `${expense.description} - $${amount.toFixed(2)} — due TODAY`
+      : `${expense.description} - $${amount.toFixed(2)} — due in ${daysUntilDue} day${daysUntilDue > 1 ? 's' : ''}`
 
     const data = {
       type: 'expense',

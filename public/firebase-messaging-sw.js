@@ -30,12 +30,11 @@ messaging.onBackgroundMessage((payload) => {
   const data = payload.data || {};
   
   // Extrair dados da notificação do campo "data"
-  const notificationTitle = data.title || 'CeA APP';
+  const notificationTitle = data.title || 'Gutter Pros LLC';
   const notificationOptions = {
-    body: data.body || 'Nova notificação',
-    icon: data.icon || '/cealogo.png',
-    // Tag única garante que notificações duplicadas sejam substituídas
-    tag: data.tag || 'cea-notification',
+    body: data.body || 'You have a new notification',
+    icon: data.icon || '/gp-icon-512.png',
+    tag: data.tag || 'gp-notification',
     data: data,
     requireInteraction: false,
     vibrate: [200, 100, 200],
@@ -46,7 +45,7 @@ messaging.onBackgroundMessage((payload) => {
   if (data.action) {
     notificationOptions.actions.push({
       action: 'open',
-      title: 'Abrir'
+      title: 'Open'
     });
   }
 

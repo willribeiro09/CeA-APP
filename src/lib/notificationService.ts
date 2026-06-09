@@ -94,7 +94,7 @@ export const saveFCMTokenToDatabase = async (token: string): Promise<boolean> =>
     const deviceId = getDeviceId();
     
     // Salvar também no localStorage como backup
-    localStorage.setItem('cea_fcm_token', token);
+    localStorage.setItem('gp_fcm_token', token);
     console.log('✅ Token FCM salvo localmente:', token);
     
     // Verifica se já existe um registro para este dispositivo
@@ -234,10 +234,10 @@ export const setupForegroundNotificationListener = (
       const notification = payload.notification || {};
       
       // Prioriza data (novo formato sem duplicação) sobre notification
-      const title = data.title || notification.title || 'CeA APP';
+      const title = data.title || notification.title || 'Gutter Pros LLC';
       const body = data.body || notification.body || '';
-      const icon = data.icon || notification.icon || '/cealogo.png';
-      const tag = data.tag || 'cea-foreground';
+      const icon = data.icon || notification.icon || '/gp-icon-512.png';
+      const tag = data.tag || 'gp-foreground';
       
       new Notification(title, {
         body,
@@ -261,10 +261,10 @@ export const showTestNotification = async () => {
     }
   }
 
-  new Notification('CeA APP - Teste', {
-    body: 'Sistema de notificações funcionando!',
-    icon: '/cealogo.png',
-    badge: '/cealogo.png'
+  new Notification('Gutter Pros LLC - Test', {
+    body: 'Notification system is working correctly!',
+    icon: '/gp-icon-512.png',
+    badge: '/gp-icon-512.png'
   });
 };
 

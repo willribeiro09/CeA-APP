@@ -147,7 +147,7 @@ serve(async (req) => {
       // Gerar tag única para evitar notificações duplicadas
       // O navegador substitui notificações com a mesma tag
       const timestamp = Date.now();
-      const notificationTag = data?.tag || `cea-${timestamp}-${tokenData.device_id || 'unknown'}`;
+      const notificationTag = data?.tag || `gp-${timestamp}-${tokenData.device_id || 'unknown'}`;
 
       const message = {
         message: {
@@ -162,9 +162,9 @@ serve(async (req) => {
           data: {
             ...(data || {}),
             // Campos para o Service Worker montar a notificação
-            title: title || '🔔 CeA APP',
-            body: body || 'Você tem uma nova notificação',
-            icon: '/cealogo.png',
+            title: title || 'Gutter Pros LLC',
+            body: body || 'You have a new notification',
+            icon: '/gp-icon-512.png',
             tag: notificationTag,
             timestamp: new Date().toISOString(),
           },
