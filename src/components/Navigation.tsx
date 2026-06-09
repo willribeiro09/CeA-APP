@@ -38,14 +38,8 @@ export function Navigation({ activeCategory, onCategoryChange, disabled = false 
           </span>
         </button>
 
-        {/* Separador */}
-        <div className="w-px h-6 bg-white/20 flex-shrink-0" />
-
         {/* Espaço para o botão + */}
         <div className="flex-1"></div>
-
-        {/* Separador */}
-        <div className="w-px h-6 bg-white/20 flex-shrink-0" />
 
         {/* Projects */}
         <button
