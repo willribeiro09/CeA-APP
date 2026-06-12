@@ -11,22 +11,37 @@ export function SyncOverlay({ isVisible, message = 'Sincronizando dados...' }: S
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg p-8 shadow-xl max-w-sm w-[90%] text-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Sincronizando
-            </h3>
-            <p className="text-sm text-gray-600">
-              {message}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              Aguarde enquanto atualizamos os dados...
-            </p>
-          </div>
-        </div>
+    <div className="fixed inset-0 z-50" aria-busy="true" aria-live="polite">
+      {/* Camada invisível que bloqueia interações durante a sincronização,
+          evitando conflitos de dados. NÃO escurece nem cobre a tela. */}
+      <div className="absolute inset-0" />
+
+      {/* Uma única faísca correndo rápido pela borda da tela (sem contorno fixo) */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <rect
+          x="1.5" y="1.5" width="97" height="97" rx="1.5"
+          fill="none" stroke="#22C55E" strokeWidth={3.5}
+          strokeLinecap="round" vectorEffect="non-scaling-stroke"
+          pathLength={100} strokeDasharray="3 97"
+        >
+          <animate
+            attributeName="stroke-dashoffset"
+            from="100" to="0" dur="0.9s" repeatCount="indefinite"
+          />
+        </rect>
+      </svg>
+
+      {/* Indicador discreto, com fundo próprio para ser legível sobre qualquer tela */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/95 rounded-full px-3 py-1 shadow-sm pointer-events-none">
+        <Loader2 className="w-3.5 h-3.5 text-green-500 animate-spin" />
+        <span className="text-xs font-medium text-gray-700">
+          {message || 'Sincronizando...'}
+        </span>
       </div>
     </div>
   );
