@@ -16,25 +16,38 @@ export function SyncOverlay({ isVisible, message = 'Sincronizando dados...' }: S
           evitando conflitos de dados. NÃO escurece nem cobre a tela. */}
       <div className="absolute inset-0" />
 
-      {/* Uma única faísca correndo rápido pela borda da tela (sem contorno fixo) */}
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
+      {/* Cometa: um rastro verde contínuo e luminoso girando pela borda da tela */}
+      <style>{`
+        @keyframes syncCometSpin {
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+      `}</style>
+      <div
+        className="absolute inset-0 pointer-events-none overflow-hidden"
         aria-hidden="true"
+        style={{
+          padding: '4px',
+          WebkitMask:
+            'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+          mask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+          WebkitMaskComposite: 'xor',
+          maskComposite: 'exclude',
+        }}
       >
-        <rect
-          x="1.5" y="1.5" width="97" height="97" rx="1.5"
-          fill="none" stroke="#22C55E" strokeWidth={3.5}
-          strokeLinecap="round" vectorEffect="non-scaling-stroke"
-          pathLength={100} strokeDasharray="3 97"
-        >
-          <animate
-            attributeName="stroke-dashoffset"
-            from="100" to="0" dur="0.9s" repeatCount="indefinite"
-          />
-        </rect>
-      </svg>
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '150vmax',
+            height: '150vmax',
+            transform: 'translate(-50%, -50%)',
+            background:
+              'conic-gradient(from 0deg, transparent 0 55%, rgba(34,197,94,0.45) 74%, rgba(34,197,94,1) 91%, #ffffff 100%)',
+            animation: 'syncCometSpin 1.1s linear infinite',
+          }}
+        />
+      </div>
 
       {/* Indicador discreto, com fundo próprio para ser legível sobre qualquer tela */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/95 rounded-full px-3 py-1 shadow-sm pointer-events-none">
