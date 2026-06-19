@@ -1,7 +1,7 @@
 import { getToken, onMessage, MessagePayload } from 'firebase/messaging';
 import { getFirebaseMessaging, VAPID_KEY } from './firebase';
 import { supabase } from './supabase';
-import { getDeviceId } from './deviceUtils';
+import { getDeviceId, isIOSDevice } from './deviceUtils';
 
 export interface NotificationPermissionStatus {
   granted: boolean;
@@ -39,6 +39,19 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 
   if (Notification.permission === 'denied') {
     console.warn('Permissão de notificações negada pelo usuário');
+    return false;
+  }
+
+  // No iOS, o prompt nativo só funciona quando o PWA está instalado (standalone).
+  // Em Safari comum (não instalado), o iOS ignora a chamada — então nem solicitamos.
+  // Android/desktop não são afetados (isIOS = false segue o fluxo normal).
+  const isIOS = isIOSDevice();
+  const isIOSStandalone =
+    isIOS && (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+  if (isIOS && !isIOSStandalone) {
+    console.warn(
+      '[Notificações] iOS sem PWA instalado: adicione o app à tela inicial para ativar as notificações.'
+    );
     return false;
   }
 
