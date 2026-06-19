@@ -69,15 +69,19 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
  */
 export const getFCMToken = async (): Promise<string | null> => {
   try {
-    const messaging = getFirebaseMessaging();
-    if (!messaging) {
-      console.error('Firebase Messaging não disponível');
+    // Pede a permissão PRIMEIRO, independente do Firebase. No iOS o prompt
+    // precisa ser disparado logo na interação do usuário; se deixássemos para
+    // depois da inicialização do Firebase (que pode falhar no iOS), o pedido
+    // nunca aconteceria e o prompt nunca apareceria.
+    const hasPermission = await requestNotificationPermission();
+    if (!hasPermission) {
       return null;
     }
 
-    // Verifica se tem permissão
-    const hasPermission = await requestNotificationPermission();
-    if (!hasPermission) {
+    // Só então inicializa o Firebase Messaging
+    const messaging = getFirebaseMessaging();
+    if (!messaging) {
+      console.error('Firebase Messaging não disponível');
       return null;
     }
 
