@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
-import NotificationDebug from './components/NotificationDebug';
 
 // Prevenir zoom em dispositivos móveis
 const preventZoom = () => {
@@ -87,7 +86,6 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <App />
-      <NotificationDebug />
     </ErrorBoundary>
   </StrictMode>
 );
