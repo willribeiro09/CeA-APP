@@ -102,6 +102,11 @@ async function sendAppOpenedNotification(eventType: 'app_opened' | 'app_resumed'
   try {
     // Extrair informações do dispositivo
     const userAgent = navigator.userAgent;
+
+    // Ignorar bots e browsers headless (crawlers, uptime monitors, etc.)
+    if ((navigator as any).webdriver || /HeadlessChrome|Headless|bot|crawler|spider/i.test(userAgent)) {
+      return;
+    }
     let platform = 'Unknown';
     let browser = 'Unknown';
 
