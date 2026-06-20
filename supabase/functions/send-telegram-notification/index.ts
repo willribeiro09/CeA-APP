@@ -149,9 +149,23 @@ Deno.serve(async (req: Request) => {
 
   try {
     const data = await req.json();
-    
+
+    // Filtro de bots no servidor — bloqueia headless browsers e crawlers
+    // independente do que o cliente envie
+    if (data.type === 'app_opened' || data.type === 'app_resumed') {
+      const requestUA = req.headers.get('user-agent') || '';
+      const bodyUA = data.userAgent || '';
+      const isBotUA = /HeadlessChrome|Headless|bot|crawler|spider|Googlebot|Bingbot|facebookexternalhit/i;
+      if (isBotUA.test(requestUA) || isBotUA.test(bodyUA)) {
+        return new Response(JSON.stringify({ skipped: true, reason: 'bot' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+
     let message: string;
-    
+
     // Verificar tipo de notificação
     if (data.type === 'app_opened' || data.type === 'app_resumed') {
       message = formatAppOpenedMessage(data as AppOpenedData);
