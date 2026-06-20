@@ -29,7 +29,9 @@ interface AppOpenedData {
   browser?: string;
   screenSize?: string;
   language?: string;
-  userAgent?: string;
+  isNewDevice?: boolean;
+  visitCount?: number;
+  location?: string;
 }
 
 function formatRequestMessage(data: RequestData): string {
@@ -69,22 +71,25 @@ function formatRequestMessage(data: RequestData): string {
 
 function formatAppOpenedMessage(data: AppOpenedData): string {
   const date = new Date(data.timestamp).toLocaleString('en-US', {
+    timeZone: 'America/New_York',
     dateStyle: 'medium',
     timeStyle: 'short'
   });
 
-  // Emoji e título diferentes para cada tipo
   const isResumed = data.type === 'app_resumed';
   const emoji = isResumed ? '🔄' : '📱';
   const title = isResumed ? 'App Resumed' : 'App Opened';
 
+  const visitorLine = data.isNewDevice
+    ? '⭐ *NEW device — first visit*'
+    : `🔁 *Returning device* — visit #${data.visitCount || '?'}`;
+
   return `${emoji} *${title}*\n\n` +
-    `*Time:* ${date}\n` +
-    `*Platform:* ${data.platform || 'Unknown'}\n` +
-    `*Browser:* ${data.browser || 'Unknown'}\n` +
-    `*Screen:* ${data.screenSize || 'Unknown'}\n` +
-    `*Language:* ${data.language || 'Unknown'}\n\n` +
-    `_User Agent:_\n\`${data.userAgent || 'Unknown'}\``;
+    `${visitorLine}\n` +
+    `📍 ${data.location || 'Unknown location'}\n` +
+    `🕐 ${date}\n\n` +
+    `📲 ${data.platform || 'Unknown'} · ${data.browser || 'Unknown'}\n` +
+    `🖥 ${data.screenSize || 'Unknown'} · ${data.language || 'Unknown'}`;
 }
 
 async function sendTelegramMessage(text: string): Promise<boolean> {

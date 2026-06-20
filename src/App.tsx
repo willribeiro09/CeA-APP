@@ -51,7 +51,7 @@ import {
   testWeekRanges,
   formatDateForDisplay
 } from './lib/dateUtils';
-import { isMobileDevice, isPwaInstalled, isIOSDevice, getEnvironmentInfo } from './lib/deviceUtils';
+import { isMobileDevice, isPwaInstalled, isIOSDevice, getEnvironmentInfo, getDeviceId } from './lib/deviceUtils';
 import { initializeNotifications, setupForegroundNotificationListener } from './lib/notificationService';
 import { notifyProjectStatusChange, notifyNewProject } from './lib/expenseNotifications';
 import { PlannerDialog } from './components/PlannerDialog';
@@ -100,17 +100,16 @@ const findEmployeeInOtherWeeks = (employeeId: string, employeesData: Record<stri
 // eventType: 'app_opened' = abertura inicial, 'app_resumed' = volta do segundo plano
 async function sendAppOpenedNotification(eventType: 'app_opened' | 'app_resumed' = 'app_opened') {
   try {
-    // Extrair informações do dispositivo
     const userAgent = navigator.userAgent;
 
     // Ignorar bots e browsers headless (crawlers, uptime monitors, etc.)
     if ((navigator as any).webdriver || /HeadlessChrome|Headless|bot|crawler|spider/i.test(userAgent)) {
       return;
     }
+
     let platform = 'Unknown';
     let browser = 'Unknown';
 
-    // Detectar plataforma
     if (userAgent.includes('iPhone')) platform = 'iPhone';
     else if (userAgent.includes('iPad')) platform = 'iPad';
     else if (userAgent.includes('Android')) platform = 'Android';
@@ -118,20 +117,46 @@ async function sendAppOpenedNotification(eventType: 'app_opened' | 'app_resumed'
     else if (userAgent.includes('Mac')) platform = 'Mac';
     else if (userAgent.includes('Linux')) platform = 'Linux';
 
-    // Detectar navegador
     if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) browser = 'Safari';
     else if (userAgent.includes('Chrome')) browser = 'Chrome';
     else if (userAgent.includes('Firefox')) browser = 'Firefox';
     else if (userAgent.includes('Edge')) browser = 'Edge';
 
+    // Rastrear visitas por dispositivo
+    const deviceId = getDeviceId();
+    const VISIT_KEY = `gp_visits_${deviceId}`;
+    const visitData = JSON.parse(localStorage.getItem(VISIT_KEY) || '{"count":0,"firstVisit":null}');
+    const isNewDevice = visitData.count === 0;
+    if (eventType === 'app_opened') {
+      visitData.count = (visitData.count || 0) + 1;
+      if (!visitData.firstVisit) visitData.firstVisit = new Date().toISOString();
+      visitData.lastVisit = new Date().toISOString();
+      localStorage.setItem(VISIT_KEY, JSON.stringify(visitData));
+    }
+
+    // Geolocalização via IP (gratuito, sem API key)
+    let location = 'Unknown';
+    try {
+      const geo = await Promise.race([
+        fetch('https://ipapi.co/json/').then(r => r.json()),
+        new Promise<never>((_, reject) => setTimeout(() => reject('timeout'), 3000))
+      ]) as any;
+      if (geo?.city && geo?.country_name) location = `${geo.city}, ${geo.country_name}`;
+      else if (geo?.country_name) location = geo.country_name;
+    } catch {
+      // falha silenciosa
+    }
+
     const deviceInfo = {
       type: eventType,
       timestamp: new Date().toISOString(),
-      platform: platform,
-      browser: browser,
+      platform,
+      browser,
       screenSize: `${screen.width}x${screen.height}`,
       language: navigator.language,
-      userAgent: userAgent
+      isNewDevice,
+      visitCount: visitData.count,
+      location,
     };
 
     await fetch(
@@ -146,7 +171,6 @@ async function sendAppOpenedNotification(eventType: 'app_opened' | 'app_resumed'
       }
     );
   } catch (error) {
-    // Silenciosamente falhar - não bloquear o app
     console.error('Failed to send app opened notification:', error);
   }
 }
