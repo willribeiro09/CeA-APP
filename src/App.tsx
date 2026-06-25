@@ -1064,6 +1064,7 @@ export default function App() {
               ...itemWithTimestamp,
               id: itemWithTimestamp.id || existingProject.id,
               photos: itemWithTimestamp.photos || existingProject.photos || [],
+              lastModified: Date.now(),
             };
 
             // Detectar mudança de status para enviar notificação DEPOIS
